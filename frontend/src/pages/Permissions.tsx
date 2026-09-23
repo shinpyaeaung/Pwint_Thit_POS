@@ -1,10 +1,12 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { requestJSON } from '@/services/api'
+import { PageHeader, DataTable, FilterBar, SearchInput, StatusBadge } from '@/components/shared'
 export type Permission = { code: string; description: string; sensitive: boolean }
 export default function Permissions() {
+  const [search, setSearch] = useState('')
+  const [sensitive, setSensitive] = useState(false)
   const query = useQuery({ queryKey: ['permission-catalog'], queryFn: ({ signal }) => requestJSON<{ permissions: Permission[] }>('/permissions', { signal }), retry: false })
-  return <section className="mx-auto max-w-5xl px-6 py-10"><h1 className="text-2xl font-semibold">Permission catalog</h1><p className="mt-2 text-sm text-muted-foreground">Access is checked by the server for every protected request.</p>
-    {query.isPending && <p role="status" className="mt-6">Loading permissions…</p>}{query.error && <p role="alert" className="mt-6 text-red-700">{query.error.message}</p>}
-    <div className="mt-6 grid gap-3 sm:grid-cols-2">{query.data?.permissions.map(p => <div key={p.code} className="rounded-xl border bg-white p-4"><p className="font-mono text-sm">{p.code}</p><p className="mt-1 text-xs text-muted-foreground">{p.description}</p>{p.sensitive && <span className="mt-2 inline-block rounded bg-amber-50 px-2 py-1 text-xs text-amber-900">Sensitive access</span>}</div>)}</div>
-  </section>
+  const rows = (query.data?.permissions || []).filter(p => (!sensitive || p.sensitive) && `${p.code} ${p.description}`.toLowerCase().includes(search.toLowerCase()))
+  return <><PageHeader eyebrow="System / Access control" title="Permission catalog" description="The shared access rules for every protected operation. Assign staff access from Users & access." /><FilterBar onReset={search || sensitive ? () => { setSearch(''); setSensitive(false) } : undefined} summary={`${rows.length} permissions`}><SearchInput value={search} onValueChange={setSearch} label="Search permissions" /><label className="flex items-center gap-2 text-xs"><input type="checkbox" className="accent-primary" checked={sensitive} onChange={e => setSensitive(e.target.checked)} />Sensitive only</label></FilterBar><DataTable key={`${search}:${sensitive}`} caption="Permission catalog" rowKey={p => p.code} rows={rows} loading={query.isPending} error={query.error?.message} onRetry={() => void query.refetch()} columns={[{ id: 'code', header: 'Permission', compare: (a, b) => a.code.localeCompare(b.code), cell: p => <span className="font-mono text-xs">{p.code}</span> }, { id: 'description', header: 'Purpose', cell: p => <span className="block min-w-48 text-xs leading-5">{p.description}</span> }, { id: 'sensitive', header: 'Access level', cell: p => <StatusBadge tone={p.sensitive ? 'warning' : 'neutral'}>{p.sensitive ? 'Sensitive' : 'Standard'}</StatusBadge> }]} /></>
 }

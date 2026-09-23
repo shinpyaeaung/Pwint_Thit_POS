@@ -42,6 +42,7 @@ test('staff cannot access restricted pages or APIs', async ({ page }) => {
 test('owner creates staff and grants then revokes access', async ({ page, browser }) => {
   await signIn(page)
   await page.goto('/users')
+  await page.getByRole('button', { name: 'New staff account' }).click()
   const name = `staff-${Date.now()}`
   await page.getByLabel('Display name', { exact: true }).fill('New Operator')
   await page.getByLabel('Username', { exact: true }).fill(name)
@@ -49,9 +50,10 @@ test('owner creates staff and grants then revokes access', async ({ page, browse
   await page.getByRole('button', { name: 'Create Staff Admin' }).click()
   await expect(page.getByText('Staff account created.')).toBeVisible()
   await page.getByRole('button', { name: `Manage permissions for ${name}` }).click()
-  const editor = page.getByRole('region', { name: `Permissions for ${name}` })
+  const editor = page.getByRole('dialog', { name: `Permissions for ${name}` })
   await editor.getByRole('checkbox', { name: /^users.manage/ }).check()
   await editor.getByRole('button', { name: 'Save permissions' }).click()
+  await page.getByRole('button', { name: 'Apply permissions' }).click()
   await expect(editor).not.toBeVisible()
   const context = await browser.newContext({ baseURL: process.env.E2E_BASE_URL })
   try {
@@ -62,6 +64,7 @@ test('owner creates staff and grants then revokes access', async ({ page, browse
     await page.getByRole('button', { name: `Manage permissions for ${name}` }).click()
     await editor.getByRole('checkbox', { name: /^users.manage/ }).uncheck()
     await editor.getByRole('button', { name: 'Save permissions' }).click()
+  await page.getByRole('button', { name: 'Apply permissions' }).click()
     await expect(editor).not.toBeVisible()
     expect((await other.request.get('/api/v1/users')).status()).toBe(403)
     await other.goto('/users')

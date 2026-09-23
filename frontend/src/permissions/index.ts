@@ -8,4 +8,4 @@ export const permissions = {
 export type CurrentUser = { id: string; username: string; display_name: string; role: 'SUPER_ADMIN' | 'STAFF_ADMIN'; permissions: string[] }
 export const can = (user: CurrentUser, permission: string) => user.permissions.includes(permission)
 export const canAssignPermissions = (user: CurrentUser) => user.role === 'SUPER_ADMIN'
-export const protectedPages: Record<string, string | null> = { '/': null, '/users': permissions.usersManage, '/permissions': permissions.permissionsManage }
+export const protectedPages: Record<string, string | null> = { '/': null, '/users': permissions.usersManage, '/permissions': permissions.permissionsManage, '/design-system': permissions.settingsManage }

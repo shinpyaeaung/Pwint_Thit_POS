@@ -12,7 +12,7 @@ export default function Login() {
   const login = useMutation({ mutationFn: () => requestJSON('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }),
     onSuccess: async () => { setPassword(''); await client.cancelQueries(); client.clear();
       const next = new URLSearchParams(window.location.search).get('next')
-      window.location.replace(next && ['/', '/users', '/permissions'].includes(next) ? next : '/')
+      window.location.replace(next && ['/', '/users', '/permissions', '/design-system'].includes(next) ? next : '/')
     }, onError: () => setPassword(''),
   })
   const submit = (event: FormEvent) => { event.preventDefault(); if (!login.isPending) login.mutate() }

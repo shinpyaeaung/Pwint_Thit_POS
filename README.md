@@ -1,6 +1,6 @@
 # Pwint Thit Distribution
 
-Phases 1–3 provide the foundation, PostgreSQL schema, authentication, and configurable Staff Admin permissions. Business modules are the next vertical slices. See [authentication](docs/authentication.md) for setup and access rules. See [database design](docs/database-design.md) for the schema and its enforcement boundaries.
+Phases 1–4 provide the foundation, PostgreSQL schema, authentication, configurable Staff Admin permissions, and reusable frontend design system. Business modules are the next vertical slices. See [authentication](docs/authentication.md) for setup and access rules. See [database design](docs/database-design.md) for the schema and its enforcement boundaries.
 The complete [system specification](docs/Pwint_Thit_Distribution_Overall_System_Specification.md) is the source of truth; the user's current phase scope takes precedence over its suggested phase grouping.
 
 ## Requirements
@@ -84,6 +84,10 @@ The original Phase 1 empty `app` schema upgrades in place. Do not delete the dat
 Start PostgreSQL, then run `make create-admin` in your terminal. Enter a password of at least 12 characters when prompted. The initial username is `admin`; no default password is supplied. The command refuses to create another bootstrap account once a Super Admin exists.
 
 Open `/login` at the development or Docker frontend URL. Super Admin can create staff and assign permissions through **Users & access**. See [authentication setup and API](docs/authentication.md).
+
+## Frontend design system
+
+See the [component guide](docs/design-system.md) for reusable layouts, tables, dialogs, forms, and exact-value inputs. Super Admin can open **UI library** in the sidebar for interactive previews. The application uses the approved light-only red/yellow identity.
 
 ## Development rules
 

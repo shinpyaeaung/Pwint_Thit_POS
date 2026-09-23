@@ -6,13 +6,13 @@ test('connects the real frontend to the API and PostgreSQL', async ({ page }) =>
   const errors: string[] = []
   page.on('pageerror', error => errors.push(error.message))
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: /a solid start/i })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Distribution workspace' })).toBeVisible()
   await expect(page.getByRole('status')).toHaveText('All systems connected. The foundation is ready.')
   await expect(page.getByText('PostgreSQL is connected')).toBeVisible()
   await page.getByRole('button', { name: 'Check again' }).click()
   await expect(page.getByRole('button', { name: 'Check again' })).toBeEnabled()
   await page.getByRole('button', { name: 'Foundation details' }).click()
-  await expect(page.getByText('MMK base currency')).toBeVisible()
+  await expect(page.locator('#foundation-details').getByText('MMK base currency')).toBeVisible()
   expect(errors).toEqual([])
 })
 
