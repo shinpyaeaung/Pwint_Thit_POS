@@ -103,6 +103,12 @@ type AppBrand struct {
 	UpdatedAt pgtype.Timestamptz
 }
 
+type AppCatalogBarcode struct {
+	Barcode   string
+	ProductID pgtype.UUID
+	UnitCode  pgtype.Text
+}
+
 type AppCategory struct {
 	ID        pgtype.UUID
 	Name      string
@@ -355,6 +361,8 @@ type AppProduct struct {
 	IsActive     bool
 	CreatedAt    pgtype.Timestamptz
 	UpdatedAt    pgtype.Timestamptz
+	ArchivedAt   pgtype.Timestamptz
+	Version      int64
 }
 
 type AppProductSupplier struct {

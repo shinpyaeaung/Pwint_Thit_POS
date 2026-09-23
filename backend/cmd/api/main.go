@@ -18,6 +18,7 @@ import (
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/config"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/database"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/httpapi"
+	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/products"
 )
 
 func main() {
@@ -60,7 +61,11 @@ func run() error {
 		return errors.New("database connection failed; check DATABASE_URL and PostgreSQL availability")
 	}
 	logger.Info("database connected")
-	server := &http.Server{Addr: cfg.HTTPAddr, Handler: httpapi.New(database.New(pool), logger, authz.New(database.New(pool)), authn.New(pool, authn.Options{SecureCookie: cfg.SecureCookie, AllowedOrigins: cfg.AllowedOrigins})), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 15 * time.Second, IdleTimeout: 60 * time.Second}
+	q := database.New(pool)
+	authorization := authz.New(q)
+	router := httpapi.New(q, logger, authorization, authn.New(pool, authn.Options{SecureCookie: cfg.SecureCookie, AllowedOrigins: cfg.AllowedOrigins}))
+	products.New(pool).Register(router, authorization)
+	server := &http.Server{Addr: cfg.HTTPAddr, Handler: router, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 15 * time.Second, IdleTimeout: 60 * time.Second}
 	failures := make(chan error, 1)
 	go func() {
 		logger.Info("API listening", "address", cfg.HTTPAddr, "environment", cfg.Environment)

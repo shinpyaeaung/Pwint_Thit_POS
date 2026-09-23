@@ -5,6 +5,8 @@ package permissions
 type Code string
 
 const (
+	ProductsDelete        Code = "products.delete"
+	CatalogManage         Code = "catalog.manage"
 	ProductsView          Code = "products.view"
 	ProductsCreate        Code = "products.create"
 	ProductsUpdate        Code = "products.update"

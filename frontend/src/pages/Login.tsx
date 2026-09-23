@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { ArrowRight, LockKeyhole, Sprout } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { pagePermission } from '@/permissions'
 import { requestJSON } from '@/services/api'
 
 export default function Login() {
@@ -12,7 +13,7 @@ export default function Login() {
   const login = useMutation({ mutationFn: () => requestJSON('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }),
     onSuccess: async () => { setPassword(''); await client.cancelQueries(); client.clear();
       const next = new URLSearchParams(window.location.search).get('next')
-      window.location.replace(next && ['/', '/users', '/permissions', '/design-system'].includes(next) ? next : '/')
+      window.location.replace(next && pagePermission(next) !== undefined ? next : '/')
     }, onError: () => setPassword(''),
   })
   const submit = (event: FormEvent) => { event.preventDefault(); if (!login.isPending) login.mutate() }

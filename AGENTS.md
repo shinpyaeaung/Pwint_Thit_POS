@@ -2,7 +2,7 @@
 
 Read `docs/Pwint_Thit_Distribution_Overall_System_Specification.md` as the project source of truth.
 The user's current phase scope takes precedence over the document's suggested phase grouping.
-Phases 1–3 are verified. The current Phase 4 scope is the reusable frontend design system and its integration into existing screens. Keep the light-only appearance; the user rejected theme switching. Use pnpm. Do not start unrelated business modules.
+Phases 1–5 are verified, including products, categories, brands, packaging, and the complete product CRUD vertical slice. Wait for the user’s next phase scope before starting another module. Keep the light-only appearance; the user rejected theme switching. Use pnpm. Do not start unrelated business modules.
 
 Build each subsequent module vertically: database → API → backend tests → UI → integration → feature tests.
 Use the agreed React/Vite/TypeScript/Tailwind/shadcn/ui/Framer Motion/TanStack Query/Zustand and Go/Gin/PostgreSQL/pgx/sqlc stack.

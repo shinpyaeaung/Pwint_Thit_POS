@@ -40,7 +40,7 @@ const [amount, setAmount] = useState('')
 
 Inputs retain decimal strings, including trailing zeros. They do not call Number/parseFloat, perform exchange conversions, round financial values, or silently discard invalid keystrokes. HTML pattern validation and aria-invalid flag unsupported formats (exponents, commas, excessive precision, negatives by default). An enclosing form must validate before submitting; future APIs must validate independently. `scale`, `integerDigits`, and `allowNegative` may be configured for domain-specific fields. Match these to the database column. Preserve strings in JSON requests.
 
-DataTable sorting is opt-in through typed comparator functions. Do not sort money by converting it to JavaScript Number; use decimal-safe comparisons when business data arrives. The current table paginates already-loaded records on the client. Large datasets will need explicit server pagination/filtering in their own vertical slices. Search/filter changes should reset the table using a key as shown in Users and Permissions.
+DataTable sorting is opt-in through typed comparator functions. Do not sort money by converting it to JavaScript Number; use decimal-safe comparisons when business data arrives. The table defaults to client pagination. Phase 5 adds controlled `pagination: { page, pageSize, total, onPageChange }` for server-backed lists; Products uses this mode and supplies already-paginated rows. Do not combine local sorting with a server-paginated subset. Search/filter changes should reset the table using a key as shown in Users and Permissions.
 
 ## Accessibility and motion
 

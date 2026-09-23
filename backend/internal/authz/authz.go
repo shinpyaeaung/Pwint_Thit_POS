@@ -95,6 +95,11 @@ func (s *Service) Authenticate() gin.HandlerFunc {
 
 // Require checks current grants in PostgreSQL; handlers never implement their own role checks.
 func (s *Service) Require(permission permissions.Code) gin.HandlerFunc {
+	return s.RequireAny(permission)
+}
+
+// RequireAny centralizes alternative access policies for shared reference data.
+func (s *Service) RequireAny(codes ...permissions.Code) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if !s.authenticate(c) {
 			return
@@ -102,16 +107,18 @@ func (s *Service) Require(permission permissions.Code) gin.HandlerFunc {
 		user, _ := Principal(c)
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
 		defer cancel()
-		allowed, err := s.store.HasPermission(ctx, database.HasPermissionParams{ID: user.ID, Code: string(permission)})
-		if err != nil {
-			deny(c, 503, "authorization_unavailable")
-			return
+		for _, code := range codes {
+			allowed, err := s.store.HasPermission(ctx, database.HasPermissionParams{ID: user.ID, Code: string(code)})
+			if err != nil {
+				deny(c, 503, "authorization_unavailable")
+				return
+			}
+			if allowed {
+				c.Next()
+				return
+			}
 		}
-		if !allowed {
-			deny(c, 403, "forbidden")
-			return
-		}
-		c.Next()
+		deny(c, 403, "forbidden")
 	}
 }
 

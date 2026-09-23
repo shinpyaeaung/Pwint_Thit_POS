@@ -23,6 +23,7 @@ import (
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/httpapi"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/migrate"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/password"
+	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/products"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/testutil"
 )
 
@@ -63,7 +64,9 @@ func TestBrowserIntegration(t *testing.T) {
 	listener.Close()
 	origin := fmt.Sprintf("http://127.0.0.1:%d", port)
 	q := database.New(pool)
-	server := httptest.NewServer(httpapi.New(q, slog.New(slog.NewJSONHandler(io.Discard, nil)), authz.New(q), authn.New(pool, authn.Options{AllowedOrigins: []string{origin}})))
+	router := httpapi.New(q, slog.New(slog.NewJSONHandler(io.Discard, nil)), authz.New(q), authn.New(pool, authn.Options{AllowedOrigins: []string{origin}}))
+	products.New(pool).Register(router, authz.New(q))
+	server := httptest.NewServer(router)
 	defer server.Close()
 	frontend := exec.Command("pnpm", "--dir", "../../../frontend", "exec", "vite", "--host", "127.0.0.1", "--port", strconv.Itoa(port), "--strictPort")
 	frontend.Env = append(os.Environ(), "API_PROXY_TARGET="+server.URL)
