@@ -1,3 +1,4 @@
+import { Select, SelectItem } from '@/components/ui/select'
 import { useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { UserPlus } from 'lucide-react'
@@ -20,7 +21,7 @@ export default function Users({ current }: { current: CurrentUser }) {
   const rows = (users.data?.users || []).filter(u => (role === 'all' || u.role === role) && `${u.display_name} ${u.username}`.toLowerCase().includes(search.toLowerCase()))
   return <><PageHeader eyebrow="System / People" title="Users & access" description="Manage staff accounts and their access to daily operations." actions={<Button onClick={() => { create.reset(); setCreated(false); setCreating(true) }}><UserPlus />New staff account</Button>} />
     {created && <p role="status" className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">Staff account created.</p>}
-    <FilterBar onReset={search || role !== 'all' ? () => { setSearch(''); setRole('all') } : undefined} summary={`${rows.length} accounts`}><SearchInput value={search} onValueChange={setSearch} label="Search users" placeholder="Search by name or username…" /><label className="flex items-center gap-2 text-xs text-muted-foreground">Role<select className="field w-auto" value={role} onChange={e => setRole(e.target.value)}><option value="all">All roles</option><option value="SUPER_ADMIN">Super Admin</option><option value="STAFF_ADMIN">Staff Admin</option></select></label></FilterBar>
+    <FilterBar onReset={search || role !== 'all' ? () => { setSearch(''); setRole('all') } : undefined} summary={`${rows.length} accounts`}><SearchInput value={search} onValueChange={setSearch} label="Search users" placeholder="Search by name or username…" /><label className="flex items-center gap-2 text-xs text-muted-foreground">Role<Select aria-label="Role" className="w-auto" value={role} onValueChange={value => setRole(value)}><SelectItem value="all">All roles</SelectItem><SelectItem value="SUPER_ADMIN">Super Admin</SelectItem><SelectItem value="STAFF_ADMIN">Staff Admin</SelectItem></Select></label></FilterBar>
     <DataTable key={`${search}:${role}`} caption="User accounts" rows={rows} rowKey={u => u.id} loading={users.isPending} error={users.error?.message} onRetry={() => void users.refetch()} columns={[
       { id: 'name', header: 'Account', compare: (a, b) => a.display_name.localeCompare(b.display_name), cell: u => <div className="min-w-36"><p className="font-medium">{u.display_name}</p><p className="mt-1 text-xs text-muted-foreground">{u.username}</p></div> },
       { id: 'role', header: 'Role', cell: u => <span className="whitespace-nowrap text-xs">{u.role === 'SUPER_ADMIN' ? 'Super Admin · Full access' : 'Staff Admin'}</span> },

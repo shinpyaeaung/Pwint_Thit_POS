@@ -1,3 +1,4 @@
+import { Select, SelectItem } from '@/components/ui/select'
 import { useState } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { Plus, Pencil, Archive } from 'lucide-react'
@@ -34,7 +35,7 @@ function SupplierList({ current }: { current: CurrentUser }) {
     <PageHeader eyebrow="Purchasing / Relationships" title="Suppliers" description="Your supply partners, contact details and trading terms." actions={<PermissionGuard user={current} permission={permissions.suppliersCreate}><Button asChild><a href="/suppliers/new"><Plus />Add Supplier</a></Button></PermissionGuard>} />
     <FilterBar summary={query.data ? `${query.data.total} suppliers` : undefined} onReset={search || country || status !== 'all' ? () => { setSearch(''); setCountry(''); setStatus('all'); setPage(1) } : undefined}>
       <SearchInput label="Search suppliers" placeholder="Name, code, contact or phone…" value={search} onValueChange={v => { setSearch(v); setPage(1) }} />
-      <label className="flex items-center gap-2 text-xs">Status<select aria-label="Status" className="field w-auto" value={status} onChange={e => { setStatus(e.target.value); setPage(1) }}><option value="all">All current</option><option value="active">Active</option><option value="inactive">Inactive</option><option value="archived">Archived</option></select></label>
+      <label className="flex items-center gap-2 text-xs">Status<Select aria-label="Status" className="w-auto" value={status} onValueChange={value => { setStatus(value); setPage(1) }}><SelectItem value="all">All current</SelectItem><SelectItem value="active">Active</SelectItem><SelectItem value="inactive">Inactive</SelectItem><SelectItem value="archived">Archived</SelectItem></Select></label>
       <label className="flex items-center gap-2 text-xs">Country<input aria-label="Country filter" className="field w-24 uppercase" placeholder="e.g. MM" maxLength={2} value={country} onChange={e => { setCountry(e.target.value.toUpperCase().replace(/[^A-Z]/g, '')); setPage(1) }} /></label>
     </FilterBar>
     <DataTable caption="Suppliers" rows={query.data?.suppliers || []} rowKey={s => s.id} loading={query.isPending} error={query.error?.message} onRetry={() => void query.refetch()} pagination={{ page, pageSize: size, total: query.data?.total || 0, onPageChange: setPage }} columns={[
@@ -45,7 +46,7 @@ function SupplierList({ current }: { current: CurrentUser }) {
       { id: 'status', header: 'Status', cell: s => <SupplierStatus supplier={s} /> },
       { id: 'details', header: 'Details', cell: s => <Button variant="ghost" size="sm" asChild><a href={`/suppliers/${s.id}`} aria-label={`View ${s.code}`}>View</a></Button> },
     ]} empty={<EmptyState title="No matching suppliers" description="Add your first supplier or adjust the search and filters." action={page > 1 ? <Button onClick={() => setPage(1)}>Back to first page</Button> : undefined} />} />
-    <label className="mt-4 flex items-center justify-end gap-2 text-xs text-muted-foreground">Rows per page<select aria-label="Rows per page" className="field w-auto" value={size} onChange={e => { setSize(Number(e.target.value)); setPage(1) }}>{[10,20,50,100].map(n => <option key={n}>{n}</option>)}</select></label>
+    <label className="mt-4 flex items-center justify-end gap-2 text-xs text-muted-foreground">Rows per page<Select aria-label="Rows per page" className="w-auto" value={size} onValueChange={value => { setSize(Number(value)); setPage(1) }}>{[10,20,50,100].map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}</Select></label>
   </>
 }
 function SupplierDetails({ supplier: s, current }: { supplier: Supplier; current: CurrentUser }) {

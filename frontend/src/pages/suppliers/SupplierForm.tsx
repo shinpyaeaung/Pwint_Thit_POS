@@ -1,3 +1,4 @@
+import { Select, SelectItem } from '@/components/ui/select'
 import { useState, type FormEvent } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
@@ -45,7 +46,7 @@ export function SupplierForm({ supplier }: { supplier?: Supplier }) {
           <div className="grid gap-5 sm:grid-cols-2">
             <FormField label="Payment terms" hint="Record the agreement, e.g. payment within 30 days of invoice.">{p => <textarea {...p} className="field min-h-28" maxLength={2000} value={form.payment_terms} onChange={e => set('payment_terms', e.target.value)} />}</FormField>
             <FormField label="Notes">{p => <textarea {...p} className="field min-h-28" maxLength={4000} value={form.notes} onChange={e => set('notes', e.target.value)} />}</FormField>
-            <FormField label="Status" required>{p => <select {...p} className="field" value={form.is_active ? 'active' : 'inactive'} onChange={e => set('is_active', e.target.value === 'active')}><option value="active">Active</option><option value="inactive">Inactive</option></select>}</FormField>
+            <FormField label="Status" required>{p => <Select {...p}  value={form.is_active ? 'active' : 'inactive'} onValueChange={value => set('is_active', value === 'active')}><SelectItem value="active">Active</SelectItem><SelectItem value="inactive">Inactive</SelectItem></Select>}</FormField>
           </div>
         </section>
       </fieldset>

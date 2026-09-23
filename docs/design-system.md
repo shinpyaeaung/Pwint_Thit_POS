@@ -53,3 +53,9 @@ Use `FormField` with its supplied control props, meaningful button names, text-b
 ## Scope
 
 No new business APIs, financial rules, database migrations, or extra roles were introduced. Go permission enforcement remains unchanged. User creation and staff permission editing still call the Phase 3 API; permission replacement now includes a confirmation step. Navigation includes only implemented pages. The source-to-shelf journey is explanatory, not live stock or shipment data.
+
+### Selection controls
+
+Use `Select` and `SelectItem` from `components/ui/select` for forms, filters and page-size choices. The shared Radix-based control uses compact triggers, white menus, subtle red selected states and checkmarks. It supports keyboard/typeahead navigation, disabled choices, viewport-aware menus and optional empty values. Pass `value` and `onValueChange`; keep labels and form-field ARIA attributes on the trigger. Product, supplier and user-role selections use this control.
+
+Verified with `make check` and all 12 browser tests, including dropdown selection, keyboard opening/Escape focus return, and desktop/mobile menu screenshots.
