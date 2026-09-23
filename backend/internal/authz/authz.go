@@ -159,3 +159,15 @@ func (s *Service) ListPermissions(c *gin.Context) {
 func deny(c *gin.Context, status int, code string) {
 	c.AbortWithStatusJSON(status, gin.H{"error": gin.H{"code": code, "message": http.StatusText(status), "request_id": c.GetString("request_id")}})
 }
+
+// Allowed evaluates a field-level permission using the same authoritative grant store as route policies.
+// Call only after Authenticate or Require; an absent principal fails closed.
+func (s *Service) Allowed(c *gin.Context, code permissions.Code) (bool, error) {
+	user, ok := Principal(c)
+	if !ok {
+		return false, errors.New("missing authenticated principal")
+	}
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
+	defer cancel()
+	return s.store.HasPermission(ctx, database.HasPermissionParams{ID: user.ID, Code: string(code)})
+}

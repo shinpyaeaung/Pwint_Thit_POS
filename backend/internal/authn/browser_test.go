@@ -24,6 +24,7 @@ import (
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/migrate"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/password"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/products"
+	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/suppliers"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/testutil"
 )
 
@@ -46,6 +47,16 @@ func TestBrowserIntegration(t *testing.T) {
 	if _, err = conn.Exec(ctx, `INSERT INTO app.users(username,display_name,password_hash,role_code) VALUES('browser-owner','Test Owner',$1,'SUPER_ADMIN'),('browser-staff','Test Staff',$1,'STAFF_ADMIN')`, hash); err != nil {
 		t.Fatal(err)
 	}
+	// Purchase creation belongs to a later module. Seed history only in this disposable browser database.
+	if _, err = conn.Exec(ctx, `
+ WITH supplier AS (INSERT INTO app.suppliers(code,name,country_code,payment_terms) VALUES('E2E-HISTORY','History Supply','IN','Net 30 days') RETURNING id),
+ product AS (INSERT INTO app.products(sku,name,base_unit_code) VALUES('E2E-HISTORY','History product','PIECE') RETURNING id),
+ purchases AS (INSERT INTO app.purchases(purchase_number,supplier_id,purchased_at,currency_code,mmk_per_unit,created_by)
+ SELECT 'E2E-PO-'||n,supplier.id,now()-n*interval '1 day','MMK',1,u.id FROM supplier CROSS JOIN generate_series(1,11) n CROSS JOIN app.users u WHERE u.username='browser-owner' RETURNING id)
+ INSERT INTO app.purchase_items(purchase_id,line_number,product_id,unit_code,quantity,units_per_pack,unit_price_original)
+ SELECT purchases.id,1,product.id,'PIECE',3,1,123456789.123456 FROM purchases CROSS JOIN product`); err != nil {
+		t.Fatal(err)
+	}
 	poolConfig, err := pgxpool.ParseConfig(conn.Config().ConnString())
 	if err != nil {
 		t.Fatal(err)
@@ -66,6 +77,7 @@ func TestBrowserIntegration(t *testing.T) {
 	q := database.New(pool)
 	router := httpapi.New(q, slog.New(slog.NewJSONHandler(io.Discard, nil)), authz.New(q), authn.New(pool, authn.Options{AllowedOrigins: []string{origin}}))
 	products.New(pool).Register(router, authz.New(q))
+	suppliers.New(pool).Register(router, authz.New(q))
 	server := httptest.NewServer(router)
 	defer server.Close()
 	frontend := exec.Command("pnpm", "--dir", "../../../frontend", "exec", "vite", "--host", "127.0.0.1", "--port", strconv.Itoa(port), "--strictPort")

@@ -54,6 +54,7 @@ test('owner creates staff and grants then revokes access', async ({ page, browse
   await editor.getByRole('checkbox', { name: /^users.manage/ }).check()
   await editor.getByRole('button', { name: 'Save permissions' }).click()
   await page.getByRole('button', { name: 'Apply permissions' }).click()
+  await expect(page.getByRole('dialog', { name: 'Update staff access?' })).not.toBeVisible()
   await expect(editor).not.toBeVisible()
   const context = await browser.newContext({ baseURL: process.env.E2E_BASE_URL })
   try {
@@ -64,7 +65,9 @@ test('owner creates staff and grants then revokes access', async ({ page, browse
     await page.getByRole('button', { name: `Manage permissions for ${name}` }).click()
     await editor.getByRole('checkbox', { name: /^users.manage/ }).uncheck()
     await editor.getByRole('button', { name: 'Save permissions' }).click()
-  await page.getByRole('button', { name: 'Apply permissions' }).click()
+    await page.getByRole('button', { name: 'Apply permissions' }).click()
+    // The drawer is aria-hidden while confirmation is open; wait for the saving dialog to close.
+    await expect(page.getByRole('dialog', { name: 'Update staff access?' })).not.toBeVisible()
     await expect(editor).not.toBeVisible()
     expect((await other.request.get('/api/v1/users')).status()).toBe(403)
     await other.goto('/users')

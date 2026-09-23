@@ -5,6 +5,10 @@ package permissions
 type Code string
 
 const (
+	SuppliersView         Code = "suppliers.view"
+	SuppliersCreate       Code = "suppliers.create"
+	SuppliersUpdate       Code = "suppliers.update"
+	SuppliersDelete       Code = "suppliers.delete"
 	ProductsDelete        Code = "products.delete"
 	CatalogManage         Code = "catalog.manage"
 	ProductsView          Code = "products.view"

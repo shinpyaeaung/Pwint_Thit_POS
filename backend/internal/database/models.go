@@ -676,6 +676,8 @@ type AppSupplier struct {
 	IsActive      bool
 	CreatedAt     pgtype.Timestamptz
 	UpdatedAt     pgtype.Timestamptz
+	ArchivedAt    pgtype.Timestamptz
+	Version       int64
 }
 
 type AppSupplierPayable struct {

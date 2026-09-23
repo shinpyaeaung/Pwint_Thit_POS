@@ -19,6 +19,7 @@ import (
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/database"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/httpapi"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/products"
+	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/suppliers"
 )
 
 func main() {
@@ -65,6 +66,7 @@ func run() error {
 	authorization := authz.New(q)
 	router := httpapi.New(q, logger, authorization, authn.New(pool, authn.Options{SecureCookie: cfg.SecureCookie, AllowedOrigins: cfg.AllowedOrigins}))
 	products.New(pool).Register(router, authorization)
+	suppliers.New(pool).Register(router, authorization)
 	server := &http.Server{Addr: cfg.HTTPAddr, Handler: router, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 15 * time.Second, IdleTimeout: 60 * time.Second}
 	failures := make(chan error, 1)
 	go func() {

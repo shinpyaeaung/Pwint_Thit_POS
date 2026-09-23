@@ -12,6 +12,7 @@ import (
 
 type Querier interface {
 	ArchiveProduct(ctx context.Context, id pgtype.UUID) error
+	ArchiveSupplier(ctx context.Context, id pgtype.UUID) error
 	AuthenticateSession(ctx context.Context, tokenHash []byte) (AuthenticateSessionRow, error)
 	CatalogMetadata(ctx context.Context) ([]byte, error)
 	CheckDatabase(ctx context.Context) (int32, error)
@@ -26,16 +27,20 @@ type Querier interface {
 	FindLoginUser(ctx context.Context, lower string) (FindLoginUserRow, error)
 	FindUser(ctx context.Context, id pgtype.UUID) (FindUserRow, error)
 	GetProduct(ctx context.Context, id pgtype.UUID) ([]byte, error)
+	GetSupplier(ctx context.Context, id pgtype.UUID) ([]byte, error)
 	GrantPermission(ctx context.Context, arg GrantPermissionParams) error
 	HasPermission(ctx context.Context, arg HasPermissionParams) (bool, error)
 	InsertProduct(ctx context.Context, data []byte) (pgtype.UUID, error)
+	InsertSupplier(ctx context.Context, data []byte) (pgtype.UUID, error)
 	ListPermissions(ctx context.Context) ([]ListPermissionsRow, error)
 	ListProducts(ctx context.Context, arg ListProductsParams) ([]byte, error)
+	ListSuppliers(ctx context.Context, arg ListSuppliersParams) ([]byte, error)
 	ListUsers(ctx context.Context) ([]ListUsersRow, error)
 	LockBrand(ctx context.Context, id pgtype.UUID) (LockBrandRow, error)
 	LockCategory(ctx context.Context, id pgtype.UUID) (LockCategoryRow, error)
 	LockLoginUser(ctx context.Context, id pgtype.UUID) (LockLoginUserRow, error)
 	LockProduct(ctx context.Context, id pgtype.UUID) (LockProductRow, error)
+	LockSupplier(ctx context.Context, id pgtype.UUID) (LockSupplierRow, error)
 	MarkLogin(ctx context.Context, id pgtype.UUID) error
 	ProductInUse(ctx context.Context, productID pgtype.UUID) (bool, error)
 	ProductReferencesValid(ctx context.Context, arg ProductReferencesValidParams) (bool, error)
@@ -45,9 +50,11 @@ type Querier interface {
 	RemoveProductUnits(ctx context.Context, arg RemoveProductUnitsParams) error
 	ResetProductDefaults(ctx context.Context, productID pgtype.UUID) error
 	RevokeSession(ctx context.Context, tokenHash []byte) error
+	SupplierPurchaseHistory(ctx context.Context, arg SupplierPurchaseHistoryParams) ([]byte, error)
 	UpdateBrand(ctx context.Context, arg UpdateBrandParams) (UpdateBrandRow, error)
 	UpdateCategory(ctx context.Context, arg UpdateCategoryParams) (UpdateCategoryRow, error)
 	UpdateProduct(ctx context.Context, arg UpdateProductParams) error
+	UpdateSupplier(ctx context.Context, arg UpdateSupplierParams) error
 	UpsertProductUnit(ctx context.Context, arg UpsertProductUnitParams) error
 }
 
