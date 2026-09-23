@@ -1,0 +1,5 @@
+# User-approved exceptions preserving the existing tested dependency versions.
+# All other dependencies retain pnpm's default release-age policy.
+minimumReleaseAgeExclude:
+  - framer-motion@13.4.1
+  - motion-dom@13.4.1

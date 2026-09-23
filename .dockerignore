@@ -1,0 +1,10 @@
+.git
+.env
+.env.*
+**/node_modules
+**/dist
+**/test-results
+**/playwright-report
+.tools
+.tmp
+backend/bin
