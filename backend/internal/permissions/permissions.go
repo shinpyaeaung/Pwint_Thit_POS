@@ -5,6 +5,11 @@ package permissions
 type Code string
 
 const (
+	ShipmentsView         Code = "shipments.view"
+	ShipmentsManage       Code = "shipments.manage"
+	ShipmentsViewCost     Code = "shipments.view_cost"
+	TransportationManage  Code = "transportation.manage"
+	ChangeTransportCost   Code = "costs.change_transport"
 	ExchangeRatesManage   Code = "exchange_rates.manage"
 	SuppliersView         Code = "suppliers.view"
 	SuppliersCreate       Code = "suppliers.create"

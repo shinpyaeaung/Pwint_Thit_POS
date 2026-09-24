@@ -575,6 +575,8 @@ type AppShipment struct {
 	Notes                  pgtype.Text
 	CreatedAt              pgtype.Timestamptz
 	UpdatedAt              pgtype.Timestamptz
+	Version                int64
+	RequestID              pgtype.UUID
 }
 
 type AppShipmentExpense struct {
@@ -590,6 +592,10 @@ type AppShipmentExpense struct {
 	RecordedBy     pgtype.UUID
 	CreatedAt      pgtype.Timestamptz
 	UpdatedAt      pgtype.Timestamptz
+	RequestID      pgtype.UUID
+	Notes          pgtype.Text
+	VoidedAt       pgtype.Timestamptz
+	VoidReason     pgtype.Text
 }
 
 type AppShipmentItem struct {
@@ -726,6 +732,7 @@ type AppTransportationStage struct {
 	Notes                pgtype.Text
 	CreatedAt            pgtype.Timestamptz
 	UpdatedAt            pgtype.Timestamptz
+	RequestID            pgtype.UUID
 }
 
 type AppUnit struct {

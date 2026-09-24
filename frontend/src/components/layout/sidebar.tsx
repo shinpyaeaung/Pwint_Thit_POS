@@ -4,6 +4,7 @@ import { permissions, type CurrentUser } from '@/permissions'
 const items = [
   { href: '/', label: 'Workspace', icon: LayoutDashboard, permission: null },
   { href: '/products', label: 'Products', icon: Package, permission: permissions.productsView },
+  { href: '/shipments', label: 'Shipments', icon: Truck, permission: permissions.shipmentsView },
   { href: '/purchases', label: 'Purchases', icon: ShoppingCart, permission: permissions.purchasesView },
   { href: '/suppliers', label: 'Suppliers', icon: Truck, permission: permissions.suppliersView },
   { href: '/catalog', label: 'Catalog setup', icon: Tags, permission: permissions.catalogManage },

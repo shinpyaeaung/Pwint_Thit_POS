@@ -10,10 +10,11 @@ type SelectProps = Pick<ComponentProps<typeof SelectPrimitive.Trigger>, 'id' | '
   required?: boolean
   children: ReactNode
 }
+// Ignore the native form bridge’s transient empty value when asynchronous options change.
 // Encode all values so optional "All"/"Not assigned" choices can round-trip empty strings.
 const encode = (value: string | number) => `option:${value}`
 export function Select({ value, onValueChange, disabled, required, children, className, ...props }: SelectProps) {
-  return <SelectPrimitive.Root value={encode(value)} onValueChange={v => onValueChange(v.slice(7))} disabled={disabled} required={required}>
+  return <SelectPrimitive.Root value={encode(value)} onValueChange={v => { if (v.startsWith('option:')) onValueChange(v.slice(7)) }} disabled={disabled} required={required}>
     <SelectPrimitive.Trigger {...props} className={cn('group inline-flex h-10 w-full min-w-0 items-center justify-between gap-3 rounded-lg border border-input bg-white px-3 text-left text-[13px] font-normal text-foreground shadow-xs outline-none transition-colors hover:border-neutral-400 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/15 data-[state=open]:border-primary data-[state=open]:ring-2 data-[state=open]:ring-primary/10 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:opacity-60 aria-invalid:border-destructive [&>span:first-child]:truncate', className)}>
       <SelectPrimitive.Value />
       <SelectPrimitive.Icon asChild><ChevronDown className="size-3.5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" /></SelectPrimitive.Icon>

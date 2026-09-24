@@ -31,7 +31,7 @@ type Service struct {
 func New(db DB) *Service { return &Service{db: db, q: database.New(db)} }
 func (s *Service) Register(r *gin.Engine, a *authz.Service) {
 	s.a = a
-	r.GET("/api/v1/currencies", a.RequireAny(permissions.PurchasesView, permissions.PurchasesCreate, permissions.ExchangeRatesManage, permissions.SettingsManage), s.Currencies)
+	r.GET("/api/v1/currencies", a.RequireAny(permissions.PurchasesView, permissions.PurchasesCreate, permissions.ExchangeRatesManage, permissions.SettingsManage, permissions.ShipmentsViewCost), s.Currencies)
 	r.POST("/api/v1/currencies", a.Require(permissions.SettingsManage), s.CreateCurrency)
 	r.GET("/api/v1/exchange-rates", a.RequireAny(permissions.PurchasesCreate, permissions.PurchasesViewCost, permissions.ExchangeRatesManage), s.Rates)
 	r.POST("/api/v1/exchange-rates", a.Require(permissions.ExchangeRatesManage), s.CreateRate)

@@ -24,6 +24,7 @@ type Querier interface {
 	CreatePurchaseCurrency(ctx context.Context, arg CreatePurchaseCurrencyParams) error
 	CreatePurchaseRate(ctx context.Context, arg CreatePurchaseRateParams) (pgtype.UUID, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (pgtype.UUID, error)
+	CreateShipmentWarehouse(ctx context.Context, arg CreateShipmentWarehouseParams) (pgtype.UUID, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (pgtype.UUID, error)
 	EffectivePermissions(ctx context.Context, id pgtype.UUID) ([]string, error)
 	FindLoginUser(ctx context.Context, lower string) (FindLoginUserRow, error)
@@ -32,16 +33,24 @@ type Querier interface {
 	GetProduct(ctx context.Context, id pgtype.UUID) ([]byte, error)
 	GetPurchaseDocument(ctx context.Context, arg GetPurchaseDocumentParams) ([]byte, error)
 	GetPurchaseRate(ctx context.Context, id pgtype.UUID) (GetPurchaseRateRow, error)
+	GetShipment(ctx context.Context, arg GetShipmentParams) ([]byte, error)
+	GetShipmentExpense(ctx context.Context, arg GetShipmentExpenseParams) ([]byte, error)
+	GetShipmentStage(ctx context.Context, arg GetShipmentStageParams) ([]byte, error)
 	GetSupplier(ctx context.Context, id pgtype.UUID) ([]byte, error)
 	GrantPermission(ctx context.Context, arg GrantPermissionParams) error
 	HasPermission(ctx context.Context, arg HasPermissionParams) (bool, error)
 	InsertProduct(ctx context.Context, data []byte) (pgtype.UUID, error)
 	InsertPurchase(ctx context.Context, arg InsertPurchaseParams) (pgtype.UUID, error)
 	InsertPurchaseItem(ctx context.Context, arg InsertPurchaseItemParams) error
+	InsertShipment(ctx context.Context, arg InsertShipmentParams) (pgtype.UUID, error)
+	InsertShipmentExpense(ctx context.Context, arg InsertShipmentExpenseParams) (pgtype.UUID, error)
+	InsertShipmentItem(ctx context.Context, arg InsertShipmentItemParams) error
+	InsertShipmentStage(ctx context.Context, arg InsertShipmentStageParams) (pgtype.UUID, error)
 	InsertSupplier(ctx context.Context, data []byte) (pgtype.UUID, error)
 	ListPermissions(ctx context.Context) ([]ListPermissionsRow, error)
 	ListProducts(ctx context.Context, arg ListProductsParams) ([]byte, error)
 	ListPurchaseDocuments(ctx context.Context, arg ListPurchaseDocumentsParams) ([]byte, error)
+	ListShipments(ctx context.Context, arg ListShipmentsParams) ([]byte, error)
 	ListSuppliers(ctx context.Context, arg ListSuppliersParams) ([]byte, error)
 	ListUsers(ctx context.Context) ([]ListUsersRow, error)
 	LockBrand(ctx context.Context, id pgtype.UUID) (LockBrandRow, error)
@@ -52,6 +61,9 @@ type Querier interface {
 	LockPurchasePackaging(ctx context.Context, arg LockPurchasePackagingParams) (LockPurchasePackagingRow, error)
 	LockPurchaseRequest(ctx context.Context, requestKey string) error
 	LockPurchaseSupplier(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error)
+	LockShipment(ctx context.Context, id pgtype.UUID) (LockShipmentRow, error)
+	LockShipmentPurchaseItem(ctx context.Context, id pgtype.UUID) (LockShipmentPurchaseItemRow, error)
+	LockShipmentWarehouse(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error)
 	LockSupplier(ctx context.Context, id pgtype.UUID) (LockSupplierRow, error)
 	MarkLogin(ctx context.Context, id pgtype.UUID) error
 	PostPurchase(ctx context.Context, id pgtype.UUID) error
@@ -67,13 +79,25 @@ type Querier interface {
 	RemoveProductUnits(ctx context.Context, arg RemoveProductUnitsParams) error
 	ResetProductDefaults(ctx context.Context, productID pgtype.UUID) error
 	RevokeSession(ctx context.Context, tokenHash []byte) error
+	ShipmentChildHasPayment(ctx context.Context, transportationStageID pgtype.UUID) (bool, error)
+	ShipmentExpenses(ctx context.Context, arg ShipmentExpensesParams) ([]byte, error)
+	ShipmentHasReceiving(ctx context.Context, shipmentID pgtype.UUID) (bool, error)
+	ShipmentItems(ctx context.Context, shipmentID pgtype.UUID) ([]byte, error)
+	ShipmentPurchaseChoices(ctx context.Context, search string) ([]byte, error)
+	ShipmentReservedQuantity(ctx context.Context, purchaseItemID pgtype.UUID) (string, error)
+	ShipmentStages(ctx context.Context, arg ShipmentStagesParams) ([]byte, error)
+	ShipmentWarehouses(ctx context.Context) ([]byte, error)
 	SupplierPurchaseBalance(ctx context.Context, id pgtype.UUID) ([]byte, error)
 	SupplierPurchaseHistory(ctx context.Context, arg SupplierPurchaseHistoryParams) ([]byte, error)
+	TouchShipment(ctx context.Context, id pgtype.UUID) error
 	UpdateBrand(ctx context.Context, arg UpdateBrandParams) (UpdateBrandRow, error)
 	UpdateCategory(ctx context.Context, arg UpdateCategoryParams) (UpdateCategoryRow, error)
 	UpdateProduct(ctx context.Context, arg UpdateProductParams) error
+	UpdateShipmentStage(ctx context.Context, arg UpdateShipmentStageParams) (int64, error)
+	UpdateShipmentStatus(ctx context.Context, arg UpdateShipmentStatusParams) error
 	UpdateSupplier(ctx context.Context, arg UpdateSupplierParams) error
 	UpsertProductUnit(ctx context.Context, arg UpsertProductUnitParams) error
+	VoidShipmentExpense(ctx context.Context, arg VoidShipmentExpenseParams) (int64, error)
 }
 
 var _ Querier = (*Queries)(nil)

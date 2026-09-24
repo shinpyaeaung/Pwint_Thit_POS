@@ -93,6 +93,10 @@ Use **Products** for product creation, packaging conversions, search, filters, e
 
 Use **Purchases** to record purchases with historical exchange rates, original-currency/MMK totals and exact conversion previews. Supplier Details shows ledger-based balances. See the [purchasing guide](docs/purchasing.md) for posting, permissions, precision and retry behavior.
 
+## Shipments and transportation
+
+Use **Shipments** to allocate purchased goods, track unlimited transportation stages, record shipment expenses and view permission-controlled costs. See the [shipment guide](docs/shipments.md).
+
 ## Suppliers
 
 Use **Suppliers** to maintain contacts, country, payment terms and notes, and view permission-controlled purchase history. See the [supplier guide](docs/suppliers.md) for archive behavior, permissions and API contracts.

@@ -1,0 +1,4 @@
+import { FormField } from '@/components/shared'
+import { DecimalInput } from '@/components/shared/decimal-input'
+export function Field({label,value,onChange,type='text',required=false,maxLength=200}:{label:string;value:string;onChange:(v:string)=>void;type?:string;required?:boolean;maxLength?:number}) { return <FormField label={label} required={required}>{p=><input {...p} className="field" type={type} value={value} maxLength={maxLength} onChange={e=>onChange(e.target.value)}/>}</FormField> }
+export function Money({label,value,onChange,rate=false,readOnly=false}:{label:string;value:string;onChange:(v:string)=>void;rate?:boolean;readOnly?:boolean}) { return <FormField label={label} required>{p=><DecimalInput {...p} value={value} onValueChange={onChange} scale={rate?10:4} integerDigits={rate?14:16} readOnly={readOnly}/>}</FormField> }

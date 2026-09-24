@@ -5,6 +5,7 @@ import { EmptyState, LoadingState, PermissionGuard } from '@/components/shared'
 const DesignSystem = lazy(() => import('@/pages/DesignSystem'))
 import { Button } from '@/components/ui/button'
 import { useSession } from '@/hooks/use-session'
+const Shipments = lazy(() => import('@/pages/shipments/Shipments'))
 const Purchases = lazy(() => import('@/pages/purchases/Purchases'))
 const CurrencySettings = lazy(() => import('@/pages/purchases/CurrencySettings'))
 const Suppliers = lazy(() => import('@/pages/suppliers/Suppliers'))
@@ -33,7 +34,7 @@ export default function App() {
   const required = pagePermission(path)
   const known = required !== undefined
   const restricted = <EmptyState title="Access restricted" description="Your account does not have permission to view this page. Contact your Super Admin." action={<Button asChild variant="outline"><a href="/">Return to workspace</a></Button>} />
-  const page = path === '/purchases' || path.startsWith('/purchases/') ? <Purchases current={user} /> : path === '/purchasing-settings' ? <CurrencySettings current={user} /> : path === '/suppliers' || path.startsWith('/suppliers/') ? <Suppliers current={user} /> : path === '/products' || path.startsWith('/products/') ? <Products current={user} /> : path === '/catalog' ? <CatalogPage /> : path === '/users' ? <Users current={user} /> : path === '/permissions' ? <Permissions /> : path === '/design-system' ? <DesignSystem current={user} /> : <Workspace />
+  const page = path === '/shipments' || path.startsWith('/shipments/') ? <Shipments current={user} /> : path === '/purchases' || path.startsWith('/purchases/') ? <Purchases current={user} /> : path === '/purchasing-settings' ? <CurrencySettings current={user} /> : path === '/suppliers' || path.startsWith('/suppliers/') ? <Suppliers current={user} /> : path === '/products' || path.startsWith('/products/') ? <Products current={user} /> : path === '/catalog' ? <CatalogPage /> : path === '/users' ? <Users current={user} /> : path === '/permissions' ? <Permissions /> : path === '/design-system' ? <DesignSystem current={user} /> : <Workspace />
   return <AppShell user={user} onLogout={() => logout.mutate()} signingOut={logout.isPending}>
     {logout.error && <p role="alert" className="mb-4 text-sm text-destructive">{logout.error.message}</p>}
     <Suspense fallback={<LoadingState label="Opening page…" />}>{!known ? <EmptyState title="Page not found" action={<a href="/">Return to workspace</a>} /> : required ? <PermissionGuard user={user} permission={required} fallback={restricted}>{page}</PermissionGuard> : page}</Suspense>
