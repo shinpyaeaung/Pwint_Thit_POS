@@ -5,6 +5,7 @@ package permissions
 type Code string
 
 const (
+	ExchangeRatesManage   Code = "exchange_rates.manage"
 	SuppliersView         Code = "suppliers.view"
 	SuppliersCreate       Code = "suppliers.create"
 	SuppliersUpdate       Code = "suppliers.update"

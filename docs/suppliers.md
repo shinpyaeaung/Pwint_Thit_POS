@@ -33,4 +33,4 @@ History reads actual purchase records; it is not sample frontend data. It shows 
 
 Purchase totals sum existing line totals in PostgreSQL NUMERIC, including line discounts/taxes, and return decimal strings with the original currency. Totals are purchase amounts, not outstanding balances or landed costs; different currencies are not combined. No floating-point financial calculation is introduced.
 
-Purchase creation, payable balances, settlements and product–supplier assignments belong to later requested modules. History is empty until purchases are recorded. Migration 000010 preserves existing records and fails on conflicting legacy codes rather than renaming suppliers silently.
+Phase 7 adds purchase creation and ledger-based payable balances; see [purchasing](purchasing.md). Settlement entry and product–supplier assignments remain later modules. History is empty until purchases are recorded. Migration 000010 preserves existing records and fails on conflicting legacy codes rather than renaming suppliers silently.

@@ -2,7 +2,7 @@
 
 Read `docs/Pwint_Thit_Distribution_Overall_System_Specification.md` as the project source of truth.
 The user's current phase scope takes precedence over the document's suggested phase grouping.
-Phases 1–6 are verified, including the product/catalog vertical slice and supplier CRUD with permission-controlled purchase history. Wait for the user’s next phase scope before starting another module. Keep the light-only appearance; the user rejected theme switching. Use pnpm. Do not start unrelated business modules.
+Phases 1–7 are verified, including product/catalog, supplier CRUD and multi-currency purchasing with immutable historical rates, amount snapshots and ledger-based supplier balances. Wait for the user’s next phase scope before starting another module. Keep the light-only appearance; the user rejected theme switching. Use pnpm. Do not start unrelated business modules.
 
 Build each subsequent module vertically: database → API → backend tests → UI → integration → feature tests.
 Use the agreed React/Vite/TypeScript/Tailwind/shadcn/ui/Framer Motion/TanStack Query/Zustand and Go/Gin/PostgreSQL/pgx/sqlc stack.

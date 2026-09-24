@@ -24,6 +24,7 @@ import (
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/migrate"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/password"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/products"
+	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/purchasing"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/suppliers"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/testutil"
 )
@@ -78,6 +79,7 @@ func TestBrowserIntegration(t *testing.T) {
 	router := httpapi.New(q, slog.New(slog.NewJSONHandler(io.Discard, nil)), authz.New(q), authn.New(pool, authn.Options{AllowedOrigins: []string{origin}}))
 	products.New(pool).Register(router, authz.New(q))
 	suppliers.New(pool).Register(router, authz.New(q))
+	purchasing.New(pool).Register(router, authz.New(q))
 	server := httptest.NewServer(router)
 	defer server.Close()
 	frontend := exec.Command("pnpm", "--dir", "../../../frontend", "exec", "vite", "--host", "127.0.0.1", "--port", strconv.Itoa(port), "--strictPort")

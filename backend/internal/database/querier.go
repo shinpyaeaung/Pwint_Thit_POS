@@ -21,35 +21,53 @@ type Querier interface {
 	CreateBrand(ctx context.Context, name string) (CreateBrandRow, error)
 	CreateCatalogUnit(ctx context.Context, arg CreateCatalogUnitParams) (CreateCatalogUnitRow, error)
 	CreateCategory(ctx context.Context, name string) (CreateCategoryRow, error)
+	CreatePurchaseCurrency(ctx context.Context, arg CreatePurchaseCurrencyParams) error
+	CreatePurchaseRate(ctx context.Context, arg CreatePurchaseRateParams) (pgtype.UUID, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (pgtype.UUID, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (pgtype.UUID, error)
 	EffectivePermissions(ctx context.Context, id pgtype.UUID) ([]string, error)
 	FindLoginUser(ctx context.Context, lower string) (FindLoginUserRow, error)
+	FindPurchaseRequest(ctx context.Context, requestID pgtype.UUID) (FindPurchaseRequestRow, error)
 	FindUser(ctx context.Context, id pgtype.UUID) (FindUserRow, error)
 	GetProduct(ctx context.Context, id pgtype.UUID) ([]byte, error)
+	GetPurchaseDocument(ctx context.Context, arg GetPurchaseDocumentParams) ([]byte, error)
+	GetPurchaseRate(ctx context.Context, id pgtype.UUID) (GetPurchaseRateRow, error)
 	GetSupplier(ctx context.Context, id pgtype.UUID) ([]byte, error)
 	GrantPermission(ctx context.Context, arg GrantPermissionParams) error
 	HasPermission(ctx context.Context, arg HasPermissionParams) (bool, error)
 	InsertProduct(ctx context.Context, data []byte) (pgtype.UUID, error)
+	InsertPurchase(ctx context.Context, arg InsertPurchaseParams) (pgtype.UUID, error)
+	InsertPurchaseItem(ctx context.Context, arg InsertPurchaseItemParams) error
 	InsertSupplier(ctx context.Context, data []byte) (pgtype.UUID, error)
 	ListPermissions(ctx context.Context) ([]ListPermissionsRow, error)
 	ListProducts(ctx context.Context, arg ListProductsParams) ([]byte, error)
+	ListPurchaseDocuments(ctx context.Context, arg ListPurchaseDocumentsParams) ([]byte, error)
 	ListSuppliers(ctx context.Context, arg ListSuppliersParams) ([]byte, error)
 	ListUsers(ctx context.Context) ([]ListUsersRow, error)
 	LockBrand(ctx context.Context, id pgtype.UUID) (LockBrandRow, error)
 	LockCategory(ctx context.Context, id pgtype.UUID) (LockCategoryRow, error)
 	LockLoginUser(ctx context.Context, id pgtype.UUID) (LockLoginUserRow, error)
 	LockProduct(ctx context.Context, id pgtype.UUID) (LockProductRow, error)
+	LockPurchaseCurrency(ctx context.Context, code string) (string, error)
+	LockPurchasePackaging(ctx context.Context, arg LockPurchasePackagingParams) (LockPurchasePackagingRow, error)
+	LockPurchaseRequest(ctx context.Context, requestKey string) error
+	LockPurchaseSupplier(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error)
 	LockSupplier(ctx context.Context, id pgtype.UUID) (LockSupplierRow, error)
 	MarkLogin(ctx context.Context, id pgtype.UUID) error
+	PostPurchase(ctx context.Context, id pgtype.UUID) error
 	ProductInUse(ctx context.Context, productID pgtype.UUID) (bool, error)
 	ProductReferencesValid(ctx context.Context, arg ProductReferencesValidParams) (bool, error)
 	PruneLoginAttempts(ctx context.Context) error
+	PurchaseCurrencies(ctx context.Context) ([]byte, error)
+	PurchaseProductOptions(ctx context.Context, search string) ([]byte, error)
+	PurchaseRates(ctx context.Context, arg PurchaseRatesParams) ([]byte, error)
+	PurchaseSupplierOptions(ctx context.Context, search string) ([]byte, error)
 	RecordAuthAudit(ctx context.Context, arg RecordAuthAuditParams) error
 	RecordProductAudit(ctx context.Context, arg RecordProductAuditParams) error
 	RemoveProductUnits(ctx context.Context, arg RemoveProductUnitsParams) error
 	ResetProductDefaults(ctx context.Context, productID pgtype.UUID) error
 	RevokeSession(ctx context.Context, tokenHash []byte) error
+	SupplierPurchaseBalance(ctx context.Context, id pgtype.UUID) ([]byte, error)
 	SupplierPurchaseHistory(ctx context.Context, arg SupplierPurchaseHistoryParams) ([]byte, error)
 	UpdateBrand(ctx context.Context, arg UpdateBrandParams) (UpdateBrandRow, error)
 	UpdateCategory(ctx context.Context, arg UpdateCategoryParams) (UpdateCategoryRow, error)

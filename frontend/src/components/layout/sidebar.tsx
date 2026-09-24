@@ -1,9 +1,10 @@
-import { Truck, Package, Tags, LayoutDashboard, ShieldCheck, Sprout, Users, PanelsTopLeft, ArrowUpRight } from 'lucide-react'
+import { ShoppingCart, Truck, Package, Tags, LayoutDashboard, ShieldCheck, Sprout, Users, PanelsTopLeft, ArrowUpRight } from 'lucide-react'
 import { PermissionGuard } from '@/components/shared/permission-guard'
 import { permissions, type CurrentUser } from '@/permissions'
 const items = [
   { href: '/', label: 'Workspace', icon: LayoutDashboard, permission: null },
   { href: '/products', label: 'Products', icon: Package, permission: permissions.productsView },
+  { href: '/purchases', label: 'Purchases', icon: ShoppingCart, permission: permissions.purchasesView },
   { href: '/suppliers', label: 'Suppliers', icon: Truck, permission: permissions.suppliersView },
   { href: '/catalog', label: 'Catalog setup', icon: Tags, permission: permissions.catalogManage },
   { href: '/users', label: 'Users & access', icon: Users, permission: permissions.usersManage },

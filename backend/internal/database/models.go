@@ -401,24 +401,38 @@ type AppPurchase struct {
 	Notes                 pgtype.Text
 	CreatedAt             pgtype.Timestamptz
 	UpdatedAt             pgtype.Timestamptz
+	RequestID             pgtype.UUID
+	RequestHash           pgtype.Text
+}
+
+type AppPurchaseAmount struct {
+	PurchaseID     pgtype.UUID
+	CurrencyCode   string
+	MmkPerUnit     pgtype.Numeric
+	AmountOriginal pgtype.Numeric
+	AmountMmk      pgtype.Numeric
+	CreatedAt      pgtype.Timestamptz
 }
 
 type AppPurchaseItem struct {
-	ID                pgtype.UUID
-	PurchaseID        pgtype.UUID
-	LineNumber        int32
-	ProductID         pgtype.UUID
-	UnitCode          string
-	Quantity          pgtype.Numeric
-	UnitsPerPack      pgtype.Numeric
-	BaseQuantity      pgtype.Numeric
-	UnitPriceOriginal pgtype.Numeric
-	DiscountOriginal  pgtype.Numeric
-	TaxOriginal       pgtype.Numeric
-	TotalOriginal     pgtype.Numeric
-	Notes             pgtype.Text
-	CreatedAt         pgtype.Timestamptz
-	UpdatedAt         pgtype.Timestamptz
+	ID                  pgtype.UUID
+	PurchaseID          pgtype.UUID
+	LineNumber          int32
+	ProductID           pgtype.UUID
+	UnitCode            string
+	Quantity            pgtype.Numeric
+	UnitsPerPack        pgtype.Numeric
+	BaseQuantity        pgtype.Numeric
+	UnitPriceOriginal   pgtype.Numeric
+	DiscountOriginal    pgtype.Numeric
+	TaxOriginal         pgtype.Numeric
+	TotalOriginal       pgtype.Numeric
+	Notes               pgtype.Text
+	CreatedAt           pgtype.Timestamptz
+	UpdatedAt           pgtype.Timestamptz
+	ProductNameSnapshot pgtype.Text
+	SkuSnapshot         pgtype.Text
+	UnitNameSnapshot    pgtype.Text
 }
 
 type AppPurchaseReturn struct {

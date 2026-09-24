@@ -1,3 +1,4 @@
+import { SupplierBalance } from '@/pages/purchases/SupplierBalance'
 import { Select, SelectItem } from '@/components/ui/select'
 import { useState } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
@@ -62,6 +63,7 @@ function SupplierDetails({ supplier: s, current }: { supplier: Supplier; current
       <section className="panel p-5"><h2 className="mb-5 text-sm font-semibold">Contact & location</h2><dl className="grid gap-5 sm:grid-cols-2">{[['Contact person', s.contact_person], ['Phone number', s.phone], ['Country', s.country_code], ['Supplier type', s.supplier_type]].map(([label, value]) => <div key={label}><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-2 break-words text-sm font-medium">{value || 'Not set'}</dd></div>)}</dl><h3 className="mb-2 mt-6 text-xs text-muted-foreground">Address</h3><p className="whitespace-pre-wrap break-words text-sm">{s.address || 'Not set'}</p></section>
       <section className="panel p-5"><h2 className="mb-3 text-sm font-semibold">Payment terms</h2><p className="whitespace-pre-wrap break-words text-sm leading-6">{s.payment_terms || 'No payment terms recorded.'}</p><h2 className="mb-3 mt-6 border-t pt-5 text-sm font-semibold">Notes</h2><p className="whitespace-pre-wrap break-words text-sm leading-6">{s.notes || 'No notes recorded.'}</p></section>
     </div>
+    {can(current, permissions.purchasesViewCost) && <SupplierBalance id={s.id} />}
     <section className="mt-6"><h2 className="mb-4 text-sm font-semibold">Purchase history</h2>{can(current, permissions.purchasesView) ? <PurchaseHistory id={s.id} /> : <EmptyState title="Purchase history restricted" description="Viewing supplier purchases requires the purchases.view permission." />}</section>
     <p className="mt-5 text-xs text-muted-foreground">Created {new Date(s.created_at).toLocaleString()} · Updated {new Date(s.updated_at).toLocaleString()}</p>
     <ConfirmDialog open={confirm} onOpenChange={setConfirm} title="Archive this supplier?" description={`${s.name} will leave the current supplier list. Its code and purchase history will be preserved.`} confirmLabel="Archive supplier" destructive onConfirm={() => archive.mutate()} busy={archive.isPending} error={archive.error?.message} />
@@ -71,7 +73,7 @@ function PurchaseHistory({ id }: { id: string }) {
   const [page, setPage] = useState(1)
   const query = useQuery({ queryKey: ['supplier-history', id, page], queryFn: ({ signal }) => requestJSON<History>(`/suppliers/${id}/purchases?page=${page}&page_size=10`, { signal }), retry: false })
   return <DataTable caption="Supplier purchases" rows={query.data?.purchases || []} rowKey={p => p.id} loading={query.isPending} error={query.error?.message} onRetry={() => void query.refetch()} pagination={{ page, pageSize: 10, total: query.data?.total || 0, onPageChange: setPage }} columns={[
-    { id: 'number', header: 'Purchase / Invoice', cell: p => <div className="min-w-36"><p className="font-mono text-xs font-medium">{p.purchase_number}</p><p className="mt-1 text-xs text-muted-foreground">{p.supplier_invoice_number || 'No invoice number'}</p></div> },
+    { id: 'number', header: 'Purchase / Invoice', cell: p => <div className="min-w-36"><a className="font-mono text-xs font-medium text-primary hover:underline" href={`/purchases/${p.id}`}>{p.purchase_number}</a><p className="mt-1 text-xs text-muted-foreground">{p.supplier_invoice_number || 'No invoice number'}</p></div> },
     { id: 'date', header: 'Purchased', cell: p => <span className="whitespace-nowrap text-xs">{new Date(p.purchased_at).toLocaleDateString()}</span> },
     { id: 'due', header: 'Due date', cell: p => <span className="whitespace-nowrap text-xs">{p.due_date || 'Not set'}</span> },
     { id: 'items', header: 'Lines', align: 'right', cell: p => p.item_count },

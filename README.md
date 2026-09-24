@@ -1,6 +1,6 @@
 # Pwint Thit Distribution
 
-Phases 1–6 provide the foundation, PostgreSQL schema, authentication, configurable Staff Admin permissions, reusable frontend design system, and the complete product and supplier modules. Further business modules follow as vertical slices. See [authentication](docs/authentication.md) for setup and access rules. See [database design](docs/database-design.md) for the schema and its enforcement boundaries.
+Phases 1–7 provide the foundation, PostgreSQL schema, authentication, configurable Staff Admin permissions, reusable frontend design system, and the complete product, supplier and multi-currency purchasing modules. Further business modules follow as vertical slices. See [authentication](docs/authentication.md) for setup and access rules. See [database design](docs/database-design.md) for the schema and its enforcement boundaries.
 The complete [system specification](docs/Pwint_Thit_Distribution_Overall_System_Specification.md) is the source of truth; the user's current phase scope takes precedence over its suggested phase grouping.
 
 ## Requirements
@@ -88,6 +88,10 @@ Open `/login` at the development or Docker frontend URL. Super Admin can create 
 ## Product catalog
 
 Use **Products** for product creation, packaging conversions, search, filters, editing and archiving. **Catalog setup** manages categories, brands and unit definitions. See the [product module guide](docs/products.md) for permissions, API contracts, and integrity rules.
+
+## Purchasing and multi-currency
+
+Use **Purchases** to record purchases with historical exchange rates, original-currency/MMK totals and exact conversion previews. Supplier Details shows ledger-based balances. See the [purchasing guide](docs/purchasing.md) for posting, permissions, precision and retry behavior.
 
 ## Suppliers
 
