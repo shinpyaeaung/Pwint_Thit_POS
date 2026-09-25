@@ -124,3 +124,7 @@ Follow [AGENTS.md](AGENTS.md) and [phase scope](docs/phase-1.md). Complete each 
 ## Batches and expiry
 
 Use **Batches & expiry** for historical batch costs, dates, quantities and 30/60-day expiry warnings. See [the batch guide](docs/batches-expiry.md).
+
+## Point of sale
+
+Open **Point of sale** for barcode/SKU search, retail/wholesale prices, unit/carton carts and checkout. **Invoices** contains posted sales and printable receipts. Set each selling unit’s prices before selling. See [the POS guide](docs/pos.md).

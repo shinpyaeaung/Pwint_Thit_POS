@@ -3,6 +3,8 @@ import { PermissionGuard } from '@/components/shared/permission-guard'
 import { permissions, type CurrentUser } from '@/permissions'
 const items = [
   { href: '/', label: 'Workspace', icon: LayoutDashboard, permission: null },
+  { href: '/pos', label: 'Point of sale', icon: ShoppingCart, permission: permissions.salesCreate },
+  { href: '/sales', label: 'Invoices', icon: ShoppingCart, permission: permissions.salesView },
   { href: '/products', label: 'Products', icon: Package, permission: permissions.productsView },
   { href: '/shipments', label: 'Shipments', icon: Truck, permission: permissions.shipmentsView },
   { href: '/receiving', label: 'Goods receiving', icon: PackageCheck, permission: permissions.receivingManage },

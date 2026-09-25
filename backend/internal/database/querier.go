@@ -78,6 +78,14 @@ type Querier interface {
 	LockShipmentWarehouse(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error)
 	LockSupplier(ctx context.Context, id pgtype.UUID) (LockSupplierRow, error)
 	MarkLogin(ctx context.Context, id pgtype.UUID) error
+	POSCheckout(ctx context.Context, arg POSCheckoutParams) ([]byte, error)
+	POSCreateCustomer(ctx context.Context, arg POSCreateCustomerParams) (pgtype.UUID, error)
+	POSCustomers(ctx context.Context, search string) ([]byte, error)
+	POSInvoice(ctx context.Context, arg POSInvoiceParams) ([]byte, error)
+	POSPrices(ctx context.Context, arg POSPricesParams) error
+	POSProducts(ctx context.Context, arg POSProductsParams) ([]byte, error)
+	POSSales(ctx context.Context, arg POSSalesParams) ([]byte, error)
+	POSWarehouses(ctx context.Context) ([]byte, error)
 	PostPurchase(ctx context.Context, id pgtype.UUID) error
 	PostReceiving(ctx context.Context, arg PostReceivingParams) (pgtype.UUID, error)
 	ProductInUse(ctx context.Context, productID pgtype.UUID) (bool, error)

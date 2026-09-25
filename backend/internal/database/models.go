@@ -509,19 +509,22 @@ type AppRole struct {
 }
 
 type AppSale struct {
-	ID            pgtype.UUID
-	InvoiceNumber string
-	CustomerID    pgtype.UUID
-	WarehouseID   pgtype.UUID
-	PricingMode   string
-	SoldAt        pgtype.Timestamptz
-	DueDate       pgtype.Date
-	Status        string
-	PostedAt      pgtype.Timestamptz
-	CreatedBy     pgtype.UUID
-	Notes         pgtype.Text
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
+	ID              pgtype.UUID
+	InvoiceNumber   string
+	CustomerID      pgtype.UUID
+	WarehouseID     pgtype.UUID
+	PricingMode     string
+	SoldAt          pgtype.Timestamptz
+	DueDate         pgtype.Date
+	Status          string
+	PostedAt        pgtype.Timestamptz
+	CreatedBy       pgtype.UUID
+	Notes           pgtype.Text
+	CreatedAt       pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
+	RequestID       pgtype.UUID
+	RequestPayload  []byte
+	InvoiceDocument []byte
 }
 
 type AppSaleItem struct {

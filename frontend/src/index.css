@@ -53,3 +53,14 @@
   a:focus-visible, button:focus-visible, [tabindex="0"]:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
 }
+
+@media print {
+  html, body { background: white !important; }
+  body * { visibility: hidden !important; transition: none !important; }
+  body:has(.invoice-print) header, body:has(.invoice-print) aside, body:has(.invoice-print) footer { display: none !important; }
+  .invoice-print, .invoice-print * { visibility: visible !important; }
+  .invoice-print { position: absolute; inset: 0 auto auto 0; width: 100%; border: 0; box-shadow: none; padding: 1rem; }
+  .invoice-print .overflow-x-auto { overflow: visible; }
+  .invoice-print tr { break-inside: avoid; }
+  .no-print { display: none !important; }
+}

@@ -1,0 +1,18 @@
+import { useState } from 'react'
+import { useMutation,useQueryClient } from '@tanstack/react-query'
+import { Modal,FormField,CurrencyInput } from '@/components/shared'
+import { Button } from '@/components/ui/button'
+import { Select,SelectItem } from '@/components/ui/select'
+import { requestJSON } from '@/services/api'
+import { Field } from '../shipments/Fields'
+import type { Product } from './cart'
+export function PriceEditor({product:p,onClose}:{product:Product;onClose:()=>void}){
+ const client=useQueryClient();const [unit,setUnit]=useState(p.packaging[0]?.unit_code||'');const pack=p.packaging.find(x=>x.unit_code===unit)!;const [retail,setRetail]=useState(pack?.retail_price_mmk||''),[wholesale,setWholesale]=useState(pack?.wholesale_price_mmk||'')
+ const save=useMutation({mutationFn:()=>requestJSON('/pos/prices',{method:'PUT',body:JSON.stringify({product_id:p.id,unit_code:unit,version:p.version,retail_price_mmk:retail,wholesale_price_mmk:wholesale})}),onSuccess:async()=>{await client.invalidateQueries({queryKey:['pos-products']});onClose()}})
+ return <Modal open onOpenChange={v=>{if(!v)onClose()}} title="Set selling prices" description={p.name} busy={save.isPending}><form className="space-y-4" onSubmit={e=>{e.preventDefault();save.mutate()}}><FormField label="Pricing unit" required>{f=><Select {...f} value={unit} onValueChange={v=>{setUnit(v);const u=p.packaging.find(x=>x.unit_code===v)!;setRetail(u.retail_price_mmk||'');setWholesale(u.wholesale_price_mmk||'')}}>{p.packaging.map(u=><SelectItem key={u.unit_code} value={u.unit_code}>{u.unit_code} · {u.units_per_pack} base units</SelectItem>)}</Select>}</FormField><FormField label="Retail price" required>{f=><CurrencyInput {...f} value={retail} onValueChange={setRetail}/>}</FormField><FormField label="Wholesale price" required>{f=><CurrencyInput {...f} value={wholesale} onValueChange={setWholesale}/>}</FormField><p className="text-xs text-muted-foreground">Prices apply to one selected pack. Existing invoice prices and batch costs are preserved. Re-add any affected cart item after changing its price.</p>{save.error&&<p role="alert">{save.error.message}</p>}<Button disabled={save.isPending}>Save prices</Button></form></Modal>
+}
+export function CustomerEditor({onClose,onSaved}:{onClose:()=>void;onSaved:(id:string,name:string)=>void}){
+ const [name,setName]=useState(''),[phone,setPhone]=useState(''),[type,setType]=useState('RETAIL'),[limit,setLimit]=useState('0');const client=useQueryClient()
+ const save=useMutation({mutationFn:()=>requestJSON<{id:string}>('/pos/customers',{method:'POST',body:JSON.stringify({name,phone,customer_type:type,credit_limit_mmk:limit})}),onSuccess:async r=>{await client.invalidateQueries({queryKey:['pos-customers']});onSaved(r.id,name);onClose()}})
+ return <Modal open onOpenChange={v=>{if(!v)onClose()}} title="Add customer" busy={save.isPending}><form className="space-y-4" onSubmit={e=>{e.preventDefault();save.mutate()}}><Field label="Customer name" value={name} onChange={setName} required maxLength={150}/><Field label="Customer phone" value={phone} onChange={setPhone} maxLength={100}/><Select aria-label="Customer type" value={type} onValueChange={setType}><SelectItem value="RETAIL">Retail</SelectItem><SelectItem value="WHOLESALE">Wholesale</SelectItem></Select><FormField label="Credit limit (MMK)" required>{f=><CurrencyInput {...f} value={limit} onValueChange={setLimit}/>}</FormField><p className="text-xs text-muted-foreground">A zero limit requires full payment.</p>{save.error&&<p role="alert">{save.error.message}</p>}<Button disabled={save.isPending}>Save customer</Button></form></Modal>
+}
