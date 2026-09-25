@@ -35,7 +35,12 @@ func (s *Service) Cost(c *gin.Context) {
 	if len(snapshot) > 0 {
 		saved = json.RawMessage(snapshot)
 	}
-	c.JSON(200, gin.H{"source": json.RawMessage(source), "snapshot": saved})
+	origins, e := s.q.ShipmentJourneySources(c.Request.Context(), id)
+	if e != nil {
+		dbError(c, e)
+		return
+	}
+	c.JSON(200, gin.H{"source": json.RawMessage(source), "snapshot": saved, "purchase_sources": json.RawMessage(origins)})
 }
 func (s *Service) PreviewCost(c *gin.Context)  { s.calculateCost(c, false) }
 func (s *Service) FinalizeCost(c *gin.Context) { s.calculateCost(c, true) }
@@ -138,4 +143,25 @@ func (s *Service) calculateCost(c *gin.Context, final bool) {
 		return
 	}
 	c.JSON(201, result)
+}
+
+func (s *Service) ProductJourneys(c *gin.Context)  { s.journeys(c, true) }
+func (s *Service) PurchaseJourneys(c *gin.Context) { s.journeys(c, false) }
+func (s *Service) journeys(c *gin.Context, product bool) {
+	id, ok := pathID(c)
+	if !ok {
+		return
+	}
+	size, offset, ok := pagination(c)
+	if !ok {
+		return
+	}
+	args := database.CostJourneysParams{PageSize: size, PageOffset: offset}
+	if product {
+		args.ProductID = id
+	} else {
+		args.PurchaseID = id
+	}
+	data, e := s.q.CostJourneys(c.Request.Context(), args)
+	respond(c, data, e)
 }

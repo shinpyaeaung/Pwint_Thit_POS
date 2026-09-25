@@ -321,6 +321,26 @@ func TestShipmentIntegration(t *testing.T) {
 	if err = conn.QueryRow(ctx, `SELECT sum(purchase_cost_mmk)::text FROM app.shipment_items WHERE purchase_item_id='50000000-0000-0000-0000-000000000002'`).Scan(&splitTotal); err != nil || splitTotal != "0.0001" {
 		t.Fatal("split costs do not reconcile", splitTotal, err)
 	}
+
+	// Journey history exposes finalized allocations and historical source context only to authorized readers.
+	historyPath := "/products/00000000-0000-0000-0000-000000000002/cost-journeys"
+	call("GET", historyPath, nil, staff, 403)
+	history := call("GET", historyPath+"?page=1&page_size=2", nil, owner, 200)
+	if history["total"] != float64(4) || len(history["journeys"].([]any)) != 2 {
+		t.Fatal("journey pagination", history)
+	}
+	purchaseHistory := call("GET", "/purchases/00000000-0000-0000-0000-000000000003/cost-journeys", nil, owner, 200)
+	journey := purchaseHistory["journeys"].([]any)[0].(map[string]any)
+	if purchaseHistory["total"] != float64(1) || journey["landed_mmk"] != "764754.0850" {
+		t.Fatal("journey snapshot", journey)
+	}
+	origin := journey["sources"].([]any)[0].(map[string]any)
+	if origin["amount"] != "10000.0000" || origin["rate"] != "1.0000000000" || origin["allocated_quantity"] != "60.000000" {
+		t.Fatal("journey source basis", origin)
+	}
+	if _, ok := journey["profit"]; ok {
+		t.Fatal("invented recorded profit")
+	}
 	var audits int
 	if err = conn.QueryRow(ctx, `SELECT count(*) FROM app.audit_logs WHERE entity_type='transportation_stages'`).Scan(&audits); err != nil || audits != 26 {
 		t.Fatal("audit", audits, err)

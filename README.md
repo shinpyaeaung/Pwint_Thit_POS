@@ -101,6 +101,10 @@ Use **Shipments** to allocate purchased goods, track unlimited transportation st
 
 Open a shipment’s **Landed cost** section to allocate transport and expenses by quantity, purchase value, weight, cartons or manual amounts. Preview exact totals and finalize confirmed sellable costs. See the [landed-cost guide](docs/landed-cost.md).
 
+## Cost Journey UI
+
+Product, purchase, shipment and costing screens share a compact Cost Journey with historical sources, exact costs and optional selling-price/profit scenarios. See the [component guide](docs/cost-journey.md).
+
 ## Suppliers
 
 Use **Suppliers** to maintain contacts, country, payment terms and notes, and view permission-controlled purchase history. See the [supplier guide](docs/suppliers.md) for archive behavior, permissions and API contracts.

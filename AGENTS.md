@@ -2,7 +2,7 @@
 
 Read `docs/Pwint_Thit_Distribution_Overall_System_Specification.md` as the project source of truth.
 The user's current phase scope takes precedence over the document's suggested phase grouping.
-Phases 1–9 are verified, including product/catalog, suppliers, purchasing, shipments and landed-cost allocation. Preserve historical rates, exact amounts, ledger-based payment status and immutable finalized costing snapshots. Receiving must reconcile confirmed sellable quantities and transfer landed totals into batch costs; sales/profit must never fall back to supplier purchase price. Wait for the user’s next phase scope before starting another module. Keep the light-only appearance; the user rejected theme switching. Use pnpm. Do not start unrelated business modules.
+Phases 1–10 are verified, including product/catalog, suppliers, purchasing, shipments, landed-cost allocation and the shared Cost Journey UI. Selling-price/profit scenarios are explicitly unsaved estimates, not recorded sales. Preserve historical rates, exact amounts, ledger-based payment status and immutable finalized costing snapshots. Receiving must reconcile confirmed sellable quantities and transfer landed totals into batch costs; sales/profit must never fall back to supplier purchase price. Wait for the user’s next phase scope before starting another module. Keep the light-only appearance; the user rejected theme switching. Use pnpm. Do not start unrelated business modules.
 
 Build each subsequent module vertically: database → API → backend tests → UI → integration → feature tests.
 Use the agreed React/Vite/TypeScript/Tailwind/shadcn/ui/Framer Motion/TanStack Query/Zustand and Go/Gin/PostgreSQL/pgx/sqlc stack.

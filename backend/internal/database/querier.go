@@ -18,6 +18,7 @@ type Querier interface {
 	CheckDatabase(ctx context.Context) (int32, error)
 	ClearUserPermissions(ctx context.Context, userID pgtype.UUID) error
 	ConsumeLoginAttempt(ctx context.Context, keyHash []byte) (int32, error)
+	CostJourneys(ctx context.Context, arg CostJourneysParams) ([]byte, error)
 	CreateBrand(ctx context.Context, name string) (CreateBrandRow, error)
 	CreateCatalogUnit(ctx context.Context, arg CreateCatalogUnitParams) (CreateCatalogUnitRow, error)
 	CreateCategory(ctx context.Context, name string) (CreateCategoryRow, error)
@@ -89,6 +90,7 @@ type Querier interface {
 	ShipmentExpenses(ctx context.Context, arg ShipmentExpensesParams) ([]byte, error)
 	ShipmentHasReceiving(ctx context.Context, shipmentID pgtype.UUID) (bool, error)
 	ShipmentItems(ctx context.Context, shipmentID pgtype.UUID) ([]byte, error)
+	ShipmentJourneySources(ctx context.Context, shipmentID pgtype.UUID) ([]byte, error)
 	ShipmentPurchaseChoices(ctx context.Context, search string) ([]byte, error)
 	ShipmentReservedQuantity(ctx context.Context, purchaseItemID pgtype.UUID) (string, error)
 	ShipmentStages(ctx context.Context, arg ShipmentStagesParams) ([]byte, error)

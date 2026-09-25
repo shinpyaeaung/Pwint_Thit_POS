@@ -102,5 +102,12 @@ test('shipment goods, transportation timeline, expenses and restricted staff acc
  await expect(page.getByTestId('landed-total')).toHaveText('120,800.2468 MMK')
  await expect(page.getByRole('button',{name:'Calculate landed cost',exact:true})).toHaveCount(0)
  await page.getByRole('region',{name:'Landed cost',exact:true}).screenshot({path:'/tmp/pwint-landed-cost-finalized.png'})
+
+ await page.goto(`/products/${(await product.json()).id}`)
+ await expect(page.getByRole('region',{name:'Cost journey',exact:true})).toContainText('120,800.2468 MMK')
+ await page.getByText('Purchase sources · partial allocation',{exact:true}).click()
+ await expect(page.getByText(/60 of 100 base units allocated/)).toBeVisible()
+ await page.goto(`/purchases/${(await purchase.json()).id}`)
+ await expect(page.getByRole('region',{name:'Cost journey',exact:true}).filter({hasText:'Finalized'})).toContainText('120,800.2468 MMK')
  await page.goto('/shipments');await page.getByRole('searchbox',{name:'Search shipments'}).fill(`SH-${suffix}`);await expect(page.getByRole('link',{name:`SH-${suffix}`,exact:true})).toBeVisible()
 })
