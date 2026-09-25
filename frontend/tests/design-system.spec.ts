@@ -37,7 +37,19 @@ test('shared table, exact decimal fields and accessible overlays work together',
   await trigger.click()
   const modal = page.getByRole('dialog', { name: 'Shipment note preview' })
   await expect(modal).toBeVisible()
-  await modal.getByLabel('Note', { exact: true }).fill('Sample note')
+  for (const viewport of [{ width: 1280, height: 900 }, { width: 375, height: 812 }, { width: 667, height: 375 }]) {
+    await page.setViewportSize(viewport)
+    await expect.poll(async () => {
+      const box = await modal.boundingBox()
+      return !!box && Math.abs(box.x - 16) < 1 && Math.abs(box.y - 16) < 1 && Math.abs(box.width - (viewport.width - 32)) < 1 && Math.abs(box.height - (viewport.height - 32)) < 1
+    }).toBe(true)
+    await expect(modal.getByRole('button', { name: 'Close', exact: true })).toBeInViewport()
+    await expect(modal.getByRole('button', { name: 'Done', exact: true })).toBeInViewport()
+    await modal.getByLabel('Note', { exact: true }).fill('Sample note')
+  }
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await modal.screenshot({ path: '/tmp/pwint-modal-full-preview.png' })
+
   for (let i = 0; i < 5; i++) await page.keyboard.press('Tab')
   expect(await modal.evaluate(el => el.contains(document.activeElement))).toBe(true)
   await page.keyboard.press('Escape')
