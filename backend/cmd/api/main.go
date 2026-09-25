@@ -20,6 +20,7 @@ import (
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/httpapi"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/products"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/purchasing"
+	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/receiving"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/shipments"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/suppliers"
 )
@@ -71,6 +72,7 @@ func run() error {
 	suppliers.New(pool).Register(router, authorization)
 	purchasing.New(pool).Register(router, authorization)
 	shipments.New(pool).Register(router, authorization)
+	receiving.New(pool).Register(router, authorization)
 	server := &http.Server{Addr: cfg.HTTPAddr, Handler: router, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 15 * time.Second, IdleTimeout: 60 * time.Second}
 	failures := make(chan error, 1)
 	go func() {

@@ -30,5 +30,7 @@ INSERT INTO app.sale_items(id,sale_id,line_number,product_id,unit_code,units_per
  ('00000000-0000-0000-0000-000000000081','00000000-0000-0000-0000-000000000080',1,'00000000-0000-0000-0000-000000000020','BOTTLE',1,2,40000);
 INSERT INTO app.sale_item_batches(id,sale_item_id,batch_id,product_id,quantity,unit_cost_mmk) VALUES
  ('00000000-0000-0000-0000-000000000082','00000000-0000-0000-0000-000000000081','00000000-0000-0000-0000-000000000070','00000000-0000-0000-0000-000000000020',2,30000);
-INSERT INTO app.inventory(warehouse_id,batch_id,sellable_quantity,reserved_quantity,damaged_quantity) VALUES
- ('00000000-0000-0000-0000-000000000012','00000000-0000-0000-0000-000000000070',10,2,1);
+INSERT INTO app.inventory_movements(warehouse_id,batch_id,movement_type,sellable_delta,damaged_delta,unit_cost_mmk,receiving_item_id,idempotency_key,occurred_at,recorded_by) VALUES
+ ('00000000-0000-0000-0000-000000000012','00000000-0000-0000-0000-000000000070','RECEIPT',10,1,30000,'00000000-0000-0000-0000-000000000061','fixture-receipt',now(),'00000000-0000-0000-0000-000000000001');
+INSERT INTO app.inventory_movements(warehouse_id,batch_id,movement_type,reserved_delta,unit_cost_mmk,reservation_sale_id,idempotency_key,occurred_at,recorded_by) VALUES
+ ('00000000-0000-0000-0000-000000000012','00000000-0000-0000-0000-000000000070','RESERVATION',2,30000,'00000000-0000-0000-0000-000000000080','fixture-reserve',now(),'00000000-0000-0000-0000-000000000001');

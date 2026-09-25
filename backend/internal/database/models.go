@@ -207,17 +207,19 @@ type AppExpenseCategory struct {
 }
 
 type AppGoodsReceiving struct {
-	ID            pgtype.UUID
-	ReceiptNumber string
-	ShipmentID    pgtype.UUID
-	WarehouseID   pgtype.UUID
-	ReceivedAt    pgtype.Timestamptz
-	ReceivedBy    pgtype.UUID
-	Status        string
-	PostedAt      pgtype.Timestamptz
-	Notes         pgtype.Text
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
+	ID             pgtype.UUID
+	ReceiptNumber  string
+	ShipmentID     pgtype.UUID
+	WarehouseID    pgtype.UUID
+	ReceivedAt     pgtype.Timestamptz
+	ReceivedBy     pgtype.UUID
+	Status         string
+	PostedAt       pgtype.Timestamptz
+	Notes          pgtype.Text
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+	RequestID      pgtype.UUID
+	RequestPayload []byte
 }
 
 type AppGoodsReceivingItem struct {
@@ -237,6 +239,9 @@ type AppGoodsReceivingItem struct {
 	Notes            pgtype.Text
 	CreatedAt        pgtype.Timestamptz
 	UpdatedAt        pgtype.Timestamptz
+	CartonSize       pgtype.Numeric
+	ReceivedCartons  pgtype.Numeric
+	ReceivedUnits    pgtype.Numeric
 }
 
 type AppInventory struct {
@@ -248,6 +253,7 @@ type AppInventory struct {
 	AvailableQuantity pgtype.Numeric
 	CreatedAt         pgtype.Timestamptz
 	UpdatedAt         pgtype.Timestamptz
+	Version           int64
 }
 
 type AppInventoryMovement struct {
@@ -631,15 +637,17 @@ type AppShipmentItem struct {
 }
 
 type AppStockAdjustment struct {
-	ID          pgtype.UUID
-	WarehouseID pgtype.UUID
-	Reason      string
-	AdjustedAt  pgtype.Timestamptz
-	Status      string
-	PostedAt    pgtype.Timestamptz
-	CreatedBy   pgtype.UUID
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
+	ID             pgtype.UUID
+	WarehouseID    pgtype.UUID
+	Reason         string
+	AdjustedAt     pgtype.Timestamptz
+	Status         string
+	PostedAt       pgtype.Timestamptz
+	CreatedBy      pgtype.UUID
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+	RequestID      pgtype.UUID
+	RequestPayload []byte
 }
 
 type AppStockAdjustmentItem struct {

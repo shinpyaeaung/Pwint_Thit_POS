@@ -105,6 +105,10 @@ Open a shipment’s **Landed cost** section to allocate transport and expenses b
 
 Product, purchase, shipment and costing screens share a compact Cost Journey with historical sources, exact costs and optional selling-price/profit scenarios. See the [component guide](docs/cost-journey.md).
 
+## Goods receiving and inventory
+
+Use **Goods receiving** to reconcile physical counts with finalized costs and post batches. **Inventory** shows cartons, individual units, available/reserved/damaged stock and auditable movements. See the [receiving and inventory guide](docs/receiving-inventory.md).
+
 ## Suppliers
 
 Use **Suppliers** to maintain contacts, country, payment terms and notes, and view permission-controlled purchase history. See the [supplier guide](docs/suppliers.md) for archive behavior, permissions and API contracts.

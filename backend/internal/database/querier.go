@@ -11,6 +11,7 @@ import (
 )
 
 type Querier interface {
+	AdjustInventory(ctx context.Context, arg AdjustInventoryParams) (pgtype.UUID, error)
 	ArchiveProduct(ctx context.Context, id pgtype.UUID) error
 	ArchiveSupplier(ctx context.Context, id pgtype.UUID) error
 	AuthenticateSession(ctx context.Context, tokenHash []byte) (AuthenticateSessionRow, error)
@@ -36,6 +37,7 @@ type Querier interface {
 	GetProduct(ctx context.Context, id pgtype.UUID) ([]byte, error)
 	GetPurchaseDocument(ctx context.Context, arg GetPurchaseDocumentParams) ([]byte, error)
 	GetPurchaseRate(ctx context.Context, id pgtype.UUID) (GetPurchaseRateRow, error)
+	GetReceiving(ctx context.Context, id pgtype.UUID) ([]byte, error)
 	GetShipment(ctx context.Context, arg GetShipmentParams) ([]byte, error)
 	GetShipmentExpense(ctx context.Context, arg GetShipmentExpenseParams) ([]byte, error)
 	GetShipmentStage(ctx context.Context, arg GetShipmentStageParams) ([]byte, error)
@@ -50,10 +52,14 @@ type Querier interface {
 	InsertShipmentItem(ctx context.Context, arg InsertShipmentItemParams) error
 	InsertShipmentStage(ctx context.Context, arg InsertShipmentStageParams) (pgtype.UUID, error)
 	InsertSupplier(ctx context.Context, data []byte) (pgtype.UUID, error)
+	InventoryMovements(ctx context.Context, arg InventoryMovementsParams) ([]byte, error)
+	InventoryWarehouses(ctx context.Context) ([]byte, error)
 	LandedCostSources(ctx context.Context, id pgtype.UUID) ([]byte, error)
+	ListInventory(ctx context.Context, arg ListInventoryParams) ([]byte, error)
 	ListPermissions(ctx context.Context) ([]ListPermissionsRow, error)
 	ListProducts(ctx context.Context, arg ListProductsParams) ([]byte, error)
 	ListPurchaseDocuments(ctx context.Context, arg ListPurchaseDocumentsParams) ([]byte, error)
+	ListReceiving(ctx context.Context, arg ListReceivingParams) ([]byte, error)
 	ListShipments(ctx context.Context, arg ListShipmentsParams) ([]byte, error)
 	ListSuppliers(ctx context.Context, arg ListSuppliersParams) ([]byte, error)
 	ListUsers(ctx context.Context) ([]ListUsersRow, error)
@@ -72,6 +78,7 @@ type Querier interface {
 	LockSupplier(ctx context.Context, id pgtype.UUID) (LockSupplierRow, error)
 	MarkLogin(ctx context.Context, id pgtype.UUID) error
 	PostPurchase(ctx context.Context, id pgtype.UUID) error
+	PostReceiving(ctx context.Context, arg PostReceivingParams) (pgtype.UUID, error)
 	ProductInUse(ctx context.Context, productID pgtype.UUID) (bool, error)
 	ProductReferencesValid(ctx context.Context, arg ProductReferencesValidParams) (bool, error)
 	PruneLoginAttempts(ctx context.Context) error
@@ -79,6 +86,8 @@ type Querier interface {
 	PurchaseProductOptions(ctx context.Context, search string) ([]byte, error)
 	PurchaseRates(ctx context.Context, arg PurchaseRatesParams) ([]byte, error)
 	PurchaseSupplierOptions(ctx context.Context, search string) ([]byte, error)
+	ReceivingOptions(ctx context.Context, search string) ([]byte, error)
+	ReceivingShipment(ctx context.Context, id pgtype.UUID) ([]byte, error)
 	RecordAuthAudit(ctx context.Context, arg RecordAuthAuditParams) error
 	RecordProductAudit(ctx context.Context, arg RecordProductAuditParams) error
 	RemoveProductUnits(ctx context.Context, arg RemoveProductUnitsParams) error

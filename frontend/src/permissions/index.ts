@@ -1,4 +1,5 @@
 export const permissions = {
+ receivingManage: 'receiving.manage',
  costsFinalize: 'costs.finalize',
   shipmentsView: 'shipments.view', shipmentsManage: 'shipments.manage', shipmentsViewCost: 'shipments.view_cost', transportationManage: 'transportation.manage', changeTransportCost: 'costs.change_transport',
   exchangeRatesManage: 'exchange_rates.manage',
@@ -12,10 +13,11 @@ export const permissions = {
 export type CurrentUser = { id: string; username: string; display_name: string; role: 'SUPER_ADMIN' | 'STAFF_ADMIN'; permissions: string[] }
 export const can = (user: CurrentUser, permission: string) => user.permissions.includes(permission)
 export const canAssignPermissions = (user: CurrentUser) => user.role === 'SUPER_ADMIN'
-export const protectedPages: Record<string, string | null> = { '/': null, '/shipments': permissions.shipmentsView, '/shipments/new': permissions.shipmentsManage, '/purchases': permissions.purchasesView, '/purchases/new': permissions.purchasesCreate, '/purchasing-settings': permissions.exchangeRatesManage, '/suppliers': permissions.suppliersView, '/suppliers/new': permissions.suppliersCreate, '/products': permissions.productsView, '/products/new': permissions.productsCreate, '/catalog': permissions.catalogManage, '/users': permissions.usersManage, '/permissions': permissions.permissionsManage, '/design-system': permissions.settingsManage }
+export const protectedPages: Record<string, string | null> = { '/': null, '/receiving': permissions.receivingManage, '/receiving/new': permissions.receivingManage, '/inventory': permissions.inventoryView, '/inventory/movements': permissions.inventoryView, '/shipments': permissions.shipmentsView, '/shipments/new': permissions.shipmentsManage, '/purchases': permissions.purchasesView, '/purchases/new': permissions.purchasesCreate, '/purchasing-settings': permissions.exchangeRatesManage, '/suppliers': permissions.suppliersView, '/suppliers/new': permissions.suppliersCreate, '/products': permissions.productsView, '/products/new': permissions.productsCreate, '/catalog': permissions.catalogManage, '/users': permissions.usersManage, '/permissions': permissions.permissionsManage, '/design-system': permissions.settingsManage }
 
 export function pagePermission(path: string): string | null | undefined {
   if (Object.hasOwn(protectedPages, path)) return protectedPages[path]
+  if (/^\/receiving\/[a-f0-9-]{36}$/.test(path)) return permissions.receivingManage
   if (/^\/products\/[a-f0-9-]{36}\/edit$/.test(path)) return permissions.productsUpdate
   if (/^\/products\/[a-f0-9-]{36}$/.test(path)) return permissions.productsView
   if (/^\/suppliers\/[a-f0-9-]{36}\/edit$/.test(path)) return permissions.suppliersUpdate
