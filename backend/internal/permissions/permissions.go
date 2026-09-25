@@ -5,6 +5,7 @@ package permissions
 type Code string
 
 const (
+	CostsFinalize         Code = "costs.finalize"
 	ShipmentsView         Code = "shipments.view"
 	ShipmentsManage       Code = "shipments.manage"
 	ShipmentsViewCost     Code = "shipments.view_cost"

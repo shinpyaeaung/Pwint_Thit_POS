@@ -97,6 +97,10 @@ Use **Purchases** to record purchases with historical exchange rates, original-c
 
 Use **Shipments** to allocate purchased goods, track unlimited transportation stages, record shipment expenses and view permission-controlled costs. See the [shipment guide](docs/shipments.md).
 
+## Landed cost
+
+Open a shipment’s **Landed cost** section to allocate transport and expenses by quantity, purchase value, weight, cartons or manual amounts. Preview exact totals and finalize confirmed sellable costs. See the [landed-cost guide](docs/landed-cost.md).
+
 ## Suppliers
 
 Use **Suppliers** to maintain contacts, country, payment terms and notes, and view permission-controlled purchase history. See the [supplier guide](docs/suppliers.md) for archive behavior, permissions and API contracts.

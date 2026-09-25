@@ -29,6 +29,9 @@ type Service struct {
 func New(db DB) *Service { return &Service{db: db, q: database.New(db)} }
 func (s *Service) Register(r *gin.Engine, a *authz.Service) {
 	s.a = a
+	r.GET("/api/v1/shipments/:id/landed-cost", a.Require(permissions.ShipmentsView), a.Require(permissions.FinanceViewLandedCost), s.Cost)
+	r.POST("/api/v1/shipments/:id/landed-cost/preview", a.Require(permissions.ShipmentsView), a.Require(permissions.FinanceViewLandedCost), s.PreviewCost)
+	r.POST("/api/v1/shipments/:id/landed-cost/finalize", a.Require(permissions.ShipmentsView), a.Require(permissions.FinanceViewLandedCost), a.Require(permissions.CostsFinalize), s.FinalizeCost)
 	r.GET("/api/v1/shipments", a.Require(permissions.ShipmentsView), s.List)
 	r.GET("/api/v1/shipments/:id", a.Require(permissions.ShipmentsView), s.Get)
 	r.GET("/api/v1/shipments/:id/items", a.Require(permissions.ShipmentsView), s.Items)

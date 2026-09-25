@@ -210,6 +210,117 @@ func TestShipmentIntegration(t *testing.T) {
 	}
 	blocked["version"] = replacement["version"]
 	call("POST", "/shipments/"+replacement["id"].(string)+"/stages", blocked, owner, 409)
+
+	// Landed cost is protected, previewed, finalized atomically, and never falls back to purchase price.
+	costPath := "/shipments/" + id + "/landed-cost"
+	call("GET", costPath, nil, staff, 403)
+	source := call("GET", costPath, nil, owner, 200)["source"].(map[string]any)
+	costItem := source["items"].([]any)[0].(map[string]any)["id"]
+	costIn := map[string]any{"version": version(), "method": "QUANTITY", "notes": "Confirmed 50 sellable units after transit", "items": []map[string]any{{"id": costItem, "sellable_quantity": "50"}}}
+	cost := call("POST", costPath+"/preview", costIn, owner, 200)
+	if cost["purchase_mmk"] != "6000.0000" || cost["landed_mmk"] != "764754.0850" {
+		t.Fatal("landed formula", cost)
+	}
+	item := cost["items"].([]any)[0].(map[string]any)
+	if item["actual_unit_cost_mmk"] != "15295.08170000" {
+		t.Fatal("actual unit cost", item)
+	}
+	costIn["preview_token"] = "stale"
+	call("POST", costPath+"/finalize", costIn, owner, 409)
+	if snapshot := call("GET", costPath, nil, owner, 200)["snapshot"]; snapshot != nil {
+		t.Fatal("failed finalization wrote snapshot")
+	}
+	_, err = conn.Exec(ctx, `INSERT INTO app.user_permissions(user_id,permission_code,granted_by) SELECT s.id,'finance.view_landed_cost',o.id FROM app.users s CROSS JOIN app.users o WHERE s.username='staff' AND o.username='owner'`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	call("POST", costPath+"/preview", costIn, staff, 200)
+	costIn["preview_token"] = cost["preview_token"]
+	call("POST", costPath+"/finalize", costIn, staff, 403)
+	// Two simultaneous finalizations must produce one snapshot and one audit.
+	finalCodes := make(chan int, 2)
+	for n := 0; n < 2; n++ {
+		wg.Add(1)
+		go func() { defer wg.Done(); finalCodes <- raw("POST", costPath+"/finalize", costIn, owner).Code }()
+	}
+	wg.Wait()
+	close(finalCodes)
+	finalCounts := map[int]int{}
+	for code := range finalCodes {
+		finalCounts[code]++
+	}
+	if finalCounts[201] != 1 || finalCounts[409] != 1 {
+		t.Fatal("concurrent finalization", finalCounts)
+	}
+	saved := call("GET", costPath, nil, owner, 200)["snapshot"].(map[string]any)
+	if saved["finalized"] != true || saved["landed_mmk"] != cost["landed_mmk"] {
+		t.Fatal("snapshot mismatch", saved)
+	}
+	call("POST", costPath+"/finalize", costIn, owner, 409)
+	call("POST", "/shipments/"+id+"/stages", stage(28), owner, 409)
+	var unit string
+	if err = conn.QueryRow(ctx, `SELECT actual_unit_cost_mmk::text FROM app.shipment_items WHERE id=$1`, costItem).Scan(&unit); err != nil || unit != "15295.08170000" {
+		t.Fatal("persisted exact unit cost", unit, err)
+	}
+	for _, statement := range []string{`UPDATE app.shipment_costings SET document='{}'`, `DELETE FROM app.shipment_costings`, `UPDATE app.shipment_items SET purchase_cost_mmk=1 WHERE purchase_cost_mmk IS NOT NULL`} {
+		if _, err = conn.Exec(ctx, statement); err == nil {
+			t.Fatal("finalized costs mutable", statement)
+		}
+	}
+	var finalizedAudits int
+	if err = conn.QueryRow(ctx, `SELECT count(*) FROM app.audit_logs WHERE action='costs.finalize'`).Scan(&finalizedAudits); err != nil || finalizedAudits != 1 {
+		t.Fatal("finalization audit", finalizedAudits, err)
+	}
+
+	// Historical foreign conversion reconciles each line to the posted purchase snapshot.
+	_, err = conn.Exec(ctx, `INSERT INTO app.purchases(id,purchase_number,supplier_id,purchased_at,currency_code,mmk_per_unit,created_by) SELECT '40000000-0000-0000-0000-000000000001','ROUNDING-INR','00000000-0000-0000-0000-000000000001',now(),'INR',1.5,id FROM app.users WHERE username='owner';
+ INSERT INTO app.purchase_items(purchase_id,line_number,product_id,unit_code,quantity,units_per_pack,unit_price_original) SELECT '40000000-0000-0000-0000-000000000001',n,'00000000-0000-0000-0000-000000000002','BOTTLE',1,1,0.0001 FROM generate_series(1,3) n;
+ UPDATE app.purchases SET status='POSTED',posted_at=now() WHERE purchase_number='ROUNDING-INR'`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var lines, total string
+	err = conn.QueryRow(ctx, `SELECT sum(l.total_mmk)::text,max(a.amount_mmk)::text FROM app.purchase_line_costs l JOIN app.purchase_amounts a ON a.purchase_id=l.purchase_id WHERE l.purchase_id='40000000-0000-0000-0000-000000000001'`).Scan(&lines, &total)
+	if err != nil || lines != "0.0005" || lines != total {
+		t.Fatal("historical line conversion lost rounding", lines, total, err)
+	}
+
+	// Split shipments share a rounding budget. Another finalization invalidates a preview even when this shipment version is unchanged.
+	_, err = conn.Exec(ctx, `INSERT INTO app.purchases(id,purchase_number,supplier_id,purchased_at,currency_code,mmk_per_unit,created_by) SELECT '50000000-0000-0000-0000-000000000001','SPLIT-COST','00000000-0000-0000-0000-000000000001',now(),'MMK',1,id FROM app.users WHERE username='owner';
+ INSERT INTO app.purchase_items(id,purchase_id,line_number,product_id,unit_code,quantity,units_per_pack,unit_price_original) VALUES('50000000-0000-0000-0000-000000000002','50000000-0000-0000-0000-000000000001',1,'00000000-0000-0000-0000-000000000002','BOTTLE',3,1,0.000033);
+ UPDATE app.purchases SET status='POSTED',posted_at=now() WHERE purchase_number='SPLIT-COST'`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	paths := []string{}
+	bodies := []map[string]any{}
+	for n := 1; n <= 3; n++ {
+		sid := fmt.Sprintf("60000000-0000-0000-0000-%012d", n)
+		_, err = conn.Exec(ctx, `INSERT INTO app.shipments(id,shipment_number,start_location,destination_warehouse_id,status,created_by) SELECT $1,$2,'India',$3,'ARRIVED',id FROM app.users WHERE username='owner'`, sid, fmt.Sprintf("SPLIT-%d", n), warehouse["id"])
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = conn.Exec(ctx, `INSERT INTO app.shipment_items(shipment_id,purchase_item_id,product_id,expected_quantity) VALUES($1,'50000000-0000-0000-0000-000000000002','00000000-0000-0000-0000-000000000002',1)`, sid)
+		if err != nil {
+			t.Fatal(err)
+		}
+		path := "/shipments/" + sid + "/landed-cost"
+		src := call("GET", path, nil, owner, 200)["source"].(map[string]any)
+		body := map[string]any{"version": "1", "method": "QUANTITY", "notes": "Confirmed split quantity", "items": []map[string]any{{"id": src["items"].([]any)[0].(map[string]any)["id"], "sellable_quantity": "1"}}}
+		body["preview_token"] = call("POST", path+"/preview", body, owner, 200)["preview_token"]
+		paths = append(paths, path)
+		bodies = append(bodies, body)
+	}
+	call("POST", paths[0]+"/finalize", bodies[0], owner, 201)
+	call("POST", paths[1]+"/finalize", bodies[1], owner, 409)
+	for n := 1; n < 3; n++ {
+		bodies[n]["preview_token"] = call("POST", paths[n]+"/preview", bodies[n], owner, 200)["preview_token"]
+		call("POST", paths[n]+"/finalize", bodies[n], owner, 201)
+	}
+	var splitTotal string
+	if err = conn.QueryRow(ctx, `SELECT sum(purchase_cost_mmk)::text FROM app.shipment_items WHERE purchase_item_id='50000000-0000-0000-0000-000000000002'`).Scan(&splitTotal); err != nil || splitTotal != "0.0001" {
+		t.Fatal("split costs do not reconcile", splitTotal, err)
+	}
 	var audits int
 	if err = conn.QueryRow(ctx, `SELECT count(*) FROM app.audit_logs WHERE entity_type='transportation_stages'`).Scan(&audits); err != nil || audits != 26 {
 		t.Fatal("audit", audits, err)

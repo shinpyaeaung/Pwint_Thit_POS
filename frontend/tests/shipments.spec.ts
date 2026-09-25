@@ -1,7 +1,7 @@
 import { test,expect } from '@playwright/test'
 import { signIn,testPassword } from './session'
 test('shipment goods, transportation timeline, expenses and restricted staff access',async({page,browser})=>{
- test.setTimeout(60000)
+ test.setTimeout(90000)
  await signIn(page,'browser-shipping-owner')
  const suffix=String(Date.now());const headers={Origin:process.env.E2E_BASE_URL!,'X-Pwint-Thit-Request':'1'}
  const supplier=await page.request.post('/api/v1/suppliers',{headers,data:{code:`SH-${suffix}`,name:`Shipping supplier ${suffix}`,is_active:true}});expect(supplier.status()).toBe(201)
@@ -70,7 +70,37 @@ test('shipment goods, transportation timeline, expenses and restricted staff acc
  expect((await page.request.put(`/api/v1/users/${(await staff.json()).id}/permissions`,{headers,data:{permissions:['shipments.view']}})).status()).toBe(204)
  const context=await browser.newContext({baseURL:process.env.E2E_BASE_URL})
  try{const other=await context.newPage();await signIn(other,username);await other.goto(`/shipments/${id}`);await expect(other.getByRole('heading',{name:`SH-${suffix}`,exact:true})).toBeVisible();await expect(other.getByRole('button',{name:'Add stage',exact:true})).toHaveCount(0);await expect(other.getByTestId('transport-total')).toHaveCount(0)
+ await expect(other.getByRole('region',{name:'Landed cost',exact:true})).toHaveCount(0);expect((await other.request.get(`/api/v1/shipments/${id}/landed-cost`)).status()).toBe(403)
  const hidden=await(await other.request.get(`/api/v1/shipments/${id}/stages`)).json();expect(hidden.stages[0]).not.toHaveProperty('total_mmk');expect((await other.request.post(`/api/v1/shipments/${id}/stages`,{headers,data:{}})).status()).toBe(403)
  }finally{await context.close()}
+
+ await page.setViewportSize({width:1280,height:900})
+ await page.getByLabel('Sellable quantity 1',{exact:true}).fill('50')
+ await page.getByLabel('Costing confirmation note',{exact:true}).fill('Confirmed 50 sellable bottles; all costs complete')
+ for(const method of ['Quantity','Purchase value','Weight','Carton quantity','Manual allocation']){
+  await page.getByRole('combobox',{name:'Allocation method',exact:true}).click()
+  await page.getByRole('option',{name:method,exact:true}).click()
+  if(method==='Weight')await page.getByLabel('Total weight (kg) 1',{exact:true}).fill('12.5')
+  if(method==='Carton quantity')await page.getByLabel('Carton quantity 1',{exact:true}).fill('5')
+  if(method==='Manual allocation'){
+   await page.getByLabel('Manual transport (MMK) 1',{exact:true}).fill('60800.2468')
+   await page.getByLabel('Manual expenses (MMK) 1',{exact:true}).fill('0')
+  }
+  await page.getByRole('button',{name:'Calculate landed cost',exact:true}).click()
+  await expect(page.getByTestId('landed-total')).toHaveText('120,800.2468 MMK')
+  await expect(page.getByTestId('actual-unit-cost')).toHaveText('2,416.004936')
+ }
+ await page.setViewportSize({width:375,height:812})
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true)
+ await page.getByRole('region',{name:'Landed cost',exact:true}).screenshot({path:'/tmp/pwint-landed-cost-mobile.png'})
+ await page.setViewportSize({width:1280,height:900})
+ await page.getByRole('button',{name:'Review finalization',exact:true}).click()
+ await page.getByRole('button',{name:'Finalize landed cost',exact:true}).click()
+ await expect(page.getByText('Finalized',{exact:true})).toBeVisible()
+ await expect(page.getByRole('button',{name:'Add stage',exact:true})).toHaveCount(0)
+ await page.reload()
+ await expect(page.getByTestId('landed-total')).toHaveText('120,800.2468 MMK')
+ await expect(page.getByRole('button',{name:'Calculate landed cost',exact:true})).toHaveCount(0)
+ await page.getByRole('region',{name:'Landed cost',exact:true}).screenshot({path:'/tmp/pwint-landed-cost-finalized.png'})
  await page.goto('/shipments');await page.getByRole('searchbox',{name:'Search shipments'}).fill(`SH-${suffix}`);await expect(page.getByRole('link',{name:`SH-${suffix}`,exact:true})).toBeVisible()
 })

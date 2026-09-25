@@ -27,9 +27,11 @@ type Querier interface {
 	CreateShipmentWarehouse(ctx context.Context, arg CreateShipmentWarehouseParams) (pgtype.UUID, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (pgtype.UUID, error)
 	EffectivePermissions(ctx context.Context, id pgtype.UUID) ([]string, error)
+	FinalizeShipmentCost(ctx context.Context, arg FinalizeShipmentCostParams) error
 	FindLoginUser(ctx context.Context, lower string) (FindLoginUserRow, error)
 	FindPurchaseRequest(ctx context.Context, requestID pgtype.UUID) (FindPurchaseRequestRow, error)
 	FindUser(ctx context.Context, id pgtype.UUID) (FindUserRow, error)
+	GetFinalizedCost(ctx context.Context, shipmentID pgtype.UUID) ([]byte, error)
 	GetProduct(ctx context.Context, id pgtype.UUID) ([]byte, error)
 	GetPurchaseDocument(ctx context.Context, arg GetPurchaseDocumentParams) ([]byte, error)
 	GetPurchaseRate(ctx context.Context, id pgtype.UUID) (GetPurchaseRateRow, error)
@@ -47,6 +49,7 @@ type Querier interface {
 	InsertShipmentItem(ctx context.Context, arg InsertShipmentItemParams) error
 	InsertShipmentStage(ctx context.Context, arg InsertShipmentStageParams) (pgtype.UUID, error)
 	InsertSupplier(ctx context.Context, data []byte) (pgtype.UUID, error)
+	LandedCostSources(ctx context.Context, id pgtype.UUID) ([]byte, error)
 	ListPermissions(ctx context.Context) ([]ListPermissionsRow, error)
 	ListProducts(ctx context.Context, arg ListProductsParams) ([]byte, error)
 	ListPurchaseDocuments(ctx context.Context, arg ListPurchaseDocumentsParams) ([]byte, error)
@@ -55,6 +58,7 @@ type Querier interface {
 	ListUsers(ctx context.Context) ([]ListUsersRow, error)
 	LockBrand(ctx context.Context, id pgtype.UUID) (LockBrandRow, error)
 	LockCategory(ctx context.Context, id pgtype.UUID) (LockCategoryRow, error)
+	LockCostPurchaseItems(ctx context.Context, shipmentID pgtype.UUID) ([]pgtype.UUID, error)
 	LockLoginUser(ctx context.Context, id pgtype.UUID) (LockLoginUserRow, error)
 	LockProduct(ctx context.Context, id pgtype.UUID) (LockProductRow, error)
 	LockPurchaseCurrency(ctx context.Context, code string) (string, error)
@@ -79,6 +83,8 @@ type Querier interface {
 	RemoveProductUnits(ctx context.Context, arg RemoveProductUnitsParams) error
 	ResetProductDefaults(ctx context.Context, productID pgtype.UUID) error
 	RevokeSession(ctx context.Context, tokenHash []byte) error
+	SaveCostDocument(ctx context.Context, arg SaveCostDocumentParams) error
+	SaveCostItem(ctx context.Context, arg SaveCostItemParams) error
 	ShipmentChildHasPayment(ctx context.Context, transportationStageID pgtype.UUID) (bool, error)
 	ShipmentExpenses(ctx context.Context, arg ShipmentExpensesParams) ([]byte, error)
 	ShipmentHasReceiving(ctx context.Context, shipmentID pgtype.UUID) (bool, error)

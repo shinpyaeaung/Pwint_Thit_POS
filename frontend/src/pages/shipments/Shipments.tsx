@@ -6,6 +6,7 @@ import { PageHeader,DataTable,FilterBar,SearchInput,StatusBadge,LoadingState,Emp
 import { requestJSON } from '@/services/api'
 import { can,permissions,type CurrentUser } from '@/permissions'
 import { amount } from '../purchases/types'
+import LandedCost from './LandedCost'
 import CreateShipment from './CreateShipment'
 import ShipmentActions,{type Action} from './ShipmentActions'
 import { dateLabel,label,type Shipment,type Stage,type Expense } from './types'
@@ -46,5 +47,5 @@ function Details({id,current}:{id:string;current:CurrentUser}) {
  ...(s.can_view_cost?[{id:'amount',header:'Original / MMK',cell:(e:Expense)=><div className="whitespace-nowrap text-xs tabular-nums">{amount(e.amount_original)} {e.currency_code}<p>{amount(e.amount_mmk)} MMK</p><p className="text-muted-foreground">Rate: {amount(e.mmk_per_unit)}</p></div>}]:[]),
  {id:'status',header:'Status',cell:e=><StatusBadge>{e.voided_at?'VOIDED':label(e.payment_status)}</StatusBadge>},
  ...(correct?[{id:'actions',header:'Correction',cell:(e:Expense)=>!e.voided_at&&<Button size="sm" variant="outline" onClick={()=>setAction({kind:'void',id:e.id})}>Void expense</Button>}]:[]),
- ]}/><Modal open={!!action} onOpenChange={v=>{if(!v)setAction(null)}} title={action?.kind==='stage'?(action.stage?'Edit transportation stage':'Add transportation stage'):action?.kind==='expense'?'Add shipment expense':action?.kind==='void'?'Void shipment expense':'Update shipment status'}>{action&&<ShipmentActions s={s} action={action} current={current} done={()=>setAction(null)}/>}</Modal></>
+ ]}/>{can(current,permissions.financeViewLandedCost)&&<LandedCost id={id} current={current}/>}<Modal open={!!action} onOpenChange={v=>{if(!v)setAction(null)}} title={action?.kind==='stage'?(action.stage?'Edit transportation stage':'Add transportation stage'):action?.kind==='expense'?'Add shipment expense':action?.kind==='void'?'Void shipment expense':'Update shipment status'}>{action&&<ShipmentActions s={s} action={action} current={current} done={()=>setAction(null)}/>}</Modal></>
 }

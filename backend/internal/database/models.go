@@ -435,6 +435,13 @@ type AppPurchaseItem struct {
 	UnitNameSnapshot    pgtype.Text
 }
 
+type AppPurchaseLineCost struct {
+	ID           pgtype.UUID
+	PurchaseID   pgtype.UUID
+	BaseQuantity pgtype.Numeric
+	TotalMmk     int32
+}
+
 type AppPurchaseReturn struct {
 	ID           pgtype.UUID
 	ReturnNumber string
@@ -579,6 +586,13 @@ type AppShipment struct {
 	RequestID              pgtype.UUID
 }
 
+type AppShipmentCosting struct {
+	ShipmentID  pgtype.UUID
+	Document    []byte
+	FinalizedBy pgtype.UUID
+	CreatedAt   pgtype.Timestamptz
+}
+
 type AppShipmentExpense struct {
 	ID             pgtype.UUID
 	ShipmentID     pgtype.UUID
@@ -599,17 +613,21 @@ type AppShipmentExpense struct {
 }
 
 type AppShipmentItem struct {
-	ID                    pgtype.UUID
-	ShipmentID            pgtype.UUID
-	PurchaseItemID        pgtype.UUID
-	ProductID             pgtype.UUID
-	ExpectedQuantity      pgtype.Numeric
-	WeightKg              pgtype.Numeric
-	CartonQuantity        pgtype.Numeric
-	AllocatedTransportMmk pgtype.Numeric
-	AllocatedExpenseMmk   pgtype.Numeric
-	CreatedAt             pgtype.Timestamptz
-	UpdatedAt             pgtype.Timestamptz
+	ID                      pgtype.UUID
+	ShipmentID              pgtype.UUID
+	PurchaseItemID          pgtype.UUID
+	ProductID               pgtype.UUID
+	ExpectedQuantity        pgtype.Numeric
+	WeightKg                pgtype.Numeric
+	CartonQuantity          pgtype.Numeric
+	AllocatedTransportMmk   pgtype.Numeric
+	AllocatedExpenseMmk     pgtype.Numeric
+	CreatedAt               pgtype.Timestamptz
+	UpdatedAt               pgtype.Timestamptz
+	PurchaseCostMmk         pgtype.Numeric
+	CostingSellableQuantity pgtype.Numeric
+	LandedCostMmk           pgtype.Numeric
+	ActualUnitCostMmk       pgtype.Numeric
 }
 
 type AppStockAdjustment struct {

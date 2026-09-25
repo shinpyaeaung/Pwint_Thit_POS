@@ -1,4 +1,5 @@
 export const permissions = {
+ costsFinalize: 'costs.finalize',
   shipmentsView: 'shipments.view', shipmentsManage: 'shipments.manage', shipmentsViewCost: 'shipments.view_cost', transportationManage: 'transportation.manage', changeTransportCost: 'costs.change_transport',
   exchangeRatesManage: 'exchange_rates.manage',
   suppliersView: 'suppliers.view', suppliersCreate: 'suppliers.create', suppliersUpdate: 'suppliers.update', suppliersDelete: 'suppliers.delete',
