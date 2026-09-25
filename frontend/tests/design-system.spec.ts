@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 import { signIn, staff } from './session'
 
 test('shared table, exact decimal fields and accessible overlays work together', async ({ page }) => {
@@ -41,14 +41,14 @@ test('shared table, exact decimal fields and accessible overlays work together',
     await page.setViewportSize(viewport)
     await expect.poll(async () => {
       const box = await modal.boundingBox()
-      return !!box && Math.abs(box.x - 16) < 1 && Math.abs(box.y - 16) < 1 && Math.abs(box.width - (viewport.width - 32)) < 1 && Math.abs(box.height - (viewport.height - 32)) < 1
+      return !!box && box.x >= 15 && box.y >= 15 && box.width <= 512 && box.height <= viewport.height - 31 && Math.abs(box.x + box.width / 2 - viewport.width / 2) < 1 && Math.abs(box.y + box.height / 2 - viewport.height / 2) < 1
     }).toBe(true)
     await expect(modal.getByRole('button', { name: 'Close', exact: true })).toBeInViewport()
     await expect(modal.getByRole('button', { name: 'Done', exact: true })).toBeInViewport()
     await modal.getByLabel('Note', { exact: true }).fill('Sample note')
   }
   await page.setViewportSize({ width: 1280, height: 900 })
-  await modal.screenshot({ path: '/tmp/pwint-modal-full-preview.png' })
+  await modal.screenshot({ path: '/tmp/pwint-modal-normal-preview.png' })
 
   for (let i = 0; i < 5; i++) await page.keyboard.press('Tab')
   expect(await modal.evaluate(el => el.contains(document.activeElement))).toBe(true)
@@ -66,6 +66,8 @@ test('shared table, exact decimal fields and accessible overlays work together',
   await expect(page.getByText('Preview confirmed. No records changed.')).toBeVisible()
   await page.evaluate(() => window.scrollTo(0, 0))
   await page.screenshot({ path: '/tmp/pwint-phase4-library.png', fullPage: true })
+  await checkPreviewBounds(page)
+  await page.setViewportSize({ width: 1280, height: 900 })
   await page.goto('/')
   await expect(page.getByRole('status')).toContainText('All systems connected')
   await page.screenshot({ path: '/tmp/pwint-phase4-workspace.png', fullPage: true })
@@ -90,3 +92,31 @@ test('mobile navigation traps focus, returns focus and respects staff permission
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.screenshot({ path: '/tmp/pwint-phase4-mobile.png', fullPage: true })
 })
+
+
+async function checkPreviewBounds(page: Page) {
+  await page.goto('/design-system')
+  for (const viewport of [{width:1280,height:900},{width:1024,height:600},{width:667,height:375}]) {
+    await page.setViewportSize(viewport)
+    for (const [button,title,drawer] of [['Preview modal','Shipment note preview',false],['Preview drawer','Shipment detail preview',true],['Preview confirmation','Confirm preview action?',false]] as const) {
+      await page.getByRole('button',{name:button,exact:true}).click()
+      const dialog=page.getByRole('dialog',{name:title,exact:true})
+      await expect(dialog).toBeVisible()
+      await expect.poll(async()=>{
+        const b=await dialog.boundingBox()
+        return !!b && b.x>=0 && b.y>=0 && b.x+b.width<=viewport.width+1 && b.y+b.height<=viewport.height+1 && b.width<=512 && (drawer || b.height<500)
+      }).toBe(true)
+      await expect(dialog.getByRole('button',{name:'Close',exact:true})).toBeInViewport()
+      if(button==='Preview modal') {
+        const note=dialog.getByLabel('Note',{exact:true})
+        await note.evaluate(el=>{el.style.height='1000px'})
+        await expect(dialog.getByRole('button',{name:'Done',exact:true})).toBeInViewport()
+        expect(await note.locator('..').locator('..').evaluate(el=>el.scrollHeight>el.clientHeight)).toBe(true)
+      }
+      if(button==='Preview confirmation') await expect(dialog.getByRole('button',{name:'Confirm preview',exact:true})).toBeInViewport()
+      await dialog.screenshot({path:`/tmp/pwint-${button.replaceAll(' ','-')}-${viewport.width}.png`})
+      await dialog.getByRole('button',{name:'Close',exact:true}).click()
+      await expect(dialog).toHaveCount(0)
+    }
+  }
+}

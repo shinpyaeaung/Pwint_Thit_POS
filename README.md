@@ -7,7 +7,7 @@ The complete [system specification](docs/Pwint_Thit_Distribution_Overall_System_
 
 - Node.js 24+, pnpm 12.3.4, Go 1.27.1+, and Make
 - Docker with Compose (Docker Desktop or Colima on macOS)
-- Google Chrome for the browser tests
+- Google Chrome for browser tests; install the Safari-compatible WebKit test browser with `pnpm --dir frontend exec playwright install webkit` after setup
 
 On this Mac, Docker CLI and Compose were installed with Homebrew, and Colima provides the Docker engine. Start it with `colima start` if stopped. The Makefile supports both `docker compose` and Homebrew's standalone `docker-compose`.
 
@@ -49,7 +49,7 @@ These are local deployment foundations. Before a Linux VPS launch, configure a d
 ```sh
 make check             # Go tests with race detection, go vet, frontend lint and build
 make test-integration  # Real pgx/sqlc query against running PostgreSQL
-make test-e2e          # Isolated real API/database + Chrome authentication tests
+make test-e2e          # Isolated API/database + Chrome and WebKit browser tests
 ```
 
 The browser suite creates a disposable database, starts isolated Go/Vite servers, seeds test-only users, and removes them afterward. It verifies login, logout, session restoration, denied access, permission grants/revocations, health recovery, and mobile width. Both integration suites require running PostgreSQL and a configured database URL with CREATEDB access. Plain `go test` skips database/browser integration unless explicitly configured.
