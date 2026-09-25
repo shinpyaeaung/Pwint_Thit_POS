@@ -19,6 +19,7 @@ type Service struct {
 func New(db database.DBTX) *Service { return &Service{q: database.New(db)} }
 func (s *Service) Register(r *gin.Engine, a *authz.Service) {
 	s.a = a
+	r.GET("/api/v1/batches", a.Require(permissions.InventoryView), s.Batches)
 	r.GET("/api/v1/receiving", a.Require(permissions.ReceivingManage), s.List)
 	r.GET("/api/v1/receiving/options", a.Require(permissions.ReceivingManage), s.Options)
 	r.GET("/api/v1/receiving/shipments/:id", a.Require(permissions.ReceivingManage), s.Shipment)

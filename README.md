@@ -120,3 +120,7 @@ See the [component guide](docs/design-system.md) for reusable layouts, tables, d
 ## Development rules
 
 Follow [AGENTS.md](AGENTS.md) and [phase scope](docs/phase-1.md). Complete each business module vertically: database → backend API → backend tests → frontend UI → integration → complete feature tests. Preserve all important business rules. No Redis is included.
+
+## Batches and expiry
+
+Use **Batches & expiry** for historical batch costs, dates, quantities and 30/60-day expiry warnings. See [the batch guide](docs/batches-expiry.md).

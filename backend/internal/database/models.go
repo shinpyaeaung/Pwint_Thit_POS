@@ -352,6 +352,22 @@ type AppPermission struct {
 	CreatedAt   pgtype.Timestamptz
 }
 
+type AppPosEligibleStock struct {
+	WarehouseID       pgtype.UUID
+	BatchID           pgtype.UUID
+	SellableQuantity  pgtype.Numeric
+	ReservedQuantity  pgtype.Numeric
+	DamagedQuantity   pgtype.Numeric
+	AvailableQuantity pgtype.Numeric
+	CreatedAt         pgtype.Timestamptz
+	UpdatedAt         pgtype.Timestamptz
+	Version           int64
+	ProductID         pgtype.UUID
+	ReceivedAt        pgtype.Timestamptz
+	ExpiresOn         pgtype.Date
+	ActualUnitCostMmk pgtype.Numeric
+}
+
 type AppProduct struct {
 	ID           pgtype.UUID
 	Sku          string

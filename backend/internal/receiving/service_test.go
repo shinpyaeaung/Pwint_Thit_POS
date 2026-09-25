@@ -216,4 +216,26 @@ func TestReceivingIntegration(t *testing.T) {
 		}
 	}
 
+	call("GET", "/batches", nil, "", 401)
+	batches := call("GET", "/batches", nil, owner, 200)
+	if batches["total"] != float64(3) {
+		t.Fatal("batch history must include wholly lost goods", batches)
+	}
+	for _, row := range batches["batches"].([]any) {
+		b := row.(map[string]any)
+		if b["total_cost_mmk"] == nil || b["received_at"] == nil {
+			t.Fatal("batch historical metadata missing", b)
+		}
+	}
+	hiddenBatch := call("GET", "/batches", nil, staff, 200)["batches"].([]any)[0].(map[string]any)
+	if _, ok := hiddenBatch["total_cost_mmk"]; ok {
+		t.Fatal("batch cost exposed")
+	}
+	call("GET", "/batches?expiry=invalid", nil, owner, 400)
+	var statuses string
+	err = conn.QueryRow(ctx, `SELECT string_agg(app.expiry_status(d,'2026-01-01'::date),',') FROM unnest(ARRAY[NULL::date,'2025-12-31','2026-01-01','2026-01-31','2026-02-01','2026-03-02','2026-03-03']::date[]) d`).Scan(&statuses)
+	if err != nil || statuses != "NO_EXPIRY,EXPIRED,EXPIRING_30,EXPIRING_30,EXPIRING_60,EXPIRING_60,CURRENT" {
+		t.Fatal("expiry boundaries", statuses, err)
+	}
+
 }

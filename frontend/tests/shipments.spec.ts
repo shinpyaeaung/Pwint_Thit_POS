@@ -142,4 +142,16 @@ test('shipment goods, transportation timeline, expenses and restricted staff acc
  await expect(page.getByRole('table')).toContainText('RECEIPT')
  await page.screenshot({path:'/tmp/pwint-stock-movements.png',fullPage:true})
 
+ await page.goto('/batches')
+ await page.getByRole('searchbox',{name:'Search batches'}).fill(suffix)
+ await expect(page.getByRole('table')).toContainText(`BATCH-${suffix}`)
+ await expect(page.getByRole('table')).toContainText('120,800.2468')
+ await page.getByRole('button',{name:new RegExp(`BATCH-${suffix}`)}).click()
+ await expect(page.getByRole('dialog')).toContainText('Initially sellable')
+ await expect(page.getByRole('dialog')).toContainText('50')
+ await page.getByRole('button',{name:'Close',exact:true}).click()
+ await page.getByRole('combobox',{name:'Expiry filter'}).click()
+ await page.getByRole('option',{name:'Expired',exact:true}).click()
+ await expect(page.getByRole('heading',{name:'No records yet',exact:true})).toBeVisible()
+
 })

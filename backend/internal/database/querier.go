@@ -55,6 +55,7 @@ type Querier interface {
 	InventoryMovements(ctx context.Context, arg InventoryMovementsParams) ([]byte, error)
 	InventoryWarehouses(ctx context.Context) ([]byte, error)
 	LandedCostSources(ctx context.Context, id pgtype.UUID) ([]byte, error)
+	ListBatches(ctx context.Context, arg ListBatchesParams) ([]byte, error)
 	ListInventory(ctx context.Context, arg ListInventoryParams) ([]byte, error)
 	ListPermissions(ctx context.Context) ([]ListPermissionsRow, error)
 	ListProducts(ctx context.Context, arg ListProductsParams) ([]byte, error)

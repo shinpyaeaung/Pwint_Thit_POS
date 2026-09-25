@@ -6,6 +6,7 @@ const items = [
   { href: '/products', label: 'Products', icon: Package, permission: permissions.productsView },
   { href: '/shipments', label: 'Shipments', icon: Truck, permission: permissions.shipmentsView },
   { href: '/receiving', label: 'Goods receiving', icon: PackageCheck, permission: permissions.receivingManage },
+  { href: '/batches', label: 'Batches & expiry', icon: Package, permission: permissions.inventoryView },
   { href: '/inventory', label: 'Inventory', icon: Boxes, permission: permissions.inventoryView },
   { href: '/purchases', label: 'Purchases', icon: ShoppingCart, permission: permissions.purchasesView },
   { href: '/suppliers', label: 'Suppliers', icon: Truck, permission: permissions.suppliersView },
