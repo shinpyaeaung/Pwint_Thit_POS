@@ -1,6 +1,6 @@
 # Pwint Thit Distribution
 
-Phases 1–17 provide the foundation, authentication and permissions, product/supplier/purchasing modules, shipments and landed costing, receiving and batch inventory, POS and safe checkout, customer credit, and damage/returns/refunds. See [customer credit](docs/customers-credit.md) and [damage and returns](docs/damage-returns.md) for workflows and current boundaries. Further business modules follow as vertical slices. See [authentication](docs/authentication.md) for setup and access rules. See [database design](docs/database-design.md) for the schema and its enforcement boundaries.
+Phases 1–18 provide the foundation, authentication and permissions, product/supplier/purchasing modules, shipments and landed costing, receiving and batch inventory, POS and safe checkout, customer credit, damage/returns/refunds, and operating expenses with actual-landed-cost profit reporting. See [expenses and profit](docs/expenses-profit.md) for accounting boundaries. See [customer credit](docs/customers-credit.md) and [damage and returns](docs/damage-returns.md) for workflows and current boundaries. Further business modules follow as vertical slices. See [authentication](docs/authentication.md) for setup and access rules. See [database design](docs/database-design.md) for the schema and its enforcement boundaries.
 The complete [system specification](docs/Pwint_Thit_Distribution_Overall_System_Specification.md) is the source of truth; the user's current phase scope takes precedence over its suggested phase grouping.
 
 ## Requirements

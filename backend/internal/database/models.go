@@ -210,6 +210,8 @@ type AppExpense struct {
 	Notes          pgtype.Text
 	CreatedAt      pgtype.Timestamptz
 	UpdatedAt      pgtype.Timestamptz
+	RequestID      pgtype.UUID
+	RequestPayload []byte
 }
 
 type AppExpenseCategory struct {
@@ -217,6 +219,22 @@ type AppExpenseCategory struct {
 	Name      string
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz
+}
+
+type AppExpenseReversal struct {
+	ID             pgtype.UUID
+	ExpenseID      pgtype.UUID
+	RequestID      pgtype.UUID
+	RequestPayload []byte
+	Reason         string
+	RecordedBy     pgtype.UUID
+	ReversedAt     pgtype.Timestamptz
+}
+
+type AppExpenseReversalPayment struct {
+	ReversalID        pgtype.UUID
+	OriginalPaymentID pgtype.UUID
+	OffsetPaymentID   pgtype.UUID
 }
 
 type AppGoodsReceiving struct {
@@ -429,6 +447,22 @@ type AppProductUnit struct {
 	IsDefaultSale     bool
 	CreatedAt         pgtype.Timestamptz
 	UpdatedAt         pgtype.Timestamptz
+}
+
+type AppProfitExpenseEvent struct {
+	ID         pgtype.UUID
+	CategoryID pgtype.UUID
+	OccurredAt pgtype.Timestamptz
+	AmountMmk  pgtype.Numeric
+}
+
+type AppProfitSalesEvent struct {
+	ID             pgtype.UUID
+	OccurredAt     pgtype.Timestamptz
+	RevenueMmk     pgtype.Numeric
+	CogsMmk        pgtype.Numeric
+	IncompleteCost bool
+	EventType      string
 }
 
 type AppPurchase struct {

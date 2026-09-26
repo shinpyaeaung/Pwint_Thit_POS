@@ -20,6 +20,7 @@ import (
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/authn"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/authz"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/database"
+	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/finance"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/httpapi"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/migrate"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/password"
@@ -86,6 +87,7 @@ func TestBrowserIntegration(t *testing.T) {
 	shipments.New(pool).Register(router, authz.New(q))
 	receiving.New(pool).Register(router, authz.New(q))
 	pos.New(pool).Register(router, authz.New(q))
+	finance.New(pool).Register(router, authz.New(q))
 	server := httptest.NewServer(router)
 	defer server.Close()
 	frontend := exec.Command("pnpm", "--dir", "../../../frontend", "exec", "vite", "--host", "127.0.0.1", "--port", strconv.Itoa(port), "--strictPort")

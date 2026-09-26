@@ -38,6 +38,10 @@ type Querier interface {
 	CustomerSave(ctx context.Context, arg CustomerSaveParams) (pgtype.UUID, error)
 	CustomersList(ctx context.Context, arg CustomersListParams) ([]byte, error)
 	EffectivePermissions(ctx context.Context, id pgtype.UUID) ([]string, error)
+	ExpenseCategories(ctx context.Context) ([]byte, error)
+	ExpensePost(ctx context.Context, arg ExpensePostParams) (pgtype.UUID, error)
+	ExpenseReverse(ctx context.Context, arg ExpenseReverseParams) (pgtype.UUID, error)
+	ExpensesList(ctx context.Context, arg ExpensesListParams) ([]byte, error)
 	FinalizeShipmentCost(ctx context.Context, arg FinalizeShipmentCostParams) error
 	FindLoginUser(ctx context.Context, lower string) (FindLoginUserRow, error)
 	FindPurchaseRequest(ctx context.Context, requestID pgtype.UUID) (FindPurchaseRequestRow, error)
@@ -99,6 +103,7 @@ type Querier interface {
 	PostReceiving(ctx context.Context, arg PostReceivingParams) (pgtype.UUID, error)
 	ProductInUse(ctx context.Context, productID pgtype.UUID) (bool, error)
 	ProductReferencesValid(ctx context.Context, arg ProductReferencesValidParams) (bool, error)
+	ProfitReport(ctx context.Context, arg ProfitReportParams) ([]byte, error)
 	PruneLoginAttempts(ctx context.Context) error
 	PurchaseCurrencies(ctx context.Context) ([]byte, error)
 	PurchaseProductOptions(ctx context.Context, search string) ([]byte, error)

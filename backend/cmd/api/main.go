@@ -17,6 +17,7 @@ import (
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/authz"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/config"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/database"
+	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/finance"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/httpapi"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/pos"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/products"
@@ -75,6 +76,7 @@ func run() error {
 	shipments.New(pool).Register(router, authorization)
 	receiving.New(pool).Register(router, authorization)
 	pos.New(pool).Register(router, authorization)
+	finance.New(pool).Register(router, authorization)
 	server := &http.Server{Addr: cfg.HTTPAddr, Handler: router, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 15 * time.Second, IdleTimeout: 60 * time.Second}
 	failures := make(chan error, 1)
 	go func() {
