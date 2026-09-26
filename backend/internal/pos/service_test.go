@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/authn"
@@ -125,6 +126,62 @@ func TestPOSIntegration(t *testing.T) {
 		t.Fatal("quote mutated inventory", qty, err)
 	}
 	body["quote_hash"] = quote["quote_hash"]
+	// Inject failures into the real database, including deferred failure at COMMIT.
+	// Compare complete ledger rows and inventory, not just invoice counts.
+	snapshot := func() string {
+		t.Helper()
+		var value string
+		err := conn.QueryRow(ctx, `SELECT jsonb_build_object(
+   'sales',(SELECT coalesce(jsonb_agg(to_jsonb(s) ORDER BY id),'[]') FROM app.sales s),
+   'items',(SELECT coalesce(jsonb_agg(to_jsonb(s) ORDER BY id),'[]') FROM app.sale_items s),
+   'costs',(SELECT coalesce(jsonb_agg(to_jsonb(s) ORDER BY id),'[]') FROM app.sale_item_batches s),
+   'inventory',(SELECT coalesce(jsonb_agg(to_jsonb(s) ORDER BY warehouse_id,batch_id),'[]') FROM app.inventory s),
+   'movements',(SELECT coalesce(jsonb_agg(to_jsonb(s) ORDER BY id),'[]') FROM app.inventory_movements s),
+   'payments',(SELECT coalesce(jsonb_agg(to_jsonb(s) ORDER BY id),'[]') FROM app.payments s),
+   'allocations',(SELECT coalesce(jsonb_agg(to_jsonb(s) ORDER BY id),'[]') FROM app.payment_allocations s),
+   'audit',(SELECT coalesce(jsonb_agg(to_jsonb(s) ORDER BY id),'[]') FROM app.audit_logs s)
+  )::text`).Scan(&value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return value
+	}
+	if _, err := conn.Exec(ctx, `CREATE FUNCTION app.test_checkout_failure() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'injected checkout failure'; END $$`); err != nil {
+		t.Fatal(err)
+	}
+	for _, stage := range []struct {
+		table, event string
+		deferred     bool
+	}{
+		{"sales", "INSERT", false}, {"sale_items", "INSERT", false}, {"sale_item_batches", "INSERT", false},
+		{"inventory_movements", "INSERT", false}, {"inventory", "UPDATE", false}, {"payments", "INSERT", false},
+		{"payment_allocations", "INSERT", false}, {"payments", "UPDATE", false}, {"sales", "UPDATE", false},
+		{"audit_logs", "INSERT", false}, {"audit_logs", "INSERT", true},
+	} {
+		t.Run("rollback_"+stage.table+"_"+stage.event+fmt.Sprint(stage.deferred), func(t *testing.T) {
+			before := snapshot()
+			definition := "CREATE TRIGGER test_checkout_failure AFTER " + stage.event + " ON app." + stage.table + " FOR EACH ROW EXECUTE FUNCTION app.test_checkout_failure()"
+			if stage.deferred {
+				definition = "CREATE CONSTRAINT TRIGGER test_checkout_failure AFTER INSERT ON app.audit_logs DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION app.test_checkout_failure()"
+			}
+			if _, err := conn.Exec(ctx, definition); err != nil {
+				t.Fatal(err)
+			}
+			defer func() {
+				if _, err := conn.Exec(ctx, "DROP TRIGGER test_checkout_failure ON app."+stage.table); err != nil {
+					t.Fatal(err)
+				}
+			}()
+			failed := raw("POST", "/pos/checkout", body, owner)
+			if failed.Code != 503 {
+				t.Fatalf("failure returned %d: %s", failed.Code, failed.Body.String())
+			}
+			if after := snapshot(); after != before {
+				t.Fatal("failed checkout left partial records or changed stock")
+			}
+		})
+	}
+	// The exact failed request can now succeed; retries still create just one sale.
 	var wg sync.WaitGroup
 	results := make(chan int, 2)
 	for i := 0; i < 2; i++ {

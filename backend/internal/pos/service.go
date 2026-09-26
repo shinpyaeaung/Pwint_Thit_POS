@@ -1,8 +1,10 @@
 package pos
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/authz"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/database"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/permissions"
@@ -11,12 +13,18 @@ import (
 	"time"
 )
 
-type Service struct {
-	q *database.Queries
-	a *authz.Service
+type DB interface {
+	database.DBTX
+	Begin(context.Context) (pgx.Tx, error)
 }
 
-func New(db database.DBTX) *Service { return &Service{q: database.New(db)} }
+type Service struct {
+	db DB
+	q  *database.Queries
+	a  *authz.Service
+}
+
+func New(db DB) *Service { return &Service{db: db, q: database.New(db)} }
 func (s *Service) Register(r *gin.Engine, a *authz.Service) {
 	s.a = a
 	r.GET("/api/v1/pos/products", a.RequireAny(permissions.SalesCreate, permissions.ProductsUpdate), s.Products)
@@ -198,7 +206,8 @@ func (s *Service) Checkout(preview bool) gin.HandlerFunc {
 		}
 		d, _ := json.Marshal(in)
 		actor, _ := authz.Principal(c)
-		b, e := s.q.POSCheckout(c.Request.Context(), database.POSCheckoutParams{Data: d, Actor: actor.ID, Discounts: discount, BelowCost: below, Preview: preview, Costs: costs, Profits: profit})
+		params := database.POSCheckoutParams{Data: d, Actor: actor.ID, Discounts: discount, BelowCost: below, Preview: preview, Costs: costs, Profits: profit}
+		b, e := s.checkout(c.Request.Context(), params)
 		if e != nil {
 			dbError(c, e)
 			return
@@ -242,4 +251,30 @@ func (s *Service) Sales(c *gin.Context) {
 	}
 	b, e := s.q.POSSales(c.Request.Context(), database.POSSalesParams{Search: q, PageSize: size, PageOffset: offset})
 	respond(c, b, e)
+}
+
+// Posting has one explicit transaction boundary, including all function and trigger
+// writes. Never send success until COMMIT succeeds. A lost commit response is safe
+// to retry using the same request UUID and payload.
+func (s *Service) checkout(ctx context.Context, params database.POSCheckoutParams) ([]byte, error) {
+	if params.Preview {
+		return s.q.POSCheckout(ctx, params)
+	}
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		cleanup, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = tx.Rollback(cleanup)
+	}()
+	result, err := s.q.WithTx(tx).POSCheckout(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return result, nil
 }

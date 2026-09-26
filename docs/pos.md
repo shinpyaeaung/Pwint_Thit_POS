@@ -51,3 +51,9 @@ Routes: `/api/v1/pos/products`, `/pos/warehouses`, `/pos/customers` (GET/POST), 
 Backend integration tests cover cross-batch FIFO, reserved/expired exclusions, immutable history, quote purity, stale prices, concurrent retries, two terminals competing for stock, below-cost/discount permissions, hidden finance fields, cash change, credit limits, payment allocation and customer debt. Browser tests exercise receiving → finalized batch history → price setup → carton barcode → wholesale discount → customer → payment → invoice/print → inventory movement in Chrome and WebKit. All fixtures are confined to disposable databases.
 
 Verified: `make check`, `make test-integration`, and all 18 browser tests (`make test-e2e`) passed. Desktop/mobile POS and printed invoice screenshots were visually inspected.
+
+## Phase 14 — Sale transaction safety
+
+The Go checkout service explicitly begins one PostgreSQL transaction, executes the complete posting function through that transaction, and commits before returning success. Error/cancellation cleanup rolls back using a bounded independent context. Quotes remain read-only previews. All invoice, item, FIFO cost snapshot, movement-triggered balance, payment/allocation, posting and audit writes share the same transaction.
+
+Integration tests inject database failures at 11 points: sale creation, item creation, batch cost recording, movement insertion, inventory update, payment creation, allocation, payment posting, sale posting, audit insertion and deferred COMMIT. Every failure must preserve the complete before-state of all affected ledger tables and inventory. The same request then succeeds, and concurrent retries produce only one sale. Invoice sequence gaps after rollback are expected and do not represent posted sales.
