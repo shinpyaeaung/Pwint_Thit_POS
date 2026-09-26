@@ -5,6 +5,9 @@ package permissions
 type Code string
 
 const (
+	DamageManage          Code = "damage.manage"
+	ReturnsManage         Code = "returns.manage"
+	RefundsApprove        Code = "refunds.approve"
 	SalesView             Code = "sales.view"
 	SalesBelowCost        Code = "sales.sell_below_cost"
 	PaymentsManage        Code = "payments.manage"

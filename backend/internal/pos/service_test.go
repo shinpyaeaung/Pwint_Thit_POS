@@ -160,6 +160,13 @@ func TestPOSIntegration(t *testing.T) {
    'movements',(SELECT coalesce(jsonb_agg(to_jsonb(s) ORDER BY id),'[]') FROM app.inventory_movements s),
    'payments',(SELECT coalesce(jsonb_agg(to_jsonb(s) ORDER BY id),'[]') FROM app.payments s),
    'allocations',(SELECT coalesce(jsonb_agg(to_jsonb(s) ORDER BY id),'[]') FROM app.payment_allocations s),
+   'returns',(SELECT coalesce(jsonb_agg(to_jsonb(s) ORDER BY id),'[]') FROM app.sales_returns s),
+   'return_items',(SELECT coalesce(jsonb_agg(to_jsonb(s) ORDER BY id),'[]') FROM app.sales_return_items s),
+   'purchase_returns',(SELECT coalesce(jsonb_agg(to_jsonb(s) ORDER BY id),'[]') FROM app.purchase_returns s),
+   'purchase_return_items',(SELECT coalesce(jsonb_agg(to_jsonb(s) ORDER BY id),'[]') FROM app.purchase_return_items s),
+   'damage',(SELECT coalesce(jsonb_agg(to_jsonb(s) ORDER BY id),'[]') FROM app.damaged_products s),
+   'missing',(SELECT coalesce(jsonb_agg(to_jsonb(s) ORDER BY id),'[]') FROM app.missing_products s),
+   'operations',(SELECT coalesce(jsonb_agg(to_jsonb(s) ORDER BY request_id),'[]') FROM app.stock_operations s),
    'approvals',(SELECT coalesce(jsonb_agg(to_jsonb(s) ORDER BY id),'[]') FROM app.approvals s),
    'audit',(SELECT coalesce(jsonb_agg(to_jsonb(s) ORDER BY id),'[]') FROM app.audit_logs s)
   )::text`).Scan(&value)
@@ -483,6 +490,153 @@ func TestPOSIntegration(t *testing.T) {
 	customerInput["is_active"] = false
 	call("PUT", specialPath, customerInput, owner, 200)
 	call("PUT", specialPath, customerInput, owner, 409)
+
+	// Phase 17: returns restore original batch costs; previews and failures are pure.
+	source := call("GET", "/returns/sales/"+sale["id"].(string), nil, owner, 200)
+	returnLines := source["items"].([]any)
+	originalBatch := returnLines[0].(map[string]any)["sale_item_batch_id"]
+	returnLine := map[string]any{"sale_item_batch_id": originalBatch, "quantity": "2", "disposition": "SELLABLE"}
+	returnBody := map[string]any{"request_id": "80000000-0000-0000-0000-000000000001", "sale_id": sale["id"], "resolution": "REFUND", "reason": "Returned unopened bottles", "method": "CASH", "reference": "Refund receipt", "approve_refund": true, "items": []map[string]any{returnLine}}
+	call("POST", "/returns/sales/preview", returnBody, staff, 403)
+	beforeReturn := snapshot()
+	previewReturn := call("POST", "/returns/sales/preview", returnBody, owner, 200)
+	if previewReturn["credit_mmk"] != "80000.0000" || previewReturn["refund_mmk"] != "80000.0000" {
+		t.Fatal("return preview", previewReturn)
+	}
+	if snapshot() != beforeReturn {
+		t.Fatal("return preview changed ledger")
+	}
+	returnBody["quote_hash"] = previewReturn["quote_hash"]
+	for _, table := range []string{"sales_returns", "sales_return_items", "inventory_movements", "payments", "payment_allocations", "approvals", "audit_logs", "stock_operations"} {
+		before := snapshot()
+		if _, err = conn.Exec(ctx, "CREATE TRIGGER test_checkout_failure AFTER INSERT ON app."+table+" FOR EACH ROW EXECUTE FUNCTION app.test_checkout_failure()"); err != nil {
+			t.Fatal(err)
+		}
+		call("POST", "/returns/sales", returnBody, owner, 503)
+		if snapshot() != before {
+			t.Fatal("return failure left partial ledger", table)
+		}
+		if _, err = conn.Exec(ctx, "DROP TRIGGER test_checkout_failure ON app."+table); err != nil {
+			t.Fatal(err)
+		}
+	}
+	returnedSale := call("POST", "/returns/sales", returnBody, owner, 200)
+	call("POST", "/returns/sales", returnBody, owner, 200)
+	if err = conn.QueryRow(ctx, `SELECT count(*)=1 AND bool_and(unit_cost_mmk=30000) FROM app.sales_return_items WHERE sales_return_id=$1`, returnedSale["id"]).Scan(&correct); err != nil || !correct {
+		t.Fatal("original return cost/deduplication", err)
+	}
+	returnBody["request_id"] = "80000000-0000-0000-0000-000000000002"
+	returnLine["quantity"] = "9"
+	call("POST", "/returns/sales/preview", returnBody, owner, 409)
+	// A shortage cannot consume reserved stock. Damage transfers stock between buckets.
+	var stockVersion string
+	version := func() {
+		t.Helper()
+		if err = conn.QueryRow(ctx, `SELECT version::text FROM app.inventory WHERE batch_id='00000000-0000-0000-0000-000000000070'`).Scan(&stockVersion); err != nil {
+			t.Fatal(err)
+		}
+	}
+	version()
+	issue := map[string]any{"request_id": "81000000-0000-0000-0000-000000000001", "batch_id": "00000000-0000-0000-0000-000000000070", "warehouse_id": "00000000-0000-0000-0000-000000000012", "version": stockVersion, "kind": "DAMAGE", "bucket": "SELLABLE", "quantity": "1", "reason": "Outer packaging torn", "notes": "Contents checked"}
+	call("POST", "/stock-issues", issue, staff, 403)
+	call("POST", "/stock-issues", issue, owner, 200)
+	call("POST", "/stock-issues", issue, owner, 200)
+	issue["request_id"] = "81000000-0000-0000-0000-000000000002"
+	issue["kind"] = "MISSING"
+	call("POST", "/stock-issues", issue, owner, 409) // Stale stock version.
+	version()
+	issue["version"] = stockVersion
+	issue["quantity"] = "2"
+	call("POST", "/stock-issues", issue, owner, 409)
+	issue["quantity"] = "0.5"
+	call("POST", "/stock-issues", issue, owner, 200)
+	// Selling damaged stock never transfers it into normal sellable inventory.
+	damageLine := map[string]any{"product_id": line["product_id"], "unit_code": "BOTTLE", "units_per_pack": "1", "quantity": "1", "unit_price_mmk": "1000", "discount_mmk": "0", "stock_bucket": "DAMAGED", "batch_id": issue["batch_id"]}
+	damageSale := map[string]any{"request_id": "82000000-0000-0000-0000-000000000001", "warehouse_id": issue["warehouse_id"], "customer_id": "", "pricing_mode": "RETAIL", "payment_method": "CASH", "tender_mmk": "1000", "reason": "Usable damaged packaging clearance", "items": []map[string]any{damageLine}, "approve_below_cost": true}
+	call("POST", "/pos/quote", damageSale, staff, 403)
+	dq := call("POST", "/pos/quote", damageSale, owner, 200)
+	damageSale["quote_hash"] = dq["quote_hash"]
+	if dq["cost_mmk"] != "30000.0000" || dq["requires_below_cost_approval"] != true {
+		t.Fatal("damaged actual cost", dq)
+	}
+	damagedInvoice := call("POST", "/pos/checkout", damageSale, owner, 201)
+	if err = conn.QueryRow(ctx, `SELECT available_quantity::text FROM app.inventory WHERE batch_id='00000000-0000-0000-0000-000000000070'`).Scan(&qty); err != nil || qty != "0.500000" {
+		t.Fatal("damaged sale used normal stock", qty, err)
+	}
+	if err = conn.QueryRow(ctx, `SELECT count(*)=1 AND bool_and(original_price_mmk=40000 AND reduced_price_mmk=1000 AND actual_unit_cost_mmk=30000 AND discount_loss_mmk=39000) FROM app.damaged_products WHERE sale_id=$1`, damagedInvoice["id"]).Scan(&correct); err != nil || !correct {
+		t.Fatal("damaged price history", err)
+	}
+	// Returning a credit sale first cancels debt, then refunds only money actually received.
+	creditSource := call("GET", "/returns/sales/"+credit["id"].(string), nil, owner, 200)["items"].([]any)[0].(map[string]any)
+	creditReturn := map[string]any{"request_id": "83000000-0000-0000-0000-000000000001", "sale_id": credit["id"], "resolution": "REFUND", "reason": "Customer full return", "method": "CASH", "approve_refund": true, "items": []map[string]any{{"sale_item_batch_id": creditSource["sale_item_batch_id"], "quantity": "1", "disposition": "DAMAGED"}}}
+	cr := call("POST", "/returns/sales/preview", creditReturn, owner, 200)
+	if cr["credit_mmk"] != "40000.0000" || cr["refund_mmk"] != "10000.0000" {
+		t.Fatal("refund exceeded paid amount", cr)
+	}
+	creditReturn["quote_hash"] = cr["quote_hash"]
+	call("POST", "/returns/sales", creditReturn, owner, 200)
+	if err = conn.QueryRow(ctx, `SELECT outstanding_mmk::text FROM app.customer_debts WHERE sale_id=$1`, credit["id"]).Scan(&debt); err != nil || debt != "0.0000" {
+		t.Fatal("returned credit invoice balance", debt, err)
+	}
+	// Exchange links a separately paid replacement invoice and audits its refund.
+	exchangeSource := call("GET", "/returns/sales/"+approved["id"].(string), nil, owner, 200)["items"].([]any)[0].(map[string]any)
+	exchange := map[string]any{"request_id": "84000000-0000-0000-0000-000000000001", "sale_id": approved["id"], "replacement_sale_id": damagedInvoice["id"], "resolution": "EXCHANGE", "reason": "Replacement supplied", "method": "CASH", "approve_refund": true, "items": []map[string]any{{"sale_item_batch_id": exchangeSource["sale_item_batch_id"], "quantity": "1", "disposition": "SELLABLE"}}}
+	eq := call("POST", "/returns/sales/preview", exchange, owner, 200)
+	exchange["quote_hash"] = eq["quote_hash"]
+	call("POST", "/returns/sales", exchange, owner, 200)
+	// Original INR rate is preserved for a supplier refund; inventory leaves at landed cost.
+	if _, err = conn.Exec(ctx, `UPDATE app.purchases SET status='POSTED',posted_at=now() WHERE id='00000000-0000-0000-0000-000000000040';
+ INSERT INTO app.payments(id,payment_number,direction,method,currency_code,amount_original,mmk_per_unit,supplier_id,paid_at,recorded_by) VALUES('85000000-0000-0000-0000-000000000001','SUPPLIER-PAID','OUT','CASH','INR',10000,25,'00000000-0000-0000-0000-000000000010',now(),'00000000-0000-0000-0000-000000000001');
+ INSERT INTO app.payment_allocations(payment_id,purchase_id,settlement_mmk,applied_mmk,applied_original) VALUES('85000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000040',250000,250000,10000);
+ UPDATE app.payments SET status='POSTED',posted_at=now() WHERE id='85000000-0000-0000-0000-000000000001'`); err != nil {
+		t.Fatal(err)
+	}
+	supplierReturn := map[string]any{"request_id": "85000000-0000-0000-0000-000000000002", "purchase_id": "00000000-0000-0000-0000-000000000040", "warehouse_id": issue["warehouse_id"], "resolution": "REFUND", "reason": "Supplier accepted damaged bottle", "method": "CASH", "approve_refund": true, "items": []map[string]any{{"batch_id": issue["batch_id"], "quantity": "1", "bucket": "DAMAGED"}}}
+	sp := call("POST", "/returns/purchases/preview", supplierReturn, owner, 200)
+	if sp["credit_original"] != "833.3333" || sp["refund_original"] != "833.3333" || sp["currency_code"] != "INR" {
+		t.Fatal("supplier historical credit", sp)
+	}
+	supplierReturn["quote_hash"] = sp["quote_hash"]
+	sr := call("POST", "/returns/purchases", supplierReturn, owner, 200)
+	call("POST", "/returns/purchases", supplierReturn, owner, 200)
+	if err = conn.QueryRow(ctx, `SELECT count(*)=1 AND bool_and(credit_mmk=20833.3325 AND inventory_cost_mmk=30000) FROM app.purchase_return_items WHERE purchase_return_id=$1`, sr["id"]).Scan(&correct); err != nil || !correct {
+		t.Fatal("purchase cost/rate snapshot", err)
+	}
+	// Two return terminals cannot refund the same remaining six original bottles.
+	returnLine["quantity"] = "6"
+	returnBody["request_id"] = "86000000-0000-0000-0000-000000000001"
+	rq := call("POST", "/returns/sales/preview", returnBody, owner, 200)
+	returnBody["quote_hash"] = rq["quote_hash"]
+	results = make(chan int, 2)
+	for _, request := range []string{"86000000-0000-0000-0000-000000000001", "86000000-0000-0000-0000-000000000002"} {
+		payload := map[string]any{}
+		for k, v := range returnBody {
+			payload[k] = v
+		}
+		payload["request_id"] = request
+		wg.Add(1)
+		go func() { defer wg.Done(); results <- raw("POST", "/returns/sales", payload, owner).Code }()
+	}
+	wg.Wait()
+	close(results)
+	success, conflict = 0, 0
+	for code := range results {
+		if code == 200 {
+			success++
+		} else if code == 409 {
+			conflict++
+		} else {
+			t.Fatal("return concurrency", code)
+		}
+	}
+	if success != 1 || conflict != 1 {
+		t.Fatal("duplicate return allowed", success, conflict)
+	}
+	for _, sql := range []string{`UPDATE app.sales_return_items SET refund_mmk=0`, `DELETE FROM app.purchase_returns WHERE status='POSTED'`, `DELETE FROM app.damaged_products`, `DELETE FROM app.missing_products`, `UPDATE app.stock_operations SET result='{}'`} {
+		if _, err = conn.Exec(ctx, sql); err == nil {
+			t.Fatal("posted return/issue mutable", sql)
+		}
+	}
 
 	for _, q := range []string{`UPDATE app.sale_item_batches SET unit_cost_mmk=0 WHERE sale_item_id IN(SELECT id FROM app.sale_items WHERE sale_id IN(SELECT id FROM app.sales WHERE status='POSTED'))`, `UPDATE app.sales SET invoice_document='{}' WHERE status='POSTED'`, `UPDATE app.inventory SET sellable_quantity=100`} {
 		if _, err = conn.Exec(ctx, q); err == nil {

@@ -164,22 +164,25 @@ type AppCustomerPrice struct {
 }
 
 type AppDamagedProduct struct {
-	ID               pgtype.UUID
-	ProductID        pgtype.UUID
-	BatchID          pgtype.UUID
-	ShipmentItemID   pgtype.UUID
-	WarehouseID      pgtype.UUID
-	Quantity         pgtype.Numeric
-	EstimatedLossMmk pgtype.Numeric
-	Reason           string
-	OccurredAt       pgtype.Timestamptz
-	RecordedBy       pgtype.UUID
-	Disposition      string
-	OriginalPriceMmk pgtype.Numeric
-	ReducedPriceMmk  pgtype.Numeric
-	Notes            pgtype.Text
-	CreatedAt        pgtype.Timestamptz
-	UpdatedAt        pgtype.Timestamptz
+	ID                pgtype.UUID
+	ProductID         pgtype.UUID
+	BatchID           pgtype.UUID
+	ShipmentItemID    pgtype.UUID
+	WarehouseID       pgtype.UUID
+	Quantity          pgtype.Numeric
+	EstimatedLossMmk  pgtype.Numeric
+	Reason            string
+	OccurredAt        pgtype.Timestamptz
+	RecordedBy        pgtype.UUID
+	Disposition       string
+	OriginalPriceMmk  pgtype.Numeric
+	ReducedPriceMmk   pgtype.Numeric
+	Notes             pgtype.Text
+	CreatedAt         pgtype.Timestamptz
+	UpdatedAt         pgtype.Timestamptz
+	SaleID            pgtype.UUID
+	ActualUnitCostMmk pgtype.Numeric
+	DiscountLossMmk   pgtype.Numeric
 }
 
 type AppExchangeRate struct {
@@ -362,6 +365,15 @@ type AppPermission struct {
 	Description string
 	IsSensitive bool
 	CreatedAt   pgtype.Timestamptz
+}
+
+type AppPosDamagedStock struct {
+	WarehouseID       pgtype.UUID
+	BatchID           pgtype.UUID
+	AvailableQuantity pgtype.Numeric
+	ProductID         pgtype.UUID
+	ReceivedAt        pgtype.Timestamptz
+	ActualUnitCostMmk pgtype.Numeric
 }
 
 type AppPosEligibleStock struct {
@@ -601,6 +613,7 @@ type AppSalesReturnItem struct {
 	Disposition     string
 	CreatedAt       pgtype.Timestamptz
 	UpdatedAt       pgtype.Timestamptz
+	UnitCostMmk     pgtype.Numeric
 }
 
 type AppShipment struct {
@@ -690,6 +703,15 @@ type AppStockAdjustmentItem struct {
 	UnitCostMmk       pgtype.Numeric
 	CreatedAt         pgtype.Timestamptz
 	UpdatedAt         pgtype.Timestamptz
+}
+
+type AppStockOperation struct {
+	RequestID pgtype.UUID
+	Kind      string
+	ActorID   pgtype.UUID
+	Payload   []byte
+	Result    []byte
+	CreatedAt pgtype.Timestamptz
 }
 
 type AppStockTake struct {

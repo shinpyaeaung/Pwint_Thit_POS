@@ -10,6 +10,8 @@ const items = [
   { href: '/shipments', label: 'Shipments', icon: Truck, permission: permissions.shipmentsView },
   { href: '/receiving', label: 'Goods receiving', icon: PackageCheck, permission: permissions.receivingManage },
   { href: '/batches', label: 'Batches & expiry', icon: Package, permission: permissions.inventoryView },
+  { href: '/stock-issues', label: 'Damage & missing', icon: ShoppingCart, permission: permissions.damageManage },
+  { href: '/returns', label: 'Returns & refunds', icon: ShoppingCart, permission: permissions.returnsManage },
   { href: '/inventory', label: 'Inventory', icon: Boxes, permission: permissions.inventoryView },
   { href: '/purchases', label: 'Purchases', icon: ShoppingCart, permission: permissions.purchasesView },
   { href: '/suppliers', label: 'Suppliers', icon: Truck, permission: permissions.suppliersView },

@@ -103,6 +103,7 @@ type Querier interface {
 	PurchaseCurrencies(ctx context.Context) ([]byte, error)
 	PurchaseProductOptions(ctx context.Context, search string) ([]byte, error)
 	PurchaseRates(ctx context.Context, arg PurchaseRatesParams) ([]byte, error)
+	PurchaseReturnPost(ctx context.Context, arg PurchaseReturnPostParams) ([]byte, error)
 	PurchaseSupplierOptions(ctx context.Context, search string) ([]byte, error)
 	ReceivingOptions(ctx context.Context, search string) ([]byte, error)
 	ReceivingShipment(ctx context.Context, id pgtype.UUID) ([]byte, error)
@@ -110,7 +111,13 @@ type Querier interface {
 	RecordProductAudit(ctx context.Context, arg RecordProductAuditParams) error
 	RemoveProductUnits(ctx context.Context, arg RemoveProductUnitsParams) error
 	ResetProductDefaults(ctx context.Context, productID pgtype.UUID) error
+	ReturnPurchaseChoices(ctx context.Context, search string) ([]byte, error)
+	ReturnPurchaseSource(ctx context.Context, id pgtype.UUID) ([]byte, error)
+	ReturnSaleChoices(ctx context.Context, search string) ([]byte, error)
+	ReturnSaleSource(ctx context.Context, id pgtype.UUID) ([]byte, error)
+	ReturnsHistory(ctx context.Context, arg ReturnsHistoryParams) ([]byte, error)
 	RevokeSession(ctx context.Context, tokenHash []byte) error
+	SalesReturnPost(ctx context.Context, arg SalesReturnPostParams) ([]byte, error)
 	SaveCostDocument(ctx context.Context, arg SaveCostDocumentParams) error
 	SaveCostItem(ctx context.Context, arg SaveCostItemParams) error
 	ShipmentChildHasPayment(ctx context.Context, transportationStageID pgtype.UUID) (bool, error)
@@ -122,6 +129,9 @@ type Querier interface {
 	ShipmentReservedQuantity(ctx context.Context, purchaseItemID pgtype.UUID) (string, error)
 	ShipmentStages(ctx context.Context, arg ShipmentStagesParams) ([]byte, error)
 	ShipmentWarehouses(ctx context.Context) ([]byte, error)
+	StockIssue(ctx context.Context, arg StockIssueParams) ([]byte, error)
+	StockIssueChoices(ctx context.Context, search string) ([]byte, error)
+	StockIssuesHistory(ctx context.Context, arg StockIssuesHistoryParams) ([]byte, error)
 	SupplierPurchaseBalance(ctx context.Context, id pgtype.UUID) ([]byte, error)
 	SupplierPurchaseHistory(ctx context.Context, arg SupplierPurchaseHistoryParams) ([]byte, error)
 	TouchShipment(ctx context.Context, id pgtype.UUID) error

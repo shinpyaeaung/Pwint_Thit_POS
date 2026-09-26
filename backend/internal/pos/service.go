@@ -28,6 +28,7 @@ func New(db DB) *Service { return &Service{db: db, q: database.New(db)} }
 func (s *Service) Register(r *gin.Engine, a *authz.Service) {
 	s.a = a
 	s.registerCustomers(r, a)
+	s.registerReturns(r, a)
 	r.GET("/api/v1/pos/products", a.RequireAny(permissions.SalesCreate, permissions.ProductsUpdate), s.Products)
 	r.GET("/api/v1/pos/warehouses", a.RequireAny(permissions.SalesCreate, permissions.ProductsUpdate), s.Warehouses)
 	r.GET("/api/v1/pos/customers", a.RequireAny(permissions.SalesCreate, permissions.CustomersManage), s.Customers)
@@ -132,12 +133,14 @@ func (s *Service) Prices(c *gin.Context) {
 }
 
 type Line struct {
-	Product  string `json:"product_id"`
-	Unit     string `json:"unit_code"`
-	Pack     string `json:"units_per_pack"`
-	Quantity string `json:"quantity"`
-	Price    string `json:"unit_price_mmk"`
-	Discount string `json:"discount_mmk"`
+	StockBucket string `json:"stock_bucket,omitempty"`
+	Batch       string `json:"batch_id,omitempty"`
+	Product     string `json:"product_id"`
+	Unit        string `json:"unit_code"`
+	Pack        string `json:"units_per_pack"`
+	Quantity    string `json:"quantity"`
+	Price       string `json:"unit_price_mmk"`
+	Discount    string `json:"discount_mmk"`
 }
 type Checkout struct {
 	ApproveBelowCost bool   `json:"approve_below_cost"`
@@ -185,6 +188,25 @@ func (s *Service) Checkout(preview bool) gin.HandlerFunc {
 			}
 		}
 		for _, l := range in.Items {
+			if l.StockBucket != "" && l.StockBucket != "SELLABLE" && l.StockBucket != "DAMAGED" {
+				fail(c, 400, "Invalid stock bucket.")
+				return
+			}
+			if l.StockBucket == "DAMAGED" {
+				allowed, ok := s.allowed(c, permissions.DamageManage)
+				if !ok {
+					return
+				}
+				if !allowed {
+					fail(c, 403, "Damaged stock permission is required.")
+					return
+				}
+				if !id(l.Batch) {
+					fail(c, 400, "Choose a damaged batch.")
+					return
+				}
+			}
+
 			if !id(l.Product) || l.Unit == "" || len(l.Unit) > 20 || !quantity.MatchString(l.Pack) || !quantity.MatchString(l.Quantity) || !money.MatchString(l.Price) || !money.MatchString(l.Discount) {
 				fail(c, 400, "Enter valid quantities, prices and discounts.")
 				return
