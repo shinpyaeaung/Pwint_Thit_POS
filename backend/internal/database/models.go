@@ -139,6 +139,7 @@ type AppCustomer struct {
 	IsActive       bool
 	CreatedAt      pgtype.Timestamptz
 	UpdatedAt      pgtype.Timestamptz
+	Version        int64
 }
 
 type AppCustomerDebt struct {
@@ -151,6 +152,15 @@ type AppCustomerDebt struct {
 	RefundedMmk     pgtype.Numeric
 	OutstandingMmk  pgtype.Numeric
 	PaymentStatus   string
+}
+
+type AppCustomerPrice struct {
+	CustomerID pgtype.UUID
+	ProductID  pgtype.UUID
+	UnitCode   string
+	PriceMmk   pgtype.Numeric
+	CreatedAt  pgtype.Timestamptz
+	UpdatedAt  pgtype.Timestamptz
 }
 
 type AppDamagedProduct struct {
@@ -326,6 +336,8 @@ type AppPayment struct {
 	RecordedBy        pgtype.UUID
 	CreatedAt         pgtype.Timestamptz
 	UpdatedAt         pgtype.Timestamptz
+	RequestID         pgtype.UUID
+	RequestPayload    []byte
 }
 
 type AppPaymentAllocation struct {

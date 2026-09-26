@@ -110,6 +110,27 @@ func TestPOSIntegration(t *testing.T) {
 	}
 	line := map[string]any{"product_id": "00000000-0000-0000-0000-000000000020", "unit_code": "BOTTLE", "units_per_pack": "1", "quantity": "10", "unit_price_mmk": "40000", "discount_mmk": "0"}
 	body := map[string]any{"request_id": "60000000-0000-0000-0000-000000000001", "warehouse_id": "00000000-0000-0000-0000-000000000012", "customer_id": "", "pricing_mode": "RETAIL", "payment_method": "CASH", "payment_reference": "", "tender_mmk": "450000", "reason": "", "due_date": "", "quote_hash": "", "items": []map[string]any{line}}
+
+	// Customer-specific prices use the selected pack and preserve below-cost rules.
+	customerInput := map[string]any{"code": "SPECIAL", "name": "Wholesale customer", "business_name": "Shop", "phone": "099", "address": "Yangon", "customer_type": "WHOLESALE", "credit_limit_mmk": "1000000", "notes": "Account", "is_active": true}
+	call("POST", "/customers", customerInput, staff, 403)
+	specialCustomer := call("POST", "/customers", customerInput, owner, 200)["id"].(string)
+	specialPath := "/customers/" + specialCustomer
+	call("PUT", specialPath+"/prices", map[string]any{"version": "1", "product_id": line["product_id"], "unit_code": "BOTTLE", "price_mmk": "50000", "remove": false}, owner, 204)
+	body["customer_id"] = specialCustomer
+	body["due_date"] = "2099-01-01"
+	body["tender_mmk"] = "300000"
+	line["unit_price_mmk"] = "50000"
+	specialQuote := call("POST", "/pos/quote", body, owner, 200)
+	if specialQuote["total_mmk"] != "500000.0000" || specialQuote["outstanding_mmk"] != "200000.0000" {
+		t.Fatal("special pricing", specialQuote)
+	}
+	line["unit_price_mmk"] = "40000"
+	call("POST", "/pos/quote", body, owner, 409)
+	call("PUT", specialPath+"/prices", map[string]any{"version": "2", "product_id": line["product_id"], "unit_code": "BOTTLE", "price_mmk": "0", "remove": true}, owner, 204)
+	body["customer_id"] = ""
+	body["due_date"] = ""
+	body["tender_mmk"] = "450000"
 	call("POST", "/pos/quote", body, "", 401)
 	call("POST", "/pos/checkout", body, staff, 403)
 	quote := call("POST", "/pos/quote", body, owner, 200)
@@ -390,6 +411,78 @@ func TestPOSIntegration(t *testing.T) {
 	if err = conn.QueryRow(ctx, `SELECT available_quantity::text FROM app.inventory WHERE batch_id='00000000-0000-0000-0000-000000000072'`).Scan(&qty); err != nil || qty != "40.000000" {
 		t.Fatal("expired goods sold", qty, err)
 	}
+
+	// Seed a posted historical invoice; collections use the same live debt ledger as POS.
+	var historySale string
+	err = conn.QueryRow(ctx, `WITH s AS(INSERT INTO app.sales(invoice_number,customer_id,warehouse_id,pricing_mode,sold_at,due_date,created_by) VALUES('CREDIT-500K',$1,'00000000-0000-0000-0000-000000000012','WHOLESALE',now(),'2099-01-01','00000000-0000-0000-0000-000000000001') RETURNING id), i AS(INSERT INTO app.sale_items(sale_id,line_number,product_id,unit_code,units_per_pack,quantity,unit_price_mmk) SELECT id,1,'00000000-0000-0000-0000-000000000020','BOTTLE',1,1,500000 FROM s) SELECT id::text FROM s`, specialCustomer).Scan(&historySale)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = conn.Exec(ctx, `UPDATE app.sales SET status='POSTED',posted_at=now() WHERE id=$1`, historySale); err != nil {
+		t.Fatal(err)
+	}
+	unpaid := call("GET", specialPath+"/history", nil, owner, 200)["invoices"].([]any)[0].(map[string]any)
+	if unpaid["payment_status"] != "UNPAID" {
+		t.Fatal("unpaid status", unpaid)
+	}
+	collection := map[string]any{"request_id": "70000000-0000-0000-0000-000000000001", "sale_id": historySale, "amount_mmk": "300000", "method": "CASH", "reference": "Receipt 1"}
+	call("POST", specialPath+"/payments", collection, staff, 403)
+	beforePayment := snapshot()
+	if _, err = conn.Exec(ctx, `CREATE TRIGGER test_checkout_failure AFTER INSERT ON app.audit_logs FOR EACH ROW EXECUTE FUNCTION app.test_checkout_failure()`); err != nil {
+		t.Fatal(err)
+	}
+	call("POST", specialPath+"/payments", collection, owner, 503)
+	if snapshot() != beforePayment {
+		t.Fatal("collection audit failure left payment")
+	}
+	if _, err = conn.Exec(ctx, `DROP TRIGGER test_checkout_failure ON app.audit_logs`); err != nil {
+		t.Fatal(err)
+	}
+	call("POST", specialPath+"/payments", collection, owner, 201)
+	call("POST", specialPath+"/payments", collection, owner, 201)
+	history := call("GET", specialPath+"/history", nil, owner, 200)["invoices"].([]any)[0].(map[string]any)
+	if history["total_mmk"] != "500000.0000" || history["amount_paid_mmk"] != "300000.0000" || history["outstanding_mmk"] != "200000.0000" || history["payment_status"] != "PARTIALLY_PAID" {
+		t.Fatal("collection balance", history)
+	}
+	collection["amount_mmk"] = "200000" // UUID cannot be reused with edited details.
+	call("POST", specialPath+"/payments", collection, owner, 409)
+	results = make(chan int, 2)
+	for _, request := range []string{"70000000-0000-0000-0000-000000000002", "70000000-0000-0000-0000-000000000003"} {
+		payload := map[string]any{}
+		for k, v := range collection {
+			payload[k] = v
+		}
+		payload["request_id"] = request
+		wg.Add(1)
+		go func() { defer wg.Done(); results <- raw("POST", specialPath+"/payments", payload, owner).Code }()
+	}
+	wg.Wait()
+	close(results)
+	success, conflict = 0, 0
+	for code := range results {
+		if code == 201 {
+			success++
+		} else if code == 409 {
+			conflict++
+		} else {
+			t.Fatal(code)
+		}
+	}
+	if success != 1 || conflict != 1 {
+		t.Fatal("concurrent collection overpaid", success, conflict)
+	}
+	history = call("GET", specialPath+"/history", nil, owner, 200)["invoices"].([]any)[0].(map[string]any)
+	if history["outstanding_mmk"] != "0.0000" || history["payment_status"] != "PAID" {
+		t.Fatal("paid ledger", history)
+	}
+	detail := call("GET", specialPath, nil, owner, 200)
+	if detail["outstanding_mmk"] != "0.0000" {
+		t.Fatal("customer balance", detail)
+	}
+	customerInput["version"] = detail["version"]
+	customerInput["is_active"] = false
+	call("PUT", specialPath, customerInput, owner, 200)
+	call("PUT", specialPath, customerInput, owner, 409)
 
 	for _, q := range []string{`UPDATE app.sale_item_batches SET unit_cost_mmk=0 WHERE sale_item_id IN(SELECT id FROM app.sale_items WHERE sale_id IN(SELECT id FROM app.sales WHERE status='POSTED'))`, `UPDATE app.sales SET invoice_document='{}' WHERE status='POSTED'`, `UPDATE app.inventory SET sellable_quantity=100`} {
 		if _, err = conn.Exec(ctx, q); err == nil {

@@ -28,6 +28,15 @@ type Querier interface {
 	CreateSession(ctx context.Context, arg CreateSessionParams) (pgtype.UUID, error)
 	CreateShipmentWarehouse(ctx context.Context, arg CreateShipmentWarehouseParams) (pgtype.UUID, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (pgtype.UUID, error)
+	CustomerCatalog(ctx context.Context, search string) ([]byte, error)
+	CustomerDetail(ctx context.Context, id pgtype.UUID) ([]byte, error)
+	CustomerHistory(ctx context.Context, arg CustomerHistoryParams) ([]byte, error)
+	CustomerPayment(ctx context.Context, arg CustomerPaymentParams) (pgtype.UUID, error)
+	CustomerPayments(ctx context.Context, id pgtype.UUID) ([]byte, error)
+	CustomerPrice(ctx context.Context, arg CustomerPriceParams) error
+	CustomerPrices(ctx context.Context, id pgtype.UUID) ([]byte, error)
+	CustomerSave(ctx context.Context, arg CustomerSaveParams) (pgtype.UUID, error)
+	CustomersList(ctx context.Context, arg CustomersListParams) ([]byte, error)
 	EffectivePermissions(ctx context.Context, id pgtype.UUID) ([]string, error)
 	FinalizeShipmentCost(ctx context.Context, arg FinalizeShipmentCostParams) error
 	FindLoginUser(ctx context.Context, lower string) (FindLoginUserRow, error)

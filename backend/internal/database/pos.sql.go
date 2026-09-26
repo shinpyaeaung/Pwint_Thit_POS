@@ -41,7 +41,7 @@ func (q *Queries) POSCheckout(ctx context.Context, arg POSCheckoutParams) ([]byt
 }
 
 const pOSCreateCustomer = `-- name: POSCreateCustomer :one
-WITH created AS (INSERT INTO app.customers(code,name,phone,customer_type,credit_limit_mmk) SELECT 'C-'||gen_random_uuid(),d->>'name',nullif(d->>'phone',''),d->>'customer_type',(d->>'credit_limit_mmk')::numeric FROM (SELECT $1::jsonb d) src RETURNING id, code, name, business_name, phone, address, customer_type, credit_limit_mmk, notes, is_active, created_at, updated_at), audit AS (INSERT INTO app.audit_logs(actor_id,action,entity_type,entity_id,new_value) SELECT $2::uuid,'customers.create','customers',id,to_jsonb(created) FROM created)
+WITH created AS (INSERT INTO app.customers(code,name,phone,customer_type,credit_limit_mmk) SELECT 'C-'||gen_random_uuid(),d->>'name',nullif(d->>'phone',''),d->>'customer_type',(d->>'credit_limit_mmk')::numeric FROM (SELECT $1::jsonb d) src RETURNING id, code, name, business_name, phone, address, customer_type, credit_limit_mmk, notes, is_active, created_at, updated_at, version), audit AS (INSERT INTO app.audit_logs(actor_id,action,entity_type,entity_id,new_value) SELECT $2::uuid,'customers.create','customers',id,to_jsonb(created) FROM created)
 SELECT id FROM created
 `
 
