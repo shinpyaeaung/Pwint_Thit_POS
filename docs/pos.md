@@ -8,7 +8,7 @@ Open **Point of sale**. Choose the warehouse and retail/wholesale pricing. Users
 - F2 focuses product search, F4 focuses customer search, and F8 reviews checkout. Cart changes and decimal totals update locally without a network round trip. Search uses short debouncing and cached results; scan lookup checks an exact barcode before adding.
 - Choose the selling unit and quantity on each cart line. One line per product uses one selected unit. Repeated scans of the same unit increment quantity. A different packaging barcode for a product already in the cart asks the cashier to change that line's unit rather than silently mixing conversions.
 - Choose an existing customer or, with `customers.manage`, add a name/phone/type and credit limit. Walk-in customers must pay in full.
-- Authorized discounts are fixed MMK amounts per line, not percentages. `sales.discount` and an explanation are required. Selling below actual FIFO batch cost requires `sales.sell_below_cost` and a reason; it remains visibly flagged in review.
+- Authorized discounts are fixed MMK amounts per line, not percentages. `sales.discount` and an explanation are required. Selling below actual FIFO batch cost requires `sales.sell_below_cost`, a reason and explicit approval in review. Restricted users can see the loss warning but cannot complete the sale.
 - Choose cash, bank transfer, mobile payment or other. Leave tender blank for exact payment. Cash overpayment produces change; only the invoice amount is posted as payment. Non-cash overpayment is rejected.
 - Partial/unpaid checkout requires a named customer, a due date on/after today's Myanmar business date, and sufficient unused credit limit. A zero credit limit means full payment. Existing posted debt is checked while the customer row is locked.
 - Review and complete the sale, then print the invoice. Checkout has no decorative animation. Internal costs and profit are excluded from printed invoices.
@@ -57,3 +57,16 @@ Verified: `make check`, `make test-integration`, and all 18 browser tests (`make
 The Go checkout service explicitly begins one PostgreSQL transaction, executes the complete posting function through that transaction, and commits before returning success. Error/cancellation cleanup rolls back using a bounded independent context. Quotes remain read-only previews. All invoice, item, FIFO cost snapshot, movement-triggered balance, payment/allocation, posting and audit writes share the same transaction.
 
 Integration tests inject database failures at 11 points: sale creation, item creation, batch cost recording, movement insertion, inventory update, payment creation, allocation, payment posting, sale posting, audit insertion and deferred COMMIT. Every failure must preserve the complete before-state of all affected ledger tables and inventory. The same request then succeeds, and concurrent retries produce only one sale. Invoice sequence gaps after rollback are expected and do not represent posted sales.
+
+
+## Phase 15 — Below-cost protection
+
+Each cart line compares its net selling total after discount with the sum of its exact FIFO batch cost allocations. A loss on any line requires approval even if other lines make the whole invoice profitable. Equality does not require approval. The backend repeats the comparison and permission checks at posting; a preview or client checkbox cannot authorize a restricted user.
+
+Super Admin has full access. A Staff Admin can approve only when explicitly granted `sales.sell_below_cost` through the existing permission management workflow. An authorized cashier must enter a reason and check **I approve selling the flagged items below actual batch cost**. Otherwise the sale is blocked. A restricted cashier must have a Super Admin complete the sale in their own session, or receive the explicit permission grant. This implements approval at checkout; there is no separate pending approval queue or manager-password handoff.
+
+The approval is inserted and consumed inside the sale transaction. It records the authenticated approver, time, reason, sale reference, complete computed sale snapshot and SHA-256 snapshot hash. `sales.below_cost.approved` is appended to the audit log in the same transaction. Consumed approvals cannot be edited or deleted, and retries cannot create duplicate approvals. Failure to persist approval or audit data rolls back all sale and stock writes.
+
+Restricted staff see the warning without receiving protected cost/profit amounts. Authorized finance viewers see the actual allocated batch cost beside the selling total. The normal compact checkout dialog has no extra animation.
+
+Verification covers missing confirmation/reason, forged approval, permission revocation after preview, authorized Super Admin and delegated Staff Admin approvals, stale quotes, immutable approval snapshots, retry deduplication, approval/audit failure rollback, equal-cost sales and a 0.0001 MMK loss after discount. Chrome and WebKit exercise restricted warnings and owner approval through the real application.

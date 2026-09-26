@@ -139,6 +139,7 @@ func TestPOSIntegration(t *testing.T) {
    'movements',(SELECT coalesce(jsonb_agg(to_jsonb(s) ORDER BY id),'[]') FROM app.inventory_movements s),
    'payments',(SELECT coalesce(jsonb_agg(to_jsonb(s) ORDER BY id),'[]') FROM app.payments s),
    'allocations',(SELECT coalesce(jsonb_agg(to_jsonb(s) ORDER BY id),'[]') FROM app.payment_allocations s),
+   'approvals',(SELECT coalesce(jsonb_agg(to_jsonb(s) ORDER BY id),'[]') FROM app.approvals s),
    'audit',(SELECT coalesce(jsonb_agg(to_jsonb(s) ORDER BY id),'[]') FROM app.audit_logs s)
   )::text`).Scan(&value)
 		if err != nil {
@@ -253,17 +254,110 @@ func TestPOSIntegration(t *testing.T) {
 	body["customer_id"] = ""
 	body["due_date"] = ""
 	body["reason"] = "Owner-approved clearance"
-	call("POST", "/pos/quote", body, staff, 409)
+	body["request_id"] = "60000000-0000-0000-0000-000000000005"
+	restricted := call("POST", "/pos/quote", body, staff, 200)
+	if restricted["requires_below_cost_approval"] != true || restricted["can_approve_below_cost"] != false {
+		t.Fatal("missing restricted warning", restricted)
+	}
+	if _, ok := restricted["cost_mmk"]; ok {
+		t.Fatal("restricted quote leaked cost")
+	}
+	body["quote_hash"] = restricted["quote_hash"]
+	body["approve_below_cost"] = true // Forged UI approval cannot bypass the backend.
+	beforeRestricted := snapshot()
+	call("POST", "/pos/checkout", body, staff, 409)
+	if snapshot() != beforeRestricted {
+		t.Fatal("unauthorized sale mutated ledger")
+	}
 	low := call("POST", "/pos/quote", body, owner, 200)
 	if low["lines"].([]any)[0].(map[string]any)["below_cost"] != true {
 		t.Fatal("missing loss warning")
 	}
+	body["quote_hash"] = low["quote_hash"]
+	body["approve_below_cost"] = false
+	call("POST", "/pos/checkout", body, owner, 409)
+	body["approve_below_cost"] = true
+	body["reason"] = " "
+	call("POST", "/pos/checkout", body, owner, 409)
+	body["reason"] = "Owner-approved clearance"
+	body["quote_hash"] = "stale"
+	call("POST", "/pos/checkout", body, owner, 409)
+	body["quote_hash"] = low["quote_hash"]
+	// Approval/audit failures roll back the sale, payment, costs and movement too.
+	for _, table := range []string{"approvals", "audit_logs"} {
+		before := snapshot()
+		if _, err := conn.Exec(ctx, "CREATE TRIGGER test_checkout_failure AFTER INSERT ON app."+table+" FOR EACH ROW EXECUTE FUNCTION app.test_checkout_failure()"); err != nil {
+			t.Fatal(err)
+		}
+		call("POST", "/pos/checkout", body, owner, 503)
+		if snapshot() != before {
+			t.Fatal("approval failure left a partial sale")
+		}
+		if _, err := conn.Exec(ctx, "DROP TRIGGER test_checkout_failure ON app."+table); err != nil {
+			t.Fatal(err)
+		}
+	}
+	approved := call("POST", "/pos/checkout", body, owner, 201)
+	call("POST", "/pos/checkout", body, owner, 201)
+	var correct bool
+	err = conn.QueryRow(ctx, `SELECT count(*)=1 AND bool_and(a.decided_by=s.created_by AND a.consumed_at IS NOT NULL AND a.request_payload=s.invoice_document AND a.request_hash=sha256(convert_to(a.request_payload::text,'UTF8'))) FROM app.approvals a JOIN app.sales s ON s.id=a.sale_id WHERE a.sale_id=$1`, approved["id"]).Scan(&correct)
+	if err != nil || !correct {
+		t.Fatal("missing or duplicate bound approval", err)
+	}
+	err = conn.QueryRow(ctx, `SELECT count(*)=1 FROM app.audit_logs WHERE entity_id=$1 AND action='sales.below_cost.approved' AND reason='Owner-approved clearance' AND actor_id='00000000-0000-0000-0000-000000000001'`, approved["id"]).Scan(&correct)
+	if err != nil || !correct {
+		t.Fatal("approval audit missing", err)
+	}
+	for _, sql := range []string{`UPDATE app.approvals SET reason='changed' WHERE consumed_at IS NOT NULL`, `DELETE FROM app.approvals WHERE consumed_at IS NOT NULL`} {
+		if _, err := conn.Exec(ctx, sql); err == nil {
+			t.Fatal("consumed approval mutable")
+		}
+	}
+	grant := `INSERT INTO app.user_permissions(user_id,permission_code,granted_by) VALUES('00000000-0000-0000-0000-000000000002','sales.sell_below_cost','00000000-0000-0000-0000-000000000001')`
+	if _, err := conn.Exec(ctx, grant); err != nil {
+		t.Fatal(err)
+	}
+	body["request_id"] = "60000000-0000-0000-0000-000000000006"
+	low = call("POST", "/pos/quote", body, staff, 200)
+	if low["can_approve_below_cost"] != true {
+		t.Fatal("staff grant not recognized")
+	}
+	body["quote_hash"] = low["quote_hash"]
+	if _, err := conn.Exec(ctx, `DELETE FROM app.user_permissions WHERE permission_code='sales.sell_below_cost'`); err != nil {
+		t.Fatal(err)
+	}
+	call("POST", "/pos/checkout", body, staff, 409) // Permission is rechecked after preview.
+	if _, err := conn.Exec(ctx, grant); err != nil {
+		t.Fatal(err)
+	}
+	delegated := call("POST", "/pos/checkout", body, staff, 201)
+	err = conn.QueryRow(ctx, `SELECT count(*)=1 FROM app.approvals WHERE sale_id=$1 AND decided_by='00000000-0000-0000-0000-000000000002'`, delegated["id"]).Scan(&correct)
+	if err != nil || !correct {
+		t.Fatal("delegated approval missing", err)
+	}
+	// Equality is not a loss. One decimal step below the actual cost is a loss.
+	if _, err := conn.Exec(ctx, `UPDATE app.product_units SET retail_price_mmk=20000 WHERE unit_code='BOTTLE'`); err != nil {
+		t.Fatal(err)
+	}
+	line["unit_price_mmk"] = "20000"
+	body["tender_mmk"] = "20000"
+	equal := call("POST", "/pos/quote", body, owner, 200)
+	if equal["requires_below_cost_approval"] != false {
+		t.Fatal("equal cost requires approval")
+	}
+	line["discount_mmk"] = "0.0001"
+	loss := call("POST", "/pos/quote", body, owner, 200)
+	if loss["requires_below_cost_approval"] != true {
+		t.Fatal("exact decimal loss missed")
+	}
+	line["discount_mmk"] = "0"
+	body["approve_below_cost"] = false
 	_, err = conn.Exec(ctx, `UPDATE app.product_units SET retail_price_mmk=40000 WHERE unit_code='BOTTLE'`)
 	if err != nil {
 		t.Fatal(err)
 	}
 	line["unit_price_mmk"] = "40000"
-	line["quantity"] = "17"
+	line["quantity"] = "15"
 	body["tender_mmk"] = "700000"
 	body["reason"] = ""
 	quote = call("POST", "/pos/quote", body, owner, 200)

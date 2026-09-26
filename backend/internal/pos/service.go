@@ -139,17 +139,18 @@ type Line struct {
 	Discount string `json:"discount_mmk"`
 }
 type Checkout struct {
-	Request   string `json:"request_id"`
-	Warehouse string `json:"warehouse_id"`
-	Customer  string `json:"customer_id"`
-	Mode      string `json:"pricing_mode"`
-	Tender    string `json:"tender_mmk"`
-	Method    string `json:"payment_method"`
-	Reference string `json:"payment_reference"`
-	Due       string `json:"due_date"`
-	Reason    string `json:"reason"`
-	Quote     string `json:"quote_hash"`
-	Items     []Line `json:"items"`
+	ApproveBelowCost bool   `json:"approve_below_cost"`
+	Request          string `json:"request_id"`
+	Warehouse        string `json:"warehouse_id"`
+	Customer         string `json:"customer_id"`
+	Mode             string `json:"pricing_mode"`
+	Tender           string `json:"tender_mmk"`
+	Method           string `json:"payment_method"`
+	Reference        string `json:"payment_reference"`
+	Due              string `json:"due_date"`
+	Reason           string `json:"reason"`
+	Quote            string `json:"quote_hash"`
+	Items            []Line `json:"items"`
 }
 
 func (s *Service) allowed(c *gin.Context, p permissions.Code) (bool, bool) {
