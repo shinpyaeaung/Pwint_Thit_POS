@@ -26,6 +26,7 @@ type Service struct {
 func New(db DB) *Service { return &Service{db: db, q: database.New(db)} }
 func (s *Service) Register(r *gin.Engine, a *authz.Service) {
 	s.a = a
+	r.GET("/api/v1/dashboard", a.Require(permissions.DashboardView), s.Dashboard)
 	r.GET("/api/v1/expenses/categories", a.Require(permissions.ExpensesManage), s.Categories)
 	r.GET("/api/v1/expenses", a.Require(permissions.ExpensesManage), s.List)
 	r.POST("/api/v1/expenses", a.Require(permissions.ExpensesManage), s.Post)
@@ -176,4 +177,27 @@ func (s *Service) Reverse(c *gin.Context) {
 	s.write(c, func(q *database.Queries) (any, error) {
 		return q.ExpenseReverse(c.Request.Context(), database.ExpenseReverseParams{Data: d, Actor: actor.ID})
 	})
+}
+
+func (s *Service) Dashboard(c *gin.Context) {
+	access := map[string]bool{}
+	for name, permission := range map[string]permissions.Code{
+		"sales": permissions.SalesView, "profit": permissions.FinanceViewProfit,
+		"inventory": permissions.InventoryView, "cost": permissions.FinanceViewLandedCost,
+		"damage": permissions.DamageManage, "customers": permissions.CustomersManage,
+		"supplier_cost": permissions.PurchasesViewCost, "purchases": permissions.PurchasesView,
+		"expenses": permissions.ExpensesManage, "returns": permissions.ReturnsManage,
+	} {
+		allowed, err := s.a.Allowed(c, permission)
+		if err != nil {
+			fail(c, 503, "Authorization unavailable.")
+			return
+		}
+		access[name] = allowed
+	}
+	// Purchase amounts need both document and cost access.
+	access["purchases"] = access["purchases"] && access["supplier_cost"]
+	data, _ := json.Marshal(access)
+	b, e := s.q.Dashboard(c.Request.Context(), data)
+	respond(c, b, e)
 }

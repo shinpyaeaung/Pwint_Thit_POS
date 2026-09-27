@@ -103,6 +103,69 @@ func TestFinanceIntegration(t *testing.T) {
 	if report["revenue_mmk"] != "80000.0000" || report["cogs_mmk"] != "60000.0000" || report["gross_profit_mmk"] != "20000.0000" || report["net_profit_mmk"] != "20000.0000" {
 		t.Fatal("landed profit", report)
 	}
+
+	t.Run("dashboard snapshot and permission boundaries", func(t *testing.T) {
+		call("GET", "/dashboard", nil, staff, 403)
+		dashboard := call("GET", "/dashboard", nil, owner, 200)
+		if dashboard["sales"].(map[string]any)["today_mmk"] != "80000.0000" || dashboard["profit"].(map[string]any)["month"].(map[string]any)["net_profit_mmk"] != "20000.0000" {
+			t.Fatal(dashboard)
+		}
+		if dashboard["inventory_value"].(map[string]any)["amount_mmk"] != nil {
+			t.Fatal("unfinalized inventory must not be valued", dashboard)
+		}
+		if dashboard["customer_debt_mmk"] != "80000.0000" || dashboard["supplier_debt_mmk"] != "0.0000" {
+			t.Fatal("ledger balances", dashboard)
+		}
+		if _, err = conn.Exec(ctx, `UPDATE app.batches SET expires_on=app.business_date()+10,finalized_at=now(); UPDATE app.products SET minimum_stock=20 WHERE sku='P-1'; UPDATE app.purchases SET status='POSTED',posted_at=now();`); err != nil {
+			t.Fatal(err)
+		}
+		dashboard = call("GET", "/dashboard", nil, owner, 200)
+		if dashboard["inventory_value"].(map[string]any)["amount_mmk"] != "300000.0000" || dashboard["supplier_debt_mmk"] != "250000.0000" {
+			t.Fatal("historical landed value and supplier debt", dashboard)
+		}
+		for _, key := range []string{"low_stock", "expiring", "damaged"} {
+			if dashboard[key].(map[string]any)["total"] != float64(1) {
+				t.Fatal(key, dashboard)
+			}
+		}
+		grant := func(code string) {
+			t.Helper()
+			if _, err = conn.Exec(ctx, `INSERT INTO app.user_permissions(user_id,permission_code,granted_by) VALUES('00000000-0000-0000-0000-000000000002',$1,'00000000-0000-0000-0000-000000000001')`, code); err != nil {
+				t.Fatal(err)
+			}
+		}
+		grant("dashboard.view")
+		limited := call("GET", "/dashboard", nil, staff, 200)
+		for _, key := range []string{"sales", "profit", "inventory_value", "customer_debt_mmk", "supplier_debt_mmk", "low_stock", "expiring", "damaged"} {
+			if _, exists := limited[key]; exists {
+				t.Fatal("leaked", key)
+			}
+		}
+		if len(limited["recent"].([]any)) != 0 {
+			t.Fatal("leaked transactions", limited)
+		}
+		grant("inventory.view")
+		limited = call("GET", "/dashboard", nil, staff, 200)
+		if _, exists := limited["low_stock"]; !exists {
+			t.Fatal("missing permitted stock")
+		}
+		if _, exists := limited["inventory_value"]; exists {
+			t.Fatal("leaked landed value")
+		}
+		grant("sales.view")
+		limited = call("GET", "/dashboard", nil, staff, 200)
+		if _, exists := limited["profit"]; exists {
+			t.Fatal("leaked profit")
+		}
+		if len(limited["recent"].([]any)) != 1 {
+			t.Fatal("sale-only recent", limited)
+		}
+		for _, row := range limited["recent"].([]any) {
+			if row.(map[string]any)["kind"] != "Sale" {
+				t.Fatal(row)
+			}
+		}
+	})
 	var category, today string
 	if err = conn.QueryRow(ctx, `SELECT id::text,app.business_date()::text FROM app.expense_categories WHERE name='Rent'`).Scan(&category, &today); err != nil {
 		t.Fatal(err)
@@ -154,6 +217,17 @@ func TestFinanceIntegration(t *testing.T) {
 	report = call("GET", "/finance/profit", nil, owner, 200)
 	if report["expenses_mmk"] != "0.0000" || report["net_profit_mmk"] != "20000.0000" {
 		t.Fatal("reversal profit", report)
+	}
+	dashboardAfterReversal := call("GET", "/dashboard", nil, owner, 200)
+	expenseEvents := map[string]string{}
+	for _, row := range dashboardAfterReversal["recent"].([]any) {
+		event := row.(map[string]any)
+		if event["kind"] == "Expense" || event["kind"] == "Expense reversal" {
+			expenseEvents[event["kind"].(string)] = event["amount_mmk"].(string)
+		}
+	}
+	if expenseEvents["Expense"] != "5000.0001" || expenseEvents["Expense reversal"] != "-5000.0001" {
+		t.Fatal("dashboard must retain original expense and reversal", expenseEvents)
 	}
 	var valid bool
 	if err = conn.QueryRow(ctx, `SELECT count(*)=1 FROM app.payments p JOIN app.expense_reversal_payments r ON r.offset_payment_id=p.id WHERE p.direction='IN' AND p.status='POSTED' AND p.amount_mmk=5000.0001`).Scan(&valid); err != nil || !valid {

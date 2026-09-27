@@ -11,6 +11,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const dashboard = `-- name: Dashboard :one
+SELECT app.dashboard($1::jsonb)::jsonb
+`
+
+func (q *Queries) Dashboard(ctx context.Context, access []byte) ([]byte, error) {
+	row := q.db.QueryRow(ctx, dashboard, access)
+	var column_1 []byte
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const expenseCategories = `-- name: ExpenseCategories :one
 SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'name',name) ORDER BY name),'[]'::jsonb)::jsonb FROM app.expense_categories
 `

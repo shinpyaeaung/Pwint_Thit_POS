@@ -5,7 +5,7 @@ test.beforeEach(async ({ page }) => { await signIn(page) })
 test('connects the real frontend to the API and PostgreSQL', async ({ page }) => {
   const errors: string[] = []
   page.on('pageerror', error => errors.push(error.message))
-  await page.goto('/')
+  await page.goto('/workspace')
   await expect(page.getByRole('heading', { name: 'Distribution workspace' })).toBeVisible()
   await expect(page.getByRole('status')).toHaveText('All systems connected. The foundation is ready.')
   await expect(page.getByText('PostgreSQL is connected')).toBeVisible()
@@ -18,7 +18,7 @@ test('connects the real frontend to the API and PostgreSQL', async ({ page }) =>
 
 test('shows outage and recovers without a page reload', async ({ page }) => {
   await page.route('**/api/v1/health', route => route.fulfill({ status: 503, contentType: 'application/json', body: '{"error":{"code":"database_unavailable","message":"Database connection is unavailable."}}' }))
-  await page.goto('/')
+  await page.goto('/workspace')
   await expect(page.getByRole('status')).toContainText('Database connection is unavailable')
   await expect(page.getByText('PostgreSQL is connected')).not.toBeVisible()
   await page.unroute('**/api/v1/health')
@@ -28,7 +28,7 @@ test('shows outage and recovers without a page reload', async ({ page }) => {
 
 test('fits a mobile viewport', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 })
-  await page.goto('/')
+  await page.goto('/workspace')
   await expect(page.getByRole('status')).toContainText('All systems connected')
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
 })

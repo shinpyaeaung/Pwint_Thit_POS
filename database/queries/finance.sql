@@ -15,3 +15,5 @@ SELECT jsonb_build_object('total',(SELECT count(*) FROM filtered),'expenses',coa
 -- name: ProfitReport :one
 WITH dates AS(SELECT coalesce(nullif(sqlc.arg(start_on)::text,'')::date,date_trunc('month',app.business_date())::date) AS start_on,coalesce(nullif(sqlc.arg(end_on)::text,'')::date,app.business_date()) AS end_on)
 SELECT (app.profit_summary(start_on,end_on)||jsonb_build_object('expense_categories',coalesce((SELECT jsonb_agg(to_jsonb(x) ORDER BY x.name) FROM(SELECT c.name,round(sum(e.amount_mmk),4)::text AS amount_mmk FROM app.profit_expense_events e JOIN app.expense_categories c ON c.id=e.category_id WHERE e.occurred_at>=dates.start_on::timestamp AT TIME ZONE 'Asia/Yangon' AND e.occurred_at<(dates.end_on+1)::timestamp AT TIME ZONE 'Asia/Yangon' GROUP BY c.name)x),'[]')))::jsonb FROM dates;
+-- name: Dashboard :one
+SELECT app.dashboard(sqlc.arg(access)::jsonb)::jsonb;

@@ -37,6 +37,7 @@ type Querier interface {
 	CustomerPrices(ctx context.Context, id pgtype.UUID) ([]byte, error)
 	CustomerSave(ctx context.Context, arg CustomerSaveParams) (pgtype.UUID, error)
 	CustomersList(ctx context.Context, arg CustomersListParams) ([]byte, error)
+	Dashboard(ctx context.Context, access []byte) ([]byte, error)
 	EffectivePermissions(ctx context.Context, id pgtype.UUID) ([]string, error)
 	ExpenseCategories(ctx context.Context) ([]byte, error)
 	ExpensePost(ctx context.Context, arg ExpensePostParams) (pgtype.UUID, error)
