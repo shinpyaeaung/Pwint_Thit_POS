@@ -560,6 +560,16 @@ type AppPurchaseTotal struct {
 	TotalMmk      pgtype.Numeric
 }
 
+type AppReportProductEvent struct {
+	ID             pgtype.UUID
+	ProductID      pgtype.UUID
+	OccurredAt     pgtype.Timestamptz
+	Quantity       pgtype.Numeric
+	RevenueMmk     pgtype.Numeric
+	CogsMmk        int64
+	IncompleteCost bool
+}
+
 type AppRole struct {
 	Code      string
 	Name      string

@@ -1,0 +1,82 @@
+import { test, expect } from '@playwright/test'
+import { signIn, testPassword } from './session'
+
+test('reports expose all views, server date presets, exact purchases and restricted access', async ({ page, browser }, testInfo) => {
+  test.setTimeout(90000)
+  await signIn(page, 'browser-reports-owner')
+  const errors: string[] = []
+  page.on('pageerror', error => errors.push(error.message))
+  const headers = { Origin: process.env.E2E_BASE_URL!, 'X-Pwint-Thit-Request': '1' }
+  const suffix = crypto.randomUUID()
+  const supplier = await page.request.post('/api/v1/suppliers', { headers, data: { code: `R-${suffix}`, name: `Report supplier ${suffix}`, is_active: true } })
+  expect(supplier.status()).toBe(201)
+  const product = await page.request.post('/api/v1/products', { headers, data: { sku: `R-${suffix}`, name: `Report product ${suffix}`, base_unit_code: 'PIECE', is_active: true, packaging: [{ unit_code: 'PIECE', units_per_pack: '1', is_default_purchase: true, is_default_sale: true }] } })
+  expect(product.status()).toBe(201)
+  const purchase = await page.request.post('/api/v1/purchases', { headers, data: { request_id: crypto.randomUUID(), purchase_number: `REPORT-${suffix}`, supplier_id: (await supplier.json()).id, purchased_at: new Date().toISOString(), currency_code: 'MMK', mmk_per_unit: '1', items: [{ product_id: (await product.json()).id, unit_code: 'PIECE', quantity: '1', units_per_pack: '1', unit_price_original: '123456789.1234', discount_original: '0', tax_original: '0' }] } })
+  expect(purchase.status()).toBe(201)
+  await page.goto('/reports')
+  await expect(page.getByRole('heading', { name: 'Business reports', exact: true })).toBeVisible()
+  const catalog = await (await page.request.get('/api/v1/reports')).json()
+  expect(catalog.reports).toHaveLength(14)
+  for (const definition of catalog.reports) {
+    await page.getByRole('combobox', { name: 'Report', exact: true }).click()
+    await page.getByRole('option', { name: definition.title, exact: true }).click()
+    await expect(page.getByRole('heading', { name: definition.title, exact: true })).toBeVisible()
+    await expect(page.getByRole('alert')).toHaveCount(0)
+  }
+  await page.getByRole('combobox', { name: 'Report', exact: true }).click()
+  await page.getByRole('option', { name: 'Purchase Report', exact: true }).click()
+  for (const [label, period] of [['Today', 'today'], ['This Week', 'week'], ['This Month', 'month'], ['This Year', 'year']]) {
+    await page.getByRole('button', { name: label, exact: true }).click()
+    const response = await (await page.request.get(`/api/v1/reports/purchases?period=${period}`)).json()
+    await expect(page.getByTestId('report-range')).toContainText(`${response.filter.from} — ${response.filter.to}`)
+  }
+  await expect(page.getByRole('table', { name: 'Purchase Report', exact: true })).toContainText('123,456,789.1234 MMK')
+  await page.screenshot({ path: `/tmp/pwint-reports-${testInfo.project.name}-desktop.png`, fullPage: true, animations: 'disabled' })
+  await page.getByRole('combobox', { name: 'Rows per page', exact: true }).click()
+  await page.getByRole('option', { name: '10', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Purchase Report', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Custom Date Range', exact: true }).click()
+  await page.getByLabel('Report from', { exact: true }).fill('2000-01-01')
+  await page.getByLabel('Report to', { exact: true }).fill('2000-01-31')
+  await page.getByRole('button', { name: 'Apply dates', exact: true }).click()
+  await expect(page.getByText('No records in this period', { exact: true })).toBeVisible()
+  await expect(page.getByTestId('report-total-amount_mmk')).toHaveText('0 MMK')
+  await page.getByLabel('Report from', { exact: true }).fill('2000-02-01')
+  await page.getByRole('button', { name: 'Apply dates', exact: true }).click()
+  await expect(page.getByRole('alert')).toContainText('From on or before To')
+  await page.getByRole('button', { name: 'Today', exact: true }).click()
+  await expect(page.getByRole('table', { name: 'Purchase Report', exact: true })).toBeVisible()
+  await page.route('**/api/v1/reports/purchases?*', route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: { message: 'Report temporarily unavailable.' } }) }))
+  await page.getByRole('button', { name: 'Refresh report', exact: true }).click()
+  await expect(page.getByRole('alert')).toContainText('Report temporarily unavailable.')
+  await expect(page.getByRole('table', { name: 'Purchase Report', exact: true })).toHaveCount(0)
+  await page.unroute('**/api/v1/reports/purchases?*')
+  await page.getByRole('button', { name: 'Try again', exact: true }).click()
+  await expect(page.getByRole('table', { name: 'Purchase Report', exact: true })).toBeVisible()
+  await page.setViewportSize({ width: 375, height: 812 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await page.screenshot({ path: `/tmp/pwint-reports-${testInfo.project.name}-mobile.png`, fullPage: true, animations: 'disabled' })
+
+  const username = `report-${suffix.slice(0, 12)}`
+  const staff = await page.request.post('/api/v1/users', { headers, data: { username, display_name: 'Report reader', password: testPassword } })
+  expect(staff.status()).toBe(201)
+  const id = (await staff.json()).id
+  expect((await page.request.put(`/api/v1/users/${id}/permissions`, { headers, data: { permissions: ['reports.view'] } })).status()).toBe(204)
+  const context = await browser.newContext({ baseURL: process.env.E2E_BASE_URL })
+  try {
+    const reader = await context.newPage()
+    await signIn(reader, username)
+    await reader.goto('/reports')
+    await expect(reader.getByText('No reports assigned', { exact: true })).toBeVisible()
+    expect((await reader.request.get('/api/v1/reports/profit-loss')).status()).toBe(403)
+    expect((await page.request.put(`/api/v1/users/${id}/permissions`, { headers, data: { permissions: ['reports.view', 'sales.view'] } })).status()).toBe(204)
+    await reader.reload()
+    await expect(reader.getByRole('combobox', { name: 'Report', exact: true })).toHaveText('Sales Report')
+    await reader.getByRole('combobox', { name: 'Report', exact: true }).click()
+    await expect(reader.getByRole('option')).toHaveCount(1)
+    await reader.keyboard.press('Escape')
+    expect((await reader.request.get('/api/v1/reports/purchases')).status()).toBe(403)
+  } finally { await context.close() }
+  expect(errors).toEqual([])
+})

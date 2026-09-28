@@ -28,6 +28,7 @@ import (
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/products"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/purchasing"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/receiving"
+	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/reports"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/shipments"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/suppliers"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/testutil"
@@ -49,7 +50,7 @@ func TestBrowserIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = conn.Exec(ctx, `INSERT INTO app.users(username,display_name,password_hash,role_code) VALUES('browser-owner','Test Owner',$1,'SUPER_ADMIN'),('browser-shipping-owner','Shipping Owner',$1,'SUPER_ADMIN'),('browser-journey-owner','Journey Owner',$1,'SUPER_ADMIN'),('browser-staff','Test Staff',$1,'STAFF_ADMIN')`, hash); err != nil {
+	if _, err = conn.Exec(ctx, `INSERT INTO app.users(username,display_name,password_hash,role_code) VALUES('browser-owner','Test Owner',$1,'SUPER_ADMIN'),('browser-shipping-owner','Shipping Owner',$1,'SUPER_ADMIN'),('browser-reports-owner','Reports Owner',$1,'SUPER_ADMIN'),('browser-journey-owner','Journey Owner',$1,'SUPER_ADMIN'),('browser-staff','Test Staff',$1,'STAFF_ADMIN')`, hash); err != nil {
 		t.Fatal(err)
 	}
 	// Purchase creation belongs to a later module. Seed history only in this disposable browser database.
@@ -88,6 +89,7 @@ func TestBrowserIntegration(t *testing.T) {
 	receiving.New(pool).Register(router, authz.New(q))
 	pos.New(pool).Register(router, authz.New(q))
 	finance.New(pool).Register(router, authz.New(q))
+	reports.Register(router, pool, authz.New(q))
 	server := httptest.NewServer(router)
 	defer server.Close()
 	frontend := exec.Command("pnpm", "--dir", "../../../frontend", "exec", "vite", "--host", "127.0.0.1", "--port", strconv.Itoa(port), "--strictPort")

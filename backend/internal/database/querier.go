@@ -116,6 +116,20 @@ type Querier interface {
 	RecordAuthAudit(ctx context.Context, arg RecordAuthAuditParams) error
 	RecordProductAudit(ctx context.Context, arg RecordProductAuditParams) error
 	RemoveProductUnits(ctx context.Context, arg RemoveProductUnitsParams) error
+	ReportCurrency(ctx context.Context, arg ReportCurrencyParams) ([]byte, error)
+	ReportCustomerDebt(ctx context.Context, arg ReportCustomerDebtParams) ([]byte, error)
+	ReportDamage(ctx context.Context, arg ReportDamageParams) ([]byte, error)
+	ReportExpenses(ctx context.Context, arg ReportExpensesParams) ([]byte, error)
+	ReportInventory(ctx context.Context, arg ReportInventoryParams) ([]byte, error)
+	ReportMissing(ctx context.Context, arg ReportMissingParams) ([]byte, error)
+	ReportMovements(ctx context.Context, arg ReportMovementsParams) ([]byte, error)
+	ReportProducts(ctx context.Context, arg ReportProductsParams) ([]byte, error)
+	ReportProfit(ctx context.Context, arg ReportProfitParams) ([]byte, error)
+	ReportPurchases(ctx context.Context, arg ReportPurchasesParams) ([]byte, error)
+	ReportSales(ctx context.Context, arg ReportSalesParams) ([]byte, error)
+	ReportShipments(ctx context.Context, arg ReportShipmentsParams) ([]byte, error)
+	ReportSupplierPayables(ctx context.Context, arg ReportSupplierPayablesParams) ([]byte, error)
+	ReportTransportation(ctx context.Context, arg ReportTransportationParams) ([]byte, error)
 	ResetProductDefaults(ctx context.Context, productID pgtype.UUID) error
 	ReturnPurchaseChoices(ctx context.Context, search string) ([]byte, error)
 	ReturnPurchaseSource(ctx context.Context, id pgtype.UUID) ([]byte, error)

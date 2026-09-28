@@ -1,8 +1,9 @@
-import { ShoppingCart, PackageCheck, Boxes, Truck, Package, Tags, LayoutDashboard, ShieldCheck, Sprout, Users, PanelsTopLeft, ArrowUpRight } from 'lucide-react'
+import { ChartNoAxesCombined, ShoppingCart, PackageCheck, Boxes, Truck, Package, Tags, LayoutDashboard, ShieldCheck, Sprout, Users, PanelsTopLeft, ArrowUpRight } from 'lucide-react'
 import { PermissionGuard } from '@/components/shared/permission-guard'
 import { permissions, type CurrentUser } from '@/permissions'
 const items = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: permissions.dashboardView },
+  { href: '/reports', label: 'Reports', icon: ChartNoAxesCombined, permission: permissions.reportsView },
   { href: '/workspace', label: 'System status', icon: ShieldCheck, permission: null },
   { href: '/pos', label: 'Point of sale', icon: ShoppingCart, permission: permissions.salesCreate },
   { href: '/customers', label: 'Customers & credit', icon: ShoppingCart, permission: permissions.customersManage },
