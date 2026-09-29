@@ -1,0 +1,67 @@
+import { test, expect } from '@playwright/test'
+import { signIn, staff } from './session'
+
+test('business menu scrolls independently and every destination loads', async ({ page }, testInfo) => {
+  test.setTimeout(90000)
+  await page.setViewportSize({ width: 1280, height: 600 })
+  await signIn(page, 'browser-navigation-owner')
+  const pageErrors: string[] = []
+  const apiErrors: string[] = []
+  page.on('pageerror', error => pageErrors.push(error.message))
+  page.on('response', response => { if (response.url().includes('/api/v1/') && response.status() >= 400) apiErrors.push(`${response.status()} ${new URL(response.url()).pathname}`) })
+  const sidebar = page.locator('aside')
+  const nav = sidebar.getByRole('navigation', { name: 'Main navigation' })
+  for (const name of ['Dashboard', 'Reports', 'User guide']) await expect(sidebar.getByRole('link', { name, exact: true })).toBeInViewport()
+  for (const name of ['System status', 'UI library']) await expect(sidebar.getByRole('link', { name, exact: true })).toHaveCount(0)
+  expect(await nav.evaluate(element => element.scrollHeight > element.clientHeight)).toBe(true)
+  const bodyBefore = await page.evaluate(() => window.scrollY)
+  await nav.hover()
+  await page.mouse.wheel(0, 1600)
+  await expect.poll(() => nav.evaluate(element => element.scrollTop)).toBeGreaterThan(0)
+  await expect(sidebar.getByRole('link', { name: 'Permissions', exact: true })).toBeInViewport()
+  expect(await page.evaluate(() => window.scrollY)).toBe(bodyBefore)
+  for (const name of ['Dashboard', 'Reports']) await expect(sidebar.getByRole('link', { name, exact: true })).toBeInViewport()
+  await page.screenshot({ path: `/tmp/pwint-navigation-${testInfo.project.name}-desktop.png`, animations: 'disabled' })
+  const links = await sidebar.getByRole('link').evaluateAll(elements => elements.map(element => element.getAttribute('href')!).filter(href => href !== '/'))
+  expect(links).toContain('/purchasing-settings')
+  for (const href of links) {
+    await page.goto(href)
+    await expect(page.locator('main h1')).toBeVisible()
+    await expect(page.getByRole('heading', { name: /Page not found|Access restricted|Unable to check your session/ })).toHaveCount(0)
+    await expect(page.getByText('Preparing report…', { exact: true })).toHaveCount(0)
+  }
+  await page.goto('/guide')
+  await expect(page.getByRole('heading', { name: 'User guide', exact: true })).toBeVisible()
+  await page.getByRole('navigation', { name: 'Guide contents' }).getByRole('link', { name: '10. Missing pages, access and errors', exact: true }).click()
+  await expect(page.getByRole('heading', { name: '10. Missing pages, access and errors', exact: true })).toBeInViewport()
+  for (const viewport of [{ width: 375, height: 667 }, { width: 667, height: 375 }]) {
+    await page.setViewportSize(viewport)
+    await page.getByRole('button', { name: 'Open navigation', exact: true }).click()
+    const menu = page.getByRole('dialog', { name: 'Navigation', exact: true })
+    const mobileNav = menu.getByRole('navigation', { name: 'Main navigation' })
+    for (const name of ['Dashboard', 'Reports']) await expect(menu.getByRole('link', { name, exact: true })).toBeInViewport()
+    expect(await mobileNav.evaluate(element => element.clientHeight > 0 && element.scrollHeight > element.clientHeight)).toBe(true)
+    await mobileNav.focus()
+    await page.keyboard.press('End')
+    await expect(menu.getByRole('link', { name: 'Permissions', exact: true })).toBeInViewport()
+    await expect(menu.getByRole('link', { name: 'User guide', exact: true })).toBeInViewport()
+    await page.screenshot({ path: `/tmp/pwint-navigation-${testInfo.project.name}-${viewport.width}.png`, animations: 'disabled' })
+    await menu.getByRole('link', { name: 'Reports', exact: true }).click()
+    await expect(menu).toHaveCount(0)
+    await expect(page.getByRole('heading', { name: 'Business reports', exact: true })).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  }
+  expect(pageErrors).toEqual([])
+  expect(apiErrors).toEqual([])
+})
+
+test('unassigned staff has an actionable home and guide', async ({ page }) => {
+  await signIn(page, staff)
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Your workspace', exact: true })).toBeVisible()
+  await expect(page.getByText('No business tools have been assigned yet.', { exact: false })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Dashboard', exact: true })).toHaveCount(0)
+  await page.goto('/guide')
+  await expect(page.getByRole('heading', { name: 'User guide', exact: true })).toBeVisible()
+  await expect(page.getByText('Dashboard needs dashboard.view.', { exact: false })).toBeVisible()
+})

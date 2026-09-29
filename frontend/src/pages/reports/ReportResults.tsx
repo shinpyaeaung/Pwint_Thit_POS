@@ -2,7 +2,7 @@ import { DataTable, EmptyState } from '@/components/shared'
 import { amount } from '../purchases/types'
 import type { ReportColumn, ReportResponse, ReportRow } from './types'
 const timestamp = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Yangon', year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' })
-export function reportValue(value: string | number | null | undefined, kind: ReportColumn['kind']) {
+function reportValue(value: string | number | null | undefined, kind: ReportColumn['kind']) {
   if (value === null || value === undefined) return kind === 'money' ? 'Unavailable' : '—'
   if (kind === 'money') return `${amount(String(value))} MMK`
   if (kind === 'decimal') return amount(String(value))

@@ -1,5 +1,7 @@
 # Pwint Thit Distribution
 
+For day-to-day operation, read the [user guide](docs/user-guide.md) or open **User guide** in the app. Dashboard and Reports are pinned at the top of the sidebar.
+
 Phases 1–20 provide the foundation, authentication and permissions, product/supplier/purchasing modules, shipments and landed costing, receiving and batch inventory, POS and safe checkout, customer credit, damage/returns/refunds, operating expenses with actual-landed-cost profit reporting, a permission-filtered business dashboard, and 14 business reports with shared Myanmar date filters. See [reports](docs/reports.md) for report definitions, historical balance semantics and permissions. See [dashboard](docs/dashboard.md) for metric definitions and access rules. See [expenses and profit](docs/expenses-profit.md) for accounting boundaries. See [customer credit](docs/customers-credit.md) and [damage and returns](docs/damage-returns.md) for workflows and current boundaries. Further business modules follow as vertical slices. See [authentication](docs/authentication.md) for setup and access rules. See [database design](docs/database-design.md) for the schema and its enforcement boundaries.
 The complete [system specification](docs/Pwint_Thit_Distribution_Overall_System_Specification.md) is the source of truth; the user's current phase scope takes precedence over its suggested phase grouping.
 
@@ -40,7 +42,7 @@ make setup
 make up
 ```
 
-Open http://127.0.0.1:8088. This builds the frontend, serves it through Nginx, and runs migrations before starting Go, with health checks for all long-running services. `make down` stops the stack without deleting the database volume. `make db-stop` stops only PostgreSQL.
+Open http://127.0.0.1:8088. **After pulling new code, run `make up` again to rebuild the running app and apply migrations. Git commits and pushes alone do not update Docker containers.** This builds the frontend, serves it through Nginx, and runs migrations before starting Go, with health checks for all long-running services. `make down` stops the stack without deleting the database volume. `make db-stop` stops only PostgreSQL.
 
 These are local deployment foundations. Before a Linux VPS launch, configure a domain and HTTPS, separate production credentials, restricted database access, backups/restore, and operational monitoring. Nothing has been deployed publicly. Database and web ports bind to loopback by default. The sample password is development-only. Use URL-safe database passwords in Compose's interpolated URL, or provide a correctly percent-encoded connection URL when customizing it. Changing database credentials requires updating the existing database role as well as configuration; initialization environment variables only affect a new volume.
 

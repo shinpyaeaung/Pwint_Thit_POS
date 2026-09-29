@@ -1,33 +1,22 @@
-import { ChartNoAxesCombined, ShoppingCart, PackageCheck, Boxes, Truck, Package, Tags, LayoutDashboard, ShieldCheck, Sprout, Users, PanelsTopLeft, ArrowUpRight } from 'lucide-react'
-import { PermissionGuard } from '@/components/shared/permission-guard'
-import { permissions, type CurrentUser } from '@/permissions'
-const items = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: permissions.dashboardView },
-  { href: '/reports', label: 'Reports', icon: ChartNoAxesCombined, permission: permissions.reportsView },
-  { href: '/workspace', label: 'System status', icon: ShieldCheck, permission: null },
-  { href: '/pos', label: 'Point of sale', icon: ShoppingCart, permission: permissions.salesCreate },
-  { href: '/customers', label: 'Customers & credit', icon: ShoppingCart, permission: permissions.customersManage },
-  { href: '/sales', label: 'Invoices', icon: ShoppingCart, permission: permissions.salesView },
-  { href: '/products', label: 'Products', icon: Package, permission: permissions.productsView },
-  { href: '/shipments', label: 'Shipments', icon: Truck, permission: permissions.shipmentsView },
-  { href: '/receiving', label: 'Goods receiving', icon: PackageCheck, permission: permissions.receivingManage },
-  { href: '/batches', label: 'Batches & expiry', icon: Package, permission: permissions.inventoryView },
-  { href: '/expenses', label: 'Operating expenses', icon: ShoppingCart, permission: permissions.expensesManage },
-  { href: '/finance/profit', label: 'Expenses & profit', icon: ShoppingCart, permission: permissions.financeViewProfit },
-  { href: '/stock-issues', label: 'Damage & missing', icon: ShoppingCart, permission: permissions.damageManage },
-  { href: '/returns', label: 'Returns & refunds', icon: ShoppingCart, permission: permissions.returnsManage },
-  { href: '/inventory', label: 'Inventory', icon: Boxes, permission: permissions.inventoryView },
-  { href: '/purchases', label: 'Purchases', icon: ShoppingCart, permission: permissions.purchasesView },
-  { href: '/suppliers', label: 'Suppliers', icon: Truck, permission: permissions.suppliersView },
-  { href: '/catalog', label: 'Catalog setup', icon: Tags, permission: permissions.catalogManage },
-  { href: '/users', label: 'Users & access', icon: Users, permission: permissions.usersManage },
-  { href: '/permissions', label: 'Permissions', icon: ShieldCheck, permission: permissions.permissionsManage },
-  { href: '/design-system', label: 'UI library', icon: PanelsTopLeft, permission: permissions.settingsManage },
-]
+import { Sprout } from 'lucide-react'
+import { can, type CurrentUser } from '@/permissions'
+import { guideLink, navigationGroups, overviewLinks, type NavigationItem } from './navigation'
+
 export function Sidebar({ user, onNavigate }: { user: CurrentUser; onNavigate?: () => void }) {
-  return <div className="flex h-full min-h-0 flex-col"><a href="/" className="flex items-center gap-3 shrink-0 px-5 py-7" aria-label="Pwint Thit workspace"><span className="rounded-xl bg-primary p-2 text-white"><Sprout className="size-5" /></span><span><span className="block text-sm font-bold tracking-wide">PWINT THIT</span><span className="mt-0.5 block text-[9px] font-medium tracking-[0.22em] text-muted-foreground">DISTRIBUTION</span></span></a><nav aria-label="Main navigation" className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 pb-3"><p className="px-3 pb-2 pt-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Workspace & control</p>{items.map(item => {
-    const active = window.location.pathname === item.href || (item.href === '/dashboard' && window.location.pathname === '/') || (item.href !== '/' && window.location.pathname.startsWith(`${item.href}/`))
-    const link = <a href={item.href} onClick={onNavigate} aria-current={active ? 'page' : undefined} className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-colors ${active ? 'bg-primary/7 text-primary ring-1 ring-primary/10' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}><item.icon aria-hidden="true" className="size-4" />{item.label}{active && <span className="ml-auto size-1.5 rounded-full bg-primary" />}</a>
-    return item.permission ? <PermissionGuard key={item.href} user={user} permission={item.permission}>{link}</PermissionGuard> : <div key={item.href}>{link}</div>
-  })}</nav><div className="m-4 shrink-0 rounded-xl border bg-background p-4"><p className="flex items-center justify-between text-xs font-semibold">From source to shelf<ArrowUpRight className="size-3 text-primary" /></p><p className="mt-2 text-[11px] leading-5 text-muted-foreground">Purchase · Transport · Receive · Sell</p><div className="mt-3 flex gap-1" aria-hidden="true"><span className="h-1 flex-1 rounded bg-primary" /><span className="h-1 flex-1 rounded bg-brand-yellow" /><span className="h-1 flex-1 rounded bg-border" /><span className="h-1 flex-1 rounded bg-border" /></div></div></div>
+  const overview = overviewLinks.filter(item => can(user, item.permission))
+  const groups = navigationGroups.map(group => ({ ...group, items: group.items.filter(item => can(user, item.permission)) })).filter(group => group.items.length)
+  function link(item: NavigationItem) {
+    const path = window.location.pathname
+    const active = path === item.href || path.startsWith(`${item.href}/`) || (item.href === '/dashboard' && path === '/')
+    return <a key={item.href} href={item.href} onClick={onNavigate} aria-current={active ? 'page' : undefined} className={`flex min-h-10 items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors ${active ? 'bg-primary/7 text-primary ring-1 ring-primary/10' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}><item.icon aria-hidden="true" className="size-4 shrink-0" /><span>{item.label}</span>{active && <span aria-hidden="true" className="ml-auto size-1.5 shrink-0 rounded-full bg-primary" />}</a>
+  }
+  return <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+    <a href="/" onClick={onNavigate} className="flex shrink-0 items-center gap-3 px-5 py-5" aria-label="Pwint Thit home"><span className="rounded-xl bg-primary p-2 text-white"><Sprout className="size-5" /></span><span><span className="block text-sm font-bold tracking-wide">PWINT THIT</span><span className="mt-0.5 block text-[9px] font-medium tracking-[0.22em] text-muted-foreground">DISTRIBUTION</span></span></a>
+    {overview.length > 0 && <nav aria-label="Business overview" className="shrink-0 space-y-1 border-b px-3 pb-3">{overview.map(link)}</nav>}
+    <nav aria-label="Main navigation" tabIndex={0} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-4 focus-visible:outline-offset-[-2px]" style={{ scrollbarGutter: 'stable', scrollbarWidth: 'thin' }}>
+      {groups.map(group => <section key={group.title} aria-label={group.title} className="pt-4"><h2 className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{group.title}</h2><div className="space-y-0.5">{group.items.map(link)}</div></section>)}
+      {groups.length === 0 && <p className="px-3 py-4 text-xs leading-5 text-muted-foreground">Ask your Super Admin to assign the tools you need.</p>}
+    </nav>
+    <div className="shrink-0 border-t p-3">{link(guideLink)}</div>
+  </div>
 }
