@@ -4,7 +4,7 @@ Open **User guide** at the bottom of the sidebar, or visit `/guide` after signin
 
 ## 1. Find your tools
 
-Dashboard and Reports stay at the top of the sidebar. Scroll inside the menu to reach the remaining tools. On a phone or narrow window, use the menu button at the top left.
+Dashboard and Reports stay at the top of the sidebar. Scroll inside the menu to reach the remaining tools. The menu remembers its position in this browser tab when you open another page or reload. On a phone or narrow window, use the menu button at the top left.
 
 User guide stays at the bottom of the menu. System status and UI library are developer tools, so they are not part of the daily business menu.
 
@@ -12,7 +12,7 @@ Start with suppliers and products, then record purchases, shipments, landed cost
 
 ## 2. Set up products and suppliers
 
-Use Catalog setup to define categories, brands and units. In Products, enter the name, SKU or barcode, base unit and packaging conversions. For example, one carton may contain 12 bottles. Check conversions before recording purchases or sales.
+Use Catalog setup to define categories, brands and units. In Products, enter the name, SKU or barcode, base unit and packaging conversions. For example, one carton may contain 12 bottles. The base conversion is fixed at 1. Click **Add packaging** to enter a carton or pack conversion, then type the number of base units in **Base units per pack**. For example, select Bottle as the base unit, add Carton packaging, and enter 12. Choose the purchase and sale defaults independently. Check conversions before recording purchases or sales.
 
 Use Suppliers to add supplier names, contact details and payment terms. Currency & rates opens the currency settings when your account has exchange-rate access.
 
@@ -38,7 +38,7 @@ When an authorized correction is needed, use the stock adjustment workflow and r
 
 ## 5. Make a sale and review the invoice
 
-Choose the warehouse and, where needed, a customer. Select retail or wholesale mode, search or scan a product and choose its selling unit and quantity.
+Choose the warehouse and, where needed, a customer. If no warehouse is available, a Super Admin can use **Shipments → Create shipment → Add warehouse** to create one, then receive costed goods before selling. The warehouse stays locked while the cart contains items; clear the cart to change it. Select retail or wholesale mode, search or scan a product and choose its selling unit and quantity.
 
 Review prices, discounts, stock availability and the total. Choose the payment method and amount received. Unpaid credit requires a customer and must stay within the customer’s credit limit.
 
