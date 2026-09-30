@@ -14,13 +14,13 @@ Start with suppliers and products, then record purchases, shipments, landed cost
 
 Use Catalog setup to define categories, brands and units. In Products, enter the name, SKU or barcode, base unit and packaging conversions. For example, one carton may contain 12 bottles. The base conversion is fixed at 1. Click **Add packaging** to enter a carton or pack conversion, then type the number of base units in **Base units per pack**. For example, select Bottle as the base unit, add Carton packaging, and enter 12. Choose the purchase and sale defaults independently. Check conversions before recording purchases or sales.
 
-Use Suppliers to add supplier names, contact details and payment terms. Currency & rates opens the currency settings when your account has exchange-rate access.
+Use Suppliers to add supplier names, contact details and payment terms. Currency & rates opens the currency settings when your account has exchange-rate access. To record 100 INR = 4,450 MMK, choose INR, enter 100 in Foreign currency amount and 4450 in Exchange rate, then enter the effective date, Myanmar time and source and save. Each same-day quote uses a different effective time; the form refreshes the time after saving. The server divides the MMK amount by the foreign amount, rounding to 10 decimal places, so this quote stores 44.5 MMK per INR. Change either amount and save a new quote when the rate changes; earlier quotes remain in history.
 
 Archive or deactivate unused records instead of removing their business history.
 
 ## 3. Purchase, transport and receive
 
-In Purchases, choose a supplier, purchase date, currency and transaction exchange rate. Add products, quantities, units and original-currency prices. Review the original and MMK totals before posting.
+In Purchases, choose a supplier, purchase date, currency and transaction exchange rate. Add products, quantities, units and original-currency prices. Users with exchange-rate permission can type over MMK per currency unit, including after choosing a saved quote; this makes a custom rate for that purchase. Other users choose a saved quote. MMK-to-MMK stays at 1; select INR or another foreign currency to enter a conversion. Review the original and MMK totals before posting.
 
 In Shipments, select purchased goods and the destination warehouse. Add transportation stages and shipment expenses. Record departure and arrival as the goods move.
 

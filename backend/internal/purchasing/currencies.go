@@ -23,13 +23,27 @@ func (s *Service) Rates(c *gin.Context) {
 }
 func (s *Service) CreateRate(c *gin.Context) {
 	var in struct {
-		Currency  string `json:"currency_code"`
-		Rate      string `json:"mmk_per_unit"`
-		Effective string `json:"effective_at"`
-		Source    string `json:"source"`
+		Currency      string `json:"currency_code"`
+		Rate          string `json:"mmk_per_unit"`
+		ForeignAmount string `json:"foreign_amount"`
+		MMKAmount     string `json:"mmk_amount"`
+		Effective     string `json:"effective_at"`
+		Source        string `json:"source"`
 	}
 	if !decode(c, &in) {
 		return
+	}
+	if in.ForeignAmount != "" || in.MMKAmount != "" {
+		normalized, err := NormalizeQuote(in.ForeignAmount, in.MMKAmount)
+		if err != nil {
+			fail(c, 400, err.Error())
+			return
+		}
+		if in.Rate != "" && !sameNumber(in.Rate, normalized) {
+			fail(c, 400, "The supplied rate does not match the quoted amounts.")
+			return
+		}
+		in.Rate = normalized
 	}
 	in.Source = strings.TrimSpace(in.Source)
 	when, e := time.Parse(time.RFC3339, in.Effective)

@@ -94,6 +94,10 @@ func TestPurchasingIntegration(t *testing.T) {
 	rate := func(value, date string) map[string]any {
 		return call("POST", "/exchange-rates", map[string]any{"currency_code": "INR", "mmk_per_unit": value, "effective_at": date, "source": "Supplier quotation"}, owner, 201)
 	}
+	call("POST", "/exchange-rates", map[string]any{"currency_code": "INR", "foreign_amount": "100", "mmk_amount": "4450", "effective_at": "2025-12-01T00:00:00Z", "source": "100 INR quote"}, owner, 201)
+	call("POST", "/exchange-rates", map[string]any{"currency_code": "INR", "foreign_amount": "100", "mmk_amount": "4450", "mmk_per_unit": "99", "effective_at": "2025-12-01T00:00:00Z", "source": "Tampered quote"}, owner, 400)
+	call("POST", "/exchange-rates", map[string]any{"currency_code": "INR", "foreign_amount": "0", "mmk_amount": "4450", "effective_at": "2025-12-01T00:00:00Z", "source": "Zero denominator"}, owner, 400)
+
 	jan := rate("25", "2026-01-01T00:00:00Z")
 	input := func(key, number string) map[string]any {
 		return map[string]any{"request_id": key, "purchase_number": number, "supplier_id": supplier, "supplier_invoice_number": number, "purchased_at": "2026-01-15T00:00:00Z", "due_date": "2026-02-15", "currency_code": "INR", "mmk_per_unit": "25", "exchange_rate_id": jan["id"], "items": []map[string]any{{"product_id": "00000000-0000-0000-0000-000000000002", "unit_code": "CARTON", "quantity": "2", "units_per_pack": "12", "unit_price_original": "5000", "discount_original": "0", "tax_original": "0"}}}
