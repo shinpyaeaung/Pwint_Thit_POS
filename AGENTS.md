@@ -17,3 +17,7 @@ Do not commit secrets or generated build output. Keep sqlc-generated Go files co
 Run `make check` and the real-stack browser test for relevant changes. Report any unverified requirement honestly.
 
 After completing and verifying each phase, commit and push that phase to the GitHub origin. The user explicitly authorized this workflow. Keep secrets, local credentials, and build artifacts out of Git.
+
+## Pending redesign handoff
+
+Before the next redesign task, read `docs/NEXT_SESSION_HANDOFF.md`. The user plans a broad system redesign after a Codex reset; wait for their new scope before starting changes.
