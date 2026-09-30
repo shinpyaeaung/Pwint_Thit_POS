@@ -1,4 +1,6 @@
-# Pwint Thit Distribution
+# Pwint Thit Distribution — v1.1
+
+Current release: **v1.1.0**. The next planned version is **v1.2**, pending the user’s redesign requirements. See [release notes](docs/releases/v1.1.md) and the [v1.2 handoff](docs/NEXT_SESSION_HANDOFF.md).
 
 For day-to-day operation, read the [user guide](docs/user-guide.md) or open **User guide** in the app. Dashboard and Reports are pinned at the top of the sidebar.
 

@@ -1,4 +1,4 @@
-# Next-session handoff — 2026-09-30
+# v1.2 planning handoff — baseline v1.1
 
 ## User intent: wait for the next prompt
 
@@ -8,7 +8,7 @@ The user plans to change almost the entire system after resetting Codex. They ex
 
 - Project: `/Users/shinpyaeaung/Desktop/Pwint_Thit_POS`.
 - App: http://localhost:8088 (local Docker Compose stack).
-- Branch: `main`; latest application commit: `ef30a47`, pushed to origin.
+- Branch: `main`; version baseline: `v1.1.0` release tag on GitHub. Future redesign work is v1.2 and awaits the next user prompt.
 - Read `AGENTS.md` and `docs/Pwint_Thit_Distribution_Overall_System_Specification.md`. New user scope takes precedence over the existing phase grouping.
 - Phases 1–20 were implemented and verified. This is the existing baseline, not a requirement to preserve the current UX in the upcoming redesign.
 - Stack: React/Vite/TypeScript/Tailwind/shadcn/ui/Framer Motion/TanStack Query/Zustand; Go/Gin/PostgreSQL/pgx/sqlc. Use pnpm.

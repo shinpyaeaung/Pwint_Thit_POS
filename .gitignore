@@ -11,3 +11,5 @@ test-results/
 .tmp/
 backend/bin/
 *.log
+
+.pnpm-store/

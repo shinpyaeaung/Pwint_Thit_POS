@@ -69,6 +69,7 @@ test('business menu scrolls independently and every destination loads', async ({
   await expect(page.getByRole('heading', { name: '10. Missing pages, access and errors', exact: true })).toBeInViewport()
   for (const viewport of [{ width: 375, height: 667 }, { width: 667, height: 375 }]) {
     await page.setViewportSize(viewport)
+    await page.evaluate(() => document.fonts.ready.then(() => undefined))
     await page.getByRole('button', { name: 'Open navigation', exact: true }).click()
     const menu = page.getByRole('dialog', { name: 'Navigation', exact: true })
     const mobileNav = menu.getByRole('navigation', { name: 'Main navigation' })
@@ -84,6 +85,7 @@ test('business menu scrolls independently and every destination loads', async ({
     await expect(menu).toHaveCount(0)
     await expect(page.getByRole('heading', { name: 'Business reports', exact: true })).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await page.evaluate(() => document.fonts.ready.then(() => undefined))
     await page.getByRole('button', { name: 'Open navigation', exact: true }).click()
     // Safari can round/reflow the drawer by a few pixels as fonts settle.
     await expect.poll(async () => Math.abs(await mobileNav.evaluate(element => element.scrollTop) - mobilePosition)).toBeLessThan(12)
