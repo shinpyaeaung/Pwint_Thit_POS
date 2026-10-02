@@ -8,6 +8,7 @@ import (
 	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/authz"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/database"
@@ -38,6 +39,8 @@ func (s *Service) Register(r *gin.Engine, a *authz.Service) {
 	r.GET("/api/v1/purchase-options", a.Require(permissions.PurchasesCreate), a.Require(permissions.PurchasesViewCost), s.Options)
 	r.GET("/api/v1/purchases", a.Require(permissions.PurchasesView), s.List)
 	r.GET("/api/v1/purchases/:id", a.Require(permissions.PurchasesView), s.Get)
+	r.GET("/api/v1/purchases/:id/workflow", a.Require(permissions.PurchasesView), a.Require(permissions.ShipmentsView), s.Workflow)
+	r.POST("/api/v1/purchases/:id/reverse", a.Require(permissions.TransactionsReverse), a.Require(permissions.PurchasesView), s.Reverse)
 	r.POST("/api/v1/purchases", a.Require(permissions.PurchasesCreate), a.Require(permissions.PurchasesViewCost), s.Create)
 	r.GET("/api/v1/suppliers/:id/balance", a.Require(permissions.SuppliersView), a.Require(permissions.PurchasesViewCost), s.Balance)
 }
@@ -170,7 +173,7 @@ type Input struct {
 func (in *Input) validate() string {
 	in.Number = strings.TrimSpace(in.Number)
 	in.Invoice = strings.TrimSpace(in.Invoice)
-	if !numberPattern.MatchString(in.Number) || len(in.Invoice) > 200 || len(in.Notes) > 4000 {
+	if (in.Number != "" && !numberPattern.MatchString(in.Number)) || len(in.Invoice) > 200 || len(in.Notes) > 4000 {
 		return "Enter a purchase number (up to 100 characters), invoice (200 bytes) and notes (4000 bytes)."
 	}
 	for _, v := range []string{in.RequestID, in.SupplierID} {
@@ -334,4 +337,47 @@ func (s *Service) Create(c *gin.Context) {
 		return
 	}
 	c.Data(201, "application/json", after)
+}
+
+func (s *Service) Workflow(c *gin.Context) {
+	id, ok := pathID(c)
+	if !ok {
+		return
+	}
+	cost, e := s.a.Allowed(c, permissions.ShipmentsViewCost)
+	if e != nil {
+		fail(c, 503, "Authorization unavailable.")
+		return
+	}
+	v, e := s.q.PurchaseWorkflow(c.Request.Context(), database.PurchaseWorkflowParams{ID: id, Costs: cost})
+	respond(c, v, e)
+}
+
+func (s *Service) Reverse(c *gin.Context) {
+	var in struct {
+		Reason string `json:"reason"`
+	}
+	if !decode(c, &in) {
+		return
+	}
+	if strings.TrimSpace(in.Reason) == "" || len(in.Reason) > 1000 {
+		fail(c, 400, "Enter a reversal reason (up to 1000 characters).")
+		return
+	}
+	id, ok := pathID(c)
+	if !ok {
+		return
+	}
+	actor, _ := authz.Principal(c)
+	e := s.q.ReverseUnallocatedPurchase(c.Request.Context(), database.ReverseUnallocatedPurchaseParams{ID: id, Actor: actor.ID, Reason: in.Reason})
+	if e != nil {
+		var pe *pgconn.PgError
+		if errors.As(e, &pe) && pe.Code == "23514" {
+			fail(c, 409, pe.Message)
+			return
+		}
+		dbError(c, e)
+		return
+	}
+	c.Status(204)
 }

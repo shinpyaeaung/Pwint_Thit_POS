@@ -18,6 +18,6 @@ Run `make check` and the real-stack browser test for relevant changes. Report an
 
 After completing and verifying each phase, commit and push that phase to the GitHub origin. The user explicitly authorized this workflow. Keep secrets, local credentials, and build artifacts out of Git.
 
-## Pending redesign handoff
+## POS 1.2 handoff
 
-Before the next redesign task, read `docs/NEXT_SESSION_HANDOFF.md`. The user plans a broad system redesign after a Codex reset; wait for their new scope before starting changes.
+The v1.2 purchase workflow redesign is implemented and verified. Before the next task, read `docs/NEXT_SESSION_HANDOFF.md` and `docs/releases/v1.2.md`. Wait for the user’s new scope before starting another module or redesign. Preserve automatic business IDs and immutable dated purchase reversals, including historical report balances.

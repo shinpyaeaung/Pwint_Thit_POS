@@ -20,7 +20,7 @@ var definitions = []Definition{
 	{
 		ID:          "purchases",
 		Title:       "Purchase Report",
-		Description: "Posted purchases and supplier returns by event date, at stored transaction rates. Original amounts must be read with their currency.",
+		Description: "Posted purchases, supplier returns and purchase reversals by event date, at stored transaction rates. Original amounts must be read with their currency.",
 		Columns: []Column{
 			{Key: "occurred_at", Label: "Date", Kind: "datetime"},
 			{Key: "reference", Label: "Reference", Kind: "text"},
@@ -266,12 +266,13 @@ var definitions = []Definition{
 	{
 		ID:          "currency-purchases",
 		Title:       "Currency Purchase Report",
-		Description: "Purchases less supplier returns by currency. MMK uses each recorded transaction rate. Original amounts are never combined across currencies.",
+		Description: "Purchases less supplier returns and purchase reversals by currency. MMK uses each recorded transaction rate. Original amounts are never combined across currencies.",
 		Columns: []Column{
 			{Key: "currency_code", Label: "Currency", Kind: "text"},
 			{Key: "event_count", Label: "Events", Kind: "decimal"},
 			{Key: "purchases_original", Label: "Purchased original", Kind: "decimal"},
 			{Key: "returns_original", Label: "Returned original", Kind: "decimal"},
+			{Key: "reversals_original", Label: "Reversed original", Kind: "decimal"},
 			{Key: "net_original", Label: "Net original", Kind: "decimal"},
 			{Key: "amount_mmk", Label: "Net MMK", Kind: "money"},
 		},

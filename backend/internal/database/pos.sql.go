@@ -69,7 +69,7 @@ func (q *Queries) POSCustomers(ctx context.Context, search string) ([]byte, erro
 }
 
 const pOSInvoice = `-- name: POSInvoice :one
-SELECT (jsonb_build_object('id',s.id,'invoice_number',s.invoice_number,'sold_at',s.sold_at,'status',s.status,'cashier',u.display_name)||app.pos_public_document(s.invoice_document,$1::boolean,$2::boolean))::jsonb FROM app.sales s JOIN app.users u ON u.id=s.created_by WHERE s.id=$3::uuid AND s.invoice_document IS NOT NULL AND ($4::boolean OR s.created_by=$5::uuid)
+SELECT (jsonb_build_object('id',s.id,'invoice_number',s.invoice_number,'order_number',s.order_number,'sold_at',s.sold_at,'status',s.status,'cashier',u.display_name)||app.pos_public_document(s.invoice_document,$1::boolean,$2::boolean))::jsonb FROM app.sales s JOIN app.users u ON u.id=s.created_by WHERE s.id=$3::uuid AND s.invoice_document IS NOT NULL AND ($4::boolean OR s.created_by=$5::uuid)
 `
 
 type POSInvoiceParams struct {
@@ -130,7 +130,7 @@ func (q *Queries) POSProducts(ctx context.Context, arg POSProductsParams) ([]byt
 }
 
 const pOSSales = `-- name: POSSales :one
-WITH filtered AS (SELECT s.id,s.invoice_number,s.sold_at,s.invoice_document->>'customer_name' AS customer_name,s.invoice_document->>'total_mmk' AS total_mmk,s.invoice_document->>'paid_mmk' AS paid_mmk,s.invoice_document->>'outstanding_mmk' AS outstanding_mmk FROM app.sales s WHERE s.invoice_document IS NOT NULL AND ($1::text='' OR strpos(lower(s.invoice_number||' '||(s.invoice_document->>'customer_name')),lower($1))>0)),page AS (SELECT id, invoice_number, sold_at, customer_name, total_mmk, paid_mmk, outstanding_mmk FROM filtered ORDER BY sold_at DESC,id LIMIT $3::int OFFSET $2::int)
+WITH filtered AS (SELECT s.id,s.invoice_number,s.order_number,s.sold_at,s.invoice_document->>'customer_name' AS customer_name,s.invoice_document->>'total_mmk' AS total_mmk,s.invoice_document->>'paid_mmk' AS paid_mmk,s.invoice_document->>'outstanding_mmk' AS outstanding_mmk FROM app.sales s WHERE s.invoice_document IS NOT NULL AND ($1::text='' OR strpos(lower(s.invoice_number||' '||(s.invoice_document->>'customer_name')),lower($1))>0)),page AS (SELECT id, invoice_number, order_number, sold_at, customer_name, total_mmk, paid_mmk, outstanding_mmk FROM filtered ORDER BY sold_at DESC,id LIMIT $3::int OFFSET $2::int)
 SELECT jsonb_build_object('total',(SELECT count(*) FROM filtered),'sales',coalesce((SELECT jsonb_agg(to_jsonb(page) ORDER BY sold_at DESC,id) FROM page),'[]'::jsonb))::jsonb
 `
 

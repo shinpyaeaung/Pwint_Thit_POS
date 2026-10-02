@@ -38,6 +38,7 @@ type Querier interface {
 	CustomerSave(ctx context.Context, arg CustomerSaveParams) (pgtype.UUID, error)
 	CustomersList(ctx context.Context, arg CustomersListParams) ([]byte, error)
 	Dashboard(ctx context.Context, access []byte) ([]byte, error)
+	DeleteUnpaidShipmentStage(ctx context.Context, arg DeleteUnpaidShipmentStageParams) (int64, error)
 	EffectivePermissions(ctx context.Context, id pgtype.UUID) ([]string, error)
 	ExpenseCategories(ctx context.Context) ([]byte, error)
 	ExpensePost(ctx context.Context, arg ExpensePostParams) (pgtype.UUID, error)
@@ -48,6 +49,7 @@ type Querier interface {
 	FindPurchaseRequest(ctx context.Context, requestID pgtype.UUID) (FindPurchaseRequestRow, error)
 	FindUser(ctx context.Context, id pgtype.UUID) (FindUserRow, error)
 	GetFinalizedCost(ctx context.Context, shipmentID pgtype.UUID) ([]byte, error)
+	GetManagedWarehouse(ctx context.Context, id pgtype.UUID) ([]byte, error)
 	GetProduct(ctx context.Context, id pgtype.UUID) ([]byte, error)
 	GetPurchaseDocument(ctx context.Context, arg GetPurchaseDocumentParams) ([]byte, error)
 	GetPurchaseRate(ctx context.Context, id pgtype.UUID) (GetPurchaseRateRow, error)
@@ -111,6 +113,7 @@ type Querier interface {
 	PurchaseRates(ctx context.Context, arg PurchaseRatesParams) ([]byte, error)
 	PurchaseReturnPost(ctx context.Context, arg PurchaseReturnPostParams) ([]byte, error)
 	PurchaseSupplierOptions(ctx context.Context, search string) ([]byte, error)
+	PurchaseWorkflow(ctx context.Context, arg PurchaseWorkflowParams) ([]byte, error)
 	ReceivingOptions(ctx context.Context, search string) ([]byte, error)
 	ReceivingShipment(ctx context.Context, id pgtype.UUID) ([]byte, error)
 	RecordAuthAudit(ctx context.Context, arg RecordAuthAuditParams) error
@@ -136,6 +139,7 @@ type Querier interface {
 	ReturnSaleChoices(ctx context.Context, search string) ([]byte, error)
 	ReturnSaleSource(ctx context.Context, id pgtype.UUID) ([]byte, error)
 	ReturnsHistory(ctx context.Context, arg ReturnsHistoryParams) ([]byte, error)
+	ReverseUnallocatedPurchase(ctx context.Context, arg ReverseUnallocatedPurchaseParams) error
 	RevokeSession(ctx context.Context, tokenHash []byte) error
 	SalesReturnPost(ctx context.Context, arg SalesReturnPostParams) ([]byte, error)
 	SaveCostDocument(ctx context.Context, arg SaveCostDocumentParams) error
@@ -157,6 +161,8 @@ type Querier interface {
 	TouchShipment(ctx context.Context, id pgtype.UUID) error
 	UpdateBrand(ctx context.Context, arg UpdateBrandParams) (UpdateBrandRow, error)
 	UpdateCategory(ctx context.Context, arg UpdateCategoryParams) (UpdateCategoryRow, error)
+	UpdateManagedWarehouse(ctx context.Context, arg UpdateManagedWarehouseParams) error
+	UpdateOpenShipmentDetails(ctx context.Context, arg UpdateOpenShipmentDetailsParams) error
 	UpdateProduct(ctx context.Context, arg UpdateProductParams) error
 	UpdateShipmentStage(ctx context.Context, arg UpdateShipmentStageParams) (int64, error)
 	UpdateShipmentStatus(ctx context.Context, arg UpdateShipmentStatusParams) error

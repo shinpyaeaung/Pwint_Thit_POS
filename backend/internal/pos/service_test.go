@@ -226,6 +226,9 @@ func TestPOSIntegration(t *testing.T) {
 	}
 	sale := call("POST", "/pos/checkout", body, owner, 201)
 	invoice := call("GET", "/sales/"+sale["id"].(string), nil, owner, 200)
+	if !strings.HasPrefix(invoice["invoice_number"].(string), "INV-") || !strings.HasPrefix(invoice["order_number"].(string), "SO-") {
+		t.Fatal("missing business IDs", invoice)
+	}
 	if invoice["paid_mmk"] != "400000.0000" || invoice["profit_mmk"] != "120000.0000" {
 		t.Fatal("invoice ledger", invoice)
 	}

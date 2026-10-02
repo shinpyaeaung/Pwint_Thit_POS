@@ -106,7 +106,7 @@ func (in *Input) validate() string {
 	in.Name = strings.TrimSpace(in.Name)
 	in.Barcode = strings.TrimSpace(in.Barcode)
 	in.CountryCode = strings.ToUpper(strings.TrimSpace(in.CountryCode))
-	if !skuPattern.MatchString(in.SKU) {
+	if in.SKU != "" && !skuPattern.MatchString(in.SKU) {
 		return "SKU must be 1–100 letters, numbers, dots, underscores, hyphens or slashes."
 	}
 	if len(in.Name) == 0 || len(in.Name) > 200 || len(in.Description) > 4000 {
@@ -268,6 +268,10 @@ func (s *Service) Save(c *gin.Context) {
 		return
 	}
 	updating := c.Request.Method == http.MethodPut
+	if updating && strings.TrimSpace(in.SKU) == "" {
+		fail(c, 400, "Keep the existing record identifier when editing.")
+		return
+	}
 	var id pgtype.UUID
 	var before []byte
 	if updating {

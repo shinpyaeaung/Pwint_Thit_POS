@@ -15,6 +15,7 @@ import (
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/testutil"
 	"io"
 	"log/slog"
+	"math/big"
 	"net/http/httptest"
 	"os"
 	"strings"
@@ -248,6 +249,78 @@ func TestPurchasingIntegration(t *testing.T) {
 	}
 	if counts[201] != 1 || counts[200] != 1 {
 		t.Fatal("concurrent retry", counts)
+	}
+
+	// v1.2: generated IDs remain stable on request retries and a clean purchase
+	// can be reversed without changing its immutable monetary snapshot.
+	automatic := input("10000000-0000-0000-0000-000000000006", "")
+	automatic["items"].([]map[string]any)[0]["units_per_pack"] = "24"
+	generated := call("POST", "/purchases", automatic, owner, 201)
+	generatedID := generated["id"].(string)
+	if !strings.HasPrefix(generated["purchase_number"].(string), "PUR-") {
+		t.Fatal("missing generated purchase number", generated)
+	}
+	again := call("POST", "/purchases", automatic, owner, 200)
+	if again["purchase_number"] != generated["purchase_number"] {
+		t.Fatal("retry changed business number")
+	}
+	call("GET", "/purchases/"+generatedID+"/workflow", nil, staff, 403)
+	workflow := call("GET", "/purchases/"+generatedID+"/workflow", nil, owner, 200)
+	if len(workflow["choices"].([]any)) != 1 || len(workflow["shipments"].([]any)) != 0 {
+		t.Fatal("initial progress", workflow)
+	}
+	call("POST", "/purchases/"+generatedID+"/reverse", map[string]any{"reason": "Duplicate purchase correction"}, staff, 403)
+	call("POST", "/purchases/"+generatedID+"/reverse", map[string]any{"reason": "Duplicate purchase correction"}, owner, 204)
+	reversed := call("GET", "/purchases/"+generatedID, nil, owner, 200)
+	if reversed["status"] != "REVERSED" || reversed["total_mmk"] != generated["total_mmk"] {
+		t.Fatal("reversal altered historical cost", reversed)
+	}
+	call("POST", "/purchases/"+generatedID+"/reverse", map[string]any{"reason": "Duplicate reversal"}, owner, 409)
+
+	// Historical balances retain a purchase before its reversal event; purchase
+	// activity includes an equal opposite event without rewriting January.
+	priorReport, e := q.ReportSupplierPayables(ctx, database.ReportSupplierPayablesParams{StartOn: "2026-01-01", EndOn: "2026-01-31", PageSize: 100})
+	if e != nil {
+		t.Fatal(e)
+	}
+	var reversalReport map[string]any
+	if e = json.Unmarshal(priorReport, &reversalReport); e != nil {
+		t.Fatal(e)
+	}
+	found := false
+	for _, row := range reversalReport["rows"].([]any) {
+		if row.(map[string]any)["id"] == generatedID {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("reversal erased historical supplier balance", reversalReport)
+	}
+	activity, e := q.ReportPurchases(ctx, database.ReportPurchasesParams{StartOn: "2000-01-01", EndOn: "2099-12-31", PageSize: 100})
+	if e != nil {
+		t.Fatal(e)
+	}
+	if e = json.Unmarshal(activity, &reversalReport); e != nil {
+		t.Fatal(e)
+	}
+	net := new(big.Rat)
+	events := 0
+	for _, row := range reversalReport["rows"].([]any) {
+		v := row.(map[string]any)
+		if v["reference"] == generated["purchase_number"] {
+			amount, ok := new(big.Rat).SetString(v["amount_mmk"].(string))
+			if !ok {
+				t.Fatal(v)
+			}
+			net.Add(net, amount)
+			events++
+		}
+	}
+	if events != 2 || net.Sign() != 0 {
+		t.Fatal("purchase reversal did not offset immutable original", events, net)
+	}
+	if _, e = conn.Exec(ctx, "DELETE FROM app.purchase_reversals WHERE purchase_id=$1", generatedID); e == nil {
+		t.Fatal("reversal history was mutable")
 	}
 
 }

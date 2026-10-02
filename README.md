@@ -1,6 +1,6 @@
-# Pwint Thit Distribution — v1.1
+# Pwint Thit Distribution — v1.2
 
-Current release: **v1.1.0**. The next planned version is **v1.2**, pending the user’s redesign requirements. See [release notes](docs/releases/v1.1.md) and the [v1.2 handoff](docs/NEXT_SESSION_HANDOFF.md).
+Current version: **v1.2.0**. Purchases now connect shipment, transportation, landed costing and receiving in one resumable workspace, with automatic business IDs and optional sections. See [v1.2 release notes](docs/releases/v1.2.md) and the [session handoff](docs/NEXT_SESSION_HANDOFF.md).
 
 For day-to-day operation, read the [user guide](docs/user-guide.md) or open **User guide** in the app. Dashboard and Reports are pinned at the top of the sidebar.
 

@@ -1,46 +1,39 @@
-# v1.2 planning handoff — baseline v1.1
+# Pwint Thit POS 1.2 handoff
 
-## User intent: wait for the next prompt
+## Current scope and baseline
 
-The user plans to change almost the entire system after resetting Codex. They explicitly said **not to make those changes now**. The redesign requirements have not yet been provided. Read their next prompt before planning or implementing the redesign. Do not infer the new scope from previous phase requests or start another module automatically.
+The user supplied the v1.2 redesign scope: one resumable purchase workflow through shipment/transportation/costing/receiving/inventory, optional sections controlled by checkboxes, full Super Admin permissions with explicit accounting/security restrictions, and automatically generated readable business IDs. This scope has been implemented on top of the verified v1.1 baseline. Do not start another business module without new user scope.
 
-## Starting point
+- Local app: http://localhost:8088, Docker Compose with the existing PostgreSQL volume.
+- Branch: `main`; frontend version: `1.2.0`. Use pnpm and retain the pinned packageManager/lockfile.
+- Read `AGENTS.md`, the system specification (including section 70), and `docs/releases/v1.2.md`.
+- Light-only appearance remains the preference. Preserve real records, exact amounts, historical rates, batch costs, ledger-based payment statuses, immutable stock movements and finalized costing.
 
-- Project: `/Users/shinpyaeaung/Desktop/Pwint_Thit_POS`.
-- App: http://localhost:8088 (local Docker Compose stack).
-- Branch: `main`; version baseline: `v1.1.0` release tag on GitHub. Future redesign work is v1.2 and awaits the next user prompt.
-- Read `AGENTS.md` and `docs/Pwint_Thit_Distribution_Overall_System_Specification.md`. New user scope takes precedence over the existing phase grouping.
-- Phases 1–20 were implemented and verified. This is the existing baseline, not a requirement to preserve the current UX in the upcoming redesign.
-- Stack: React/Vite/TypeScript/Tailwind/shadcn/ui/Framer Motion/TanStack Query/Zustand; Go/Gin/PostgreSQL/pgx/sqlc. Use pnpm.
+## Implemented behavior
 
-## Recent user concerns and fixes
+- `/purchases/:id` is the daily workflow workspace. Progress comes from purchase-item allocations, shipment states, finalized costs and posted receipts. All quantities must be allocated and every active linked shipment received before completion.
+- Arrange shipment preloads the purchase's remaining goods; partial and consolidated shipments still work. Warehouse creation/edit/archive, shipment editing, transport stages, optional shipment expenses, transit/arrival, landed-cost confirmation and receiving happen in the same workspace.
+- Shipment and goods-receipt lists remain available for record history. Original purchase details and financial history expand within the purchase.
+- Optional product/supplier/purchase/shipment/transport sections use checkboxes. Collapsing retains existing values rather than silently discarding costs.
+- Normal creation forms no longer request product/supplier/purchase/shipment/receipt IDs. All requested IDs have readable type/year sequences, with UUIDs retained internally. Added sales-order/transportation/adjustment/damage/loss references also cover existing rows; preexisting identity columns remain unchanged.
+- Server-side Super Admin grants already include all registered permissions. Added open-shipment editing, audited unpaid-stage removal, warehouse editing/archive, and controlled purchase reversals. Paid stages, finalized costs, posted counts/rates and stock/audit history retain intentional restrictions. See the release-note control matrix.
+- A purchase can be reversed only without active shipment, payment allocation or supplier return activity. It preserves original amounts/items and records an immutable dated reversal event. Historical payables retain it before that date; purchase/currency reports include equal opposite reversal activity on the reversal date.
 
-The user finds the current system unfriendly and has reported sidebar jumping, apparently uneditable packaging/rate inputs, and blank POS selectors. They now want a broader redesign; the fixes below do not establish that all usability problems have been resolved.
+## Verification
 
-- `6546f96`: scrolling sidebar, pinned Dashboard/Reports, business navigation, user guide at `/guide`, permission-aware home. Removed developer tools from the daily menu. Found and rebuilt an outdated local Docker deployment that lacked Dashboard/Reports routes and migrations.
-- `c76f2ea`: remembers sidebar scroll position across navigation/reload and drawer reopening; clearly displays the fixed base packaging conversion; explains locked rates; preserves selected POS customer labels during search; labels POS warehouse/pricing selectors and explains missing warehouses and cart locking.
-- The local DB had **zero active warehouses** when checked. No warehouse or sample stock was inserted. Existing setup is Shipments → Create shipment → Add warehouse, followed by cost finalization/receiving before POS sales. This awkward setup path is relevant to the redesign.
-- `ef30a47`: Currencies & exchange rates accepts a pair such as **100 INR = 4450 MMK**. Backend exact rational arithmetic normalizes it to **44.5000000000 MMK per INR**. Raw quote inputs are included in audit data. New effective-time input supports multiple same-day quotes without overwriting history.
-- Authorized users can type over a selected historical quote's rate in a new purchase; editing clears the quote reference and uses a custom transaction rate. MMK-to-MMK remains 1. Rate permission is still enforced on the backend.
-- User guide: `docs/user-guide.md`; in-app guide: `frontend/src/pages/help/`.
+- `make check` passed: Go race tests/vet, frontend lint and production build.
+- `make test-integration` passed against PostgreSQL, including concurrent IDs, transactional counter rollback, import collision reservation, retry-stable IDs, immutable reversals and historical report offsets.
+- `make test-e2e` passed: 25 browser tests, with Chromium/WebKit regressions and a new same-purchase-URL workflow through receiving, inventory confirmation, reload, mobile layout and denied staff mutations.
+- Tests use disposable databases/accounts; they never seed or reset real app data.
+- `make up` rebuilds the running app and applies additive migrations. Git push alone does not update the local app. Never remove database volumes.
 
-## Data and financial constraints to review explicitly in any redesign
+## Relevant files
 
-Preserve real records and historical purchase rates/batch costs. Use exact decimals and backend validation. Stock changes require movements; related stock, payment, financial and audit operations require transactions. Completed financial records use controlled reversals/voids, not deletion. Backend permissions remain authoritative. Only SUPER_ADMIN and STAFF_ADMIN exist. Light-only appearance is the current preference.
+- Database migrations: `000023_workflow_ids.sql`, `000024_purchase_controls.sql`.
+- Linked workflow/management queries: `database/queries/workflow.sql`; corresponding generated Go stays committed.
+- Purchase workspace: `frontend/src/pages/purchases/PurchaseWorkflow.tsx`.
+- Reused inline forms: shipment details/actions/create, goods receiving.
+- Reversal report preservation: purchasing backend integration and report purchase/currency/payables queries.
+- User guide: `docs/user-guide.md` and `frontend/src/pages/help/guide.ts`.
 
-Do not reset the database, replace real data with fixtures, or assume permission to migrate/delete business history just because the user requests a broad redesign. Identify conflicts between new requirements and financial integrity before implementing major architectural changes.
-
-## Verification and deployment
-
-At `ef30a47`:
-- `make check` passed (Go race tests/vet, frontend lint and build).
-- `make test-integration` passed against PostgreSQL.
-- `make test-e2e` passed: 24 browser tests, including Chromium/WebKit coverage.
-- `make up` rebuilt the local stack; backend/frontend/PostgreSQL healthy. New currency fields verified in the deployed bundle.
-- No outstanding known build/test failure. These checks do not prove every UX issue is resolved.
-
-Run relevant checks after future changes. `make up` updates the local running app; Git commits/pushes alone do not. Do not remove database volumes. Keep credentials, `.env`, backups and generated build output out of Git. Keep sqlc-generated Go committed. User authorized committing/pushing verified completed work to origin.
-
-## Suggested opening for the next session
-
-Read this note and the repository instructions, inspect the current code, then use the user's new redesign prompt to establish scope. Do not treat previous UI choices or phase assignments as the new specification. Explain major changes before implementing them and preserve working business behavior unless the new requirements explicitly change it.
+User authorized committing and pushing verified completed phases to origin. Keep secrets, credentials, local backups, build output and browser artifacts out of Git.

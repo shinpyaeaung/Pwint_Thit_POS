@@ -6,7 +6,7 @@ test('supplier CRUD, contacts, filters, purchase history and permission boundari
   await signIn(page)
   const suffix = String(Date.now())
   const name = `Supplier ${suffix}`
-  const code = `SUP-${suffix}`
+  let code = ''
   const headers = { Origin: process.env.E2E_BASE_URL!, 'X-Pwint-Thit-Request': '1' }
   await page.getByRole('link', { name: 'Suppliers', exact: true }).click()
   const statusFilter = page.getByRole('combobox', { name: 'Status', exact: true })
@@ -18,17 +18,20 @@ test('supplier CRUD, contacts, filters, purchase history and permission boundari
   await expect(statusFilter).toBeFocused()
   await page.getByRole('link', { name: 'Add Supplier', exact: true }).click()
   await page.getByLabel('Supplier name', { exact: true }).fill(name)
-  await page.getByLabel('Supplier code', { exact: true }).fill(code)
+  await page.getByLabel('Contact & supplier profile',{exact:true}).check()
   await page.getByLabel('Contact person', { exact: true }).fill('Daw May')
   await page.getByLabel('Phone number', { exact: true }).fill('+95 09123456')
   await page.getByLabel('Country', { exact: true }).fill('MM')
   await page.getByLabel('Supplier type', { exact: true }).fill('Wholesaler')
   await page.getByLabel('Address', { exact: true }).fill('Mandalay\nWarehouse 2')
+  await page.getByLabel('Payment terms & notes',{exact:true}).check()
   await page.getByLabel('Payment terms', { exact: true }).fill('Net 30 days')
   await page.getByLabel('Notes', { exact: true }).fill('Call before delivery')
   await page.getByRole('button', { name: 'Create supplier', exact: true }).click()
   await expect(page).toHaveURL(/\/suppliers\/[a-f0-9-]{36}$/)
   const id = page.url().split('/').pop()!
+  code = (await (await page.request.get(`/api/v1/suppliers/${id}`)).json()).code
+  expect(code).toMatch(/^SUP-\d{4}-\d{4,}$/)
   await expect(page.getByText('Daw May', { exact: true })).toBeVisible()
   await expect(page.getByText('Net 30 days', { exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'No purchases recorded' })).toBeVisible()

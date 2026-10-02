@@ -60,6 +60,7 @@ test('business menu scrolls independently and every destination loads', async ({
   await expect(barcode).toHaveValue('000123456')
   await expect(barcode).toBeFocused()
   await page.screenshot({ path: `/tmp/pwint-packaging-typing-${testInfo.project.name}.png`, fullPage: true })
+  await page.getByLabel('Low stock alert',{exact:true}).check()
   await page.getByLabel('Minimum stock', { exact: true }).pressSequentially('20.123456')
   await expect(page.getByLabel('Minimum stock', { exact: true })).toHaveValue('20.123456')
   await expect.poll(() => nav.evaluate(element => element.scrollTop)).toBeCloseTo(menuPosition, 0)

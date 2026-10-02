@@ -5,15 +5,15 @@ export const guideSections = [
     'Start with suppliers and products, then record purchases, shipments, landed costs and receiving. Goods become available for sale only after receiving. A purchase alone does not add sellable stock.',
   ] },
   { id: 'setup', title: '2. Set up products and suppliers', href: '/products', link: 'Open Products', paragraphs: [
-    'Use Catalog setup to define categories, brands and units. In Products, enter the name, SKU or barcode, base unit and packaging conversions. For example, one carton may contain 12 bottles. Check conversions before recording purchases or sales.',
-    'Use Suppliers to add supplier names, contact details and payment terms. Currency & rates opens the currency settings when your account has exchange-rate access.',
-    'Archive or deactivate unused records instead of removing their business history.',
+    'Use Catalog setup to define categories, brands and units. In Products, enter the name, base unit and packaging conversions. For example, one carton may contain 12 bottles. Check conversions before recording purchases or sales.',
+    'Product and supplier IDs are generated automatically. Enable optional sections for barcode, origin, contact details, payment terms and alerts. Use Suppliers to add supplier names, contact details and payment terms. Currency & rates opens the currency settings when your account has exchange-rate access.',
+    'Super Admin has every backend permission. Archive or deactivate unused master records; edit open shipments and remove unpaid stages with an audit reason. Posted purchases and finalized costs are protected accounting history. A purchase with no active shipment, payment or return can be reversed with a reason; other corrections use linked returns, voids and stock adjustments.',
   ] },
   { id: 'purchasing', title: '3. Purchase, transport and receive', href: '/purchases', link: 'Open Purchases', paragraphs: [
     'In Purchases, choose a supplier, purchase date, currency and transaction exchange rate. Add products, quantities, units and original-currency prices. Review the original and MMK totals before posting.',
-    'In Shipments, select purchased goods and the destination warehouse. Add transportation stages and shipment expenses. Record departure and arrival as the goods move.',
-    'Open the shipment’s Landed cost section. Choose an allocation method and confirm expected sellable quantities, allowing for damage or missing goods. Preview and review the costs before finalizing. Finalized costing is preserved as history.',
-    'Use Goods receiving for arrived, cost-finalized shipments. Enter received cartons or units, damage, batch numbers and expiry dates. Receiving must reconcile with the confirmed sellable quantities. Posting creates stock movements and batch inventory.',
+    'After saving a purchase, stay on its purchase workspace. Transportation can remain pending. Reopen the same purchase later and select Arrange shipment: its remaining products are included automatically. Choose an origin and destination warehouse; add or manage a warehouse here if needed. Enable Transportation timeline and Additional shipment costs only when needed. Record departure and arrival inside the purchase.',
+    'Within the purchase workspace, open the shipment’s Landed cost section. Choose an allocation method and confirm expected sellable quantities, allowing for damage or missing goods. Preview and review the costs before finalizing. Finalized costing is preserved as history.',
+    'Click Receive goods in the purchase workspace for arrived, cost-finalized shipments. Enter received cartons or units, damage, batch numbers and expiry dates. Receiving must reconcile with the confirmed sellable quantities. Posting creates stock movements and batch inventory and completes the purchase when all shipments have been received. Purchase, shipment, transportation, receipt, invoice, payment and stock record IDs are generated on save. Existing identifiers remain intact.',
   ] },
   { id: 'stock', title: '4. Check inventory and expiry', href: '/inventory', link: 'Open Inventory', paragraphs: [
     'Inventory shows stock by warehouse and batch, including sellable, reserved, available and damaged quantities. Use Batches & expiry to inspect batch history and expiry warnings.',

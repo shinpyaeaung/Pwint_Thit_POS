@@ -1,5 +1,5 @@
 -- name: ShipmentWarehouses :one
-SELECT COALESCE(jsonb_agg(jsonb_build_object('id',id,'code',code,'name',name) ORDER BY name),'[]'::jsonb)::jsonb FROM app.warehouses WHERE is_active;
+SELECT COALESCE(jsonb_agg(jsonb_build_object('id',id,'code',code,'name',name,'address',address) ORDER BY name),'[]'::jsonb)::jsonb FROM app.warehouses WHERE is_active;
 -- name: CreateShipmentWarehouse :one
 INSERT INTO app.warehouses(code,name,address) VALUES($1,$2,$3) RETURNING id;
 -- name: LockShipmentWarehouse :one
@@ -12,7 +12,7 @@ SELECT COALESCE(jsonb_agg(to_jsonb(x) ORDER BY purchase_number,line_number),'[]'
  WHERE p.status='POSTED' AND (sqlc.arg(search)::text='' OR strpos(lower(p.purchase_number||' '||s.name||' '||pr.name),lower(sqlc.arg(search)))>0)
  ORDER BY p.purchased_at DESC,i.line_number LIMIT 50) x;
 -- name: LockShipmentPurchaseItem :one
-SELECT i.product_id,i.base_quantity::text AS base_quantity FROM app.purchase_items i JOIN app.purchases p ON p.id=i.purchase_id WHERE i.id=$1 AND p.status='POSTED' FOR UPDATE OF i;
+SELECT i.product_id,i.base_quantity::text AS base_quantity FROM app.purchase_items i JOIN app.purchases p ON p.id=i.purchase_id WHERE i.id=$1 AND p.status='POSTED' FOR UPDATE OF i,p;
 -- name: ShipmentReservedQuantity :one
 SELECT COALESCE(sum(i.expected_quantity),0)::text FROM app.shipment_items i JOIN app.shipments s ON s.id=i.shipment_id WHERE i.purchase_item_id=$1 AND s.status<>'CANCELLED';
 -- name: InsertShipment :one

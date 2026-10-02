@@ -2134,3 +2134,12 @@ The final product is a complete:
 
 for **Pwint Thit Distribution**.
 
+
+
+# 70. POS 1.2 Workflow Design
+
+The purchase is the primary daily workspace: Create Purchase → Add Products → Arrange Shipment / Transportation → Optional Additional Costs → Goods in Transit → Landed Cost Confirmation → Receive Goods → Inventory Updated → Completed. Related database records retain their own identities and integrity controls, while all daily actions are available inside the saved purchase. Transportation can remain pending and the user can reopen the purchase later to continue. Partial and consolidated shipments remain supported. Existing dedicated pages provide record history.
+
+Optional fields are grouped behind checkboxes/collapsible sections. System-generated business IDs replace manual identity entry on ordinary creation forms. Super Admin has all backend permissions; restrictions for posted financial records, finalized costs, paid stages, consumed approvals and immutable stock/audit histories are intentional. Corrections use audited reversals, voids, cancellations, returns and movements. A purchase with no active shipment, payment allocation or supplier return can be reversed through an immutable reversal event. Historical reports retain its original amount before the reversal date.
+
+See `docs/releases/v1.2.md` for the identifier formats and control/restriction matrix. These v1.2 UI requirements supersede the earlier recommendation to expose transportation as a separate daily workflow; transportation retains separate linked records internally.

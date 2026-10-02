@@ -6,7 +6,7 @@ test('complete product workflow: catalog, packaging, edit, search, pagination an
   await signIn(page)
   const suffix = String(Date.now())
   const name = `Tea ${suffix}`
-  const sku = `TEA-${suffix}`
+  let sku = ''
   const barcode = `000${suffix}`
   await page.goto('/catalog')
   await page.getByRole('button', { name: 'Add category', exact: true }).click()
@@ -20,8 +20,9 @@ test('complete product workflow: catalog, packaging, edit, search, pagination an
   await expect(page.getByRole('dialog')).not.toBeVisible()
   await page.goto('/products/new')
   await page.getByLabel('Product name', { exact: true }).fill(name)
-  await page.getByLabel('SKU', { exact: true }).fill(sku)
+  await page.getByLabel('Barcode & origin',{exact:true}).check()
   await page.getByLabel('Product barcode', { exact: true }).fill(barcode)
+  await page.getByLabel('Category & brand',{exact:true}).check()
   await page.getByRole('combobox', { name: 'Category', exact: true }).click()
   await page.getByRole('option', { name: `Drinks ${suffix}`, exact: true }).click()
   await page.getByRole('combobox', { name: 'Brand', exact: true }).click()
@@ -32,10 +33,13 @@ test('complete product workflow: catalog, packaging, edit, search, pagination an
   await page.getByLabel('Base units per pack 2', { exact: true }).fill('12')
   await page.getByLabel('Packaging barcode 2', { exact: true }).fill(`${barcode}-C`)
   await page.getByLabel('Purchase default', { exact: true }).nth(1).check()
+  await page.getByLabel('Low stock alert',{exact:true}).check()
   await page.getByLabel('Minimum stock', { exact: true }).fill('20.123456')
   await page.getByRole('button', { name: 'Create product', exact: true }).click()
   await expect(page).toHaveURL(/\/products\/[a-f0-9-]{36}$/)
   const id = page.url().split('/').pop()!
+  sku = (await (await page.request.get(`/api/v1/products/${id}`)).json()).sku
+  expect(sku).toMatch(/^PRD-\d{4}-\d{4,}$/)
   await expect(page.getByRole('heading', { name, exact: true })).toBeVisible()
   await expect(page.getByText('1 Carton = 12 Bottles', { exact: true })).toBeVisible()
   await expect(page.getByText(barcode, { exact: true })).toBeVisible()

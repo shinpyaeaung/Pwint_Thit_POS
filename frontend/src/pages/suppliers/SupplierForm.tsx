@@ -1,3 +1,4 @@
+import { OptionalSection } from '@/components/shared/optional-section'
 import { Select, SelectItem } from '@/components/ui/select'
 import { useState, type FormEvent } from 'react'
 import { useMutation } from '@tanstack/react-query'
@@ -33,19 +34,21 @@ export function SupplierForm({ supplier }: { supplier?: Supplier }) {
     <form onSubmit={submit} className="space-y-5">
       <fieldset disabled={save.isPending} className="space-y-5">
         <section className="panel p-5">
-          <h2 className="mb-5 text-sm font-semibold">Supplier & contact details</h2>
+          <h2 className="mb-5 text-sm font-semibold">Supplier & contact details</h2>{!supplier&&<p className="mb-4 text-xs text-muted-foreground">Supplier ID is generated automatically when saved.</p>}
           <div className="grid gap-5 sm:grid-cols-2">
-            {fields.map(field => <FormField key={field.key} label={field.label} required={'required' in field && field.required} hint={'hint' in field ? field.hint : undefined}>
+            {fields.filter(field => field.key === 'name' || (supplier && field.key === 'code')).map(field => <FormField key={field.key} label={field.label} required={'required' in field && field.required} hint={'hint' in field ? field.hint : undefined}>
               {p => <input {...p} className="field" type={field.key === 'phone' ? 'tel' : 'text'} maxLength={field.limit} pattern={field.key === 'country_code' ? '[A-Za-z]{2}' : undefined} value={form[field.key]} onChange={e => set(field.key, field.key === 'country_code' ? e.target.value.toUpperCase() : e.target.value)} />}
             </FormField>)}
           </div>
-          <div className="mt-5"><FormField label="Address">{p => <textarea {...p} className="field min-h-24" maxLength={2000} value={form.address} onChange={e => set('address', e.target.value)} />}</FormField></div>
+          <OptionalSection title="Contact & supplier profile" defaultOpen={!!(supplier?.contact_person||supplier?.phone||supplier?.address||supplier?.country_code||supplier?.supplier_type)}>
+           <div className="grid gap-5 sm:grid-cols-2">{fields.filter(field=>field.key!=='name'&&field.key!=='code').map(field=><FormField key={field.key} label={field.label}>{p=><input {...p} className="field" maxLength={field.limit} value={form[field.key]} onChange={e=>set(field.key,e.target.value)}/>}</FormField>)}</div>
+          <div className="mt-5"><FormField label="Address">{p => <textarea {...p} className="field min-h-24" maxLength={2000} value={form.address} onChange={e => set('address', e.target.value)} />}</FormField></div></OptionalSection>
         </section>
         <section className="panel p-5">
           <h2 className="mb-5 text-sm font-semibold">Trading details</h2>
           <div className="grid gap-5 sm:grid-cols-2">
-            <FormField label="Payment terms" hint="Record the agreement, e.g. payment within 30 days of invoice.">{p => <textarea {...p} className="field min-h-28" maxLength={2000} value={form.payment_terms} onChange={e => set('payment_terms', e.target.value)} />}</FormField>
-            <FormField label="Notes">{p => <textarea {...p} className="field min-h-28" maxLength={4000} value={form.notes} onChange={e => set('notes', e.target.value)} />}</FormField>
+            <OptionalSection title="Payment terms & notes" defaultOpen={!!(supplier?.payment_terms||supplier?.notes)}><FormField label="Payment terms" hint="Record the agreement, e.g. payment within 30 days of invoice.">{p => <textarea {...p} className="field min-h-28" maxLength={2000} value={form.payment_terms} onChange={e => set('payment_terms', e.target.value)} />}</FormField>
+            <FormField label="Notes">{p => <textarea {...p} className="field min-h-28" maxLength={4000} value={form.notes} onChange={e => set('notes', e.target.value)} />}</FormField></OptionalSection>
             <FormField label="Status" required>{p => <Select {...p}  value={form.is_active ? 'active' : 'inactive'} onValueChange={value => set('is_active', value === 'active')}><SelectItem value="active">Active</SelectItem><SelectItem value="inactive">Inactive</SelectItem></Select>}</FormField>
           </div>
         </section>

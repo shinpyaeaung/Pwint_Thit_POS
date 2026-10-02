@@ -184,7 +184,7 @@ func (s *Service) Post(c *gin.Context) {
 	}
 	in.Number = strings.TrimSpace(in.Number)
 	_, e := time.Parse(time.RFC3339, in.Received)
-	if !validID(in.RequestID) || !validID(in.ShipmentID) || !text(in.Number, 100) || !text(in.Version, 20) || e != nil || len(in.Notes) > 4000 || len(in.Items) < 1 || len(in.Items) > 100 {
+	if !validID(in.RequestID) || !validID(in.ShipmentID) || (in.Number != "" && !text(in.Number, 100)) || !text(in.Version, 20) || e != nil || len(in.Notes) > 4000 || len(in.Items) < 1 || len(in.Items) > 100 {
 		fail(c, 400, "Enter a receipt number, shipment, receiving date and all item counts.")
 		return
 	}

@@ -41,6 +41,9 @@ func (s *Service) Register(r *gin.Engine, a *authz.Service) {
 	r.GET("/api/v1/shipments/:id/expenses", a.Require(permissions.ShipmentsView), s.Expenses)
 	r.GET("/api/v1/shipment-options", a.Require(permissions.ShipmentsManage), s.Options)
 	r.POST("/api/v1/warehouses", a.Require(permissions.SettingsManage), s.CreateWarehouse)
+	r.PUT("/api/v1/warehouses/:id", a.Require(permissions.SettingsManage), s.UpdateWarehouse)
+	r.PUT("/api/v1/shipments/:id", a.Require(permissions.ShipmentsManage), s.Edit)
+	r.DELETE("/api/v1/shipments/:id/stages/:child", a.Require(permissions.TransportationManage), a.Require(permissions.ShipmentsViewCost), a.Require(permissions.ChangeTransportCost), s.DeleteStage)
 	r.POST("/api/v1/shipments", a.Require(permissions.ShipmentsManage), s.Create)
 	r.PUT("/api/v1/shipments/:id/status", a.Require(permissions.ShipmentsManage), s.Status)
 	r.POST("/api/v1/shipments/:id/stages", a.Require(permissions.TransportationManage), a.Require(permissions.ShipmentsViewCost), s.SaveStage)
@@ -227,7 +230,7 @@ func (s *Service) Create(c *gin.Context) {
 	in.Number = strings.TrimSpace(in.Number)
 	in.Origin = strings.TrimSpace(in.Origin)
 	_, datesOK := date(in.Expected)
-	if !validID(in.RequestID) || !validID(in.Warehouse) || !required(in.Number, 100) || !required(in.Origin, 200) || len(in.Notes) > 4000 || !datesOK || len(in.Items) == 0 || len(in.Items) > 100 {
+	if !validID(in.RequestID) || !validID(in.Warehouse) || (in.Number != "" && !required(in.Number, 100)) || !required(in.Origin, 200) || len(in.Notes) > 4000 || !datesOK || len(in.Items) == 0 || len(in.Items) > 100 {
 		fail(c, 400, "Enter shipment identity, destination and 1–100 valid purchase items.")
 		return
 	}

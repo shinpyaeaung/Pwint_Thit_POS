@@ -201,7 +201,7 @@ func (q *Queries) LockShipment(ctx context.Context, id pgtype.UUID) (LockShipmen
 }
 
 const lockShipmentPurchaseItem = `-- name: LockShipmentPurchaseItem :one
-SELECT i.product_id,i.base_quantity::text AS base_quantity FROM app.purchase_items i JOIN app.purchases p ON p.id=i.purchase_id WHERE i.id=$1 AND p.status='POSTED' FOR UPDATE OF i
+SELECT i.product_id,i.base_quantity::text AS base_quantity FROM app.purchase_items i JOIN app.purchases p ON p.id=i.purchase_id WHERE i.id=$1 AND p.status='POSTED' FOR UPDATE OF i,p
 `
 
 type LockShipmentPurchaseItemRow struct {
@@ -334,7 +334,7 @@ func (q *Queries) ShipmentStages(ctx context.Context, arg ShipmentStagesParams) 
 }
 
 const shipmentWarehouses = `-- name: ShipmentWarehouses :one
-SELECT COALESCE(jsonb_agg(jsonb_build_object('id',id,'code',code,'name',name) ORDER BY name),'[]'::jsonb)::jsonb FROM app.warehouses WHERE is_active
+SELECT COALESCE(jsonb_agg(jsonb_build_object('id',id,'code',code,'name',name,'address',address) ORDER BY name),'[]'::jsonb)::jsonb FROM app.warehouses WHERE is_active
 `
 
 func (q *Queries) ShipmentWarehouses(ctx context.Context) ([]byte, error) {

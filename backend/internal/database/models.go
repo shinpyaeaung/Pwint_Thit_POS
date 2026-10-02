@@ -103,6 +103,12 @@ type AppBrand struct {
 	UpdatedAt pgtype.Timestamptz
 }
 
+type AppBusinessNumberCounter struct {
+	Prefix    string
+	Year      int32
+	LastValue int64
+}
+
 type AppCatalogBarcode struct {
 	Barcode   string
 	ProductID pgtype.UUID
@@ -183,6 +189,7 @@ type AppDamagedProduct struct {
 	SaleID            pgtype.UUID
 	ActualUnitCostMmk pgtype.Numeric
 	DiscountLossMmk   pgtype.Numeric
+	RecordNumber      string
 }
 
 type AppExchangeRate struct {
@@ -335,6 +342,7 @@ type AppMissingProduct struct {
 	Notes            pgtype.Text
 	CreatedAt        pgtype.Timestamptz
 	UpdatedAt        pgtype.Timestamptz
+	RecordNumber     string
 }
 
 type AppPayment struct {
@@ -551,6 +559,14 @@ type AppPurchaseReturnItem struct {
 	UpdatedAt        pgtype.Timestamptz
 }
 
+type AppPurchaseReversal struct {
+	ID         pgtype.UUID
+	PurchaseID pgtype.UUID
+	RecordedBy pgtype.UUID
+	Reason     string
+	ReversedAt pgtype.Timestamptz
+}
+
 type AppPurchaseTotal struct {
 	PurchaseID    pgtype.UUID
 	SupplierID    pgtype.UUID
@@ -593,6 +609,7 @@ type AppSale struct {
 	RequestID       pgtype.UUID
 	RequestPayload  []byte
 	InvoiceDocument []byte
+	OrderNumber     string
 }
 
 type AppSaleItem struct {
@@ -725,17 +742,18 @@ type AppShipmentItem struct {
 }
 
 type AppStockAdjustment struct {
-	ID             pgtype.UUID
-	WarehouseID    pgtype.UUID
-	Reason         string
-	AdjustedAt     pgtype.Timestamptz
-	Status         string
-	PostedAt       pgtype.Timestamptz
-	CreatedBy      pgtype.UUID
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
-	RequestID      pgtype.UUID
-	RequestPayload []byte
+	ID               pgtype.UUID
+	WarehouseID      pgtype.UUID
+	Reason           string
+	AdjustedAt       pgtype.Timestamptz
+	Status           string
+	PostedAt         pgtype.Timestamptz
+	CreatedBy        pgtype.UUID
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+	RequestID        pgtype.UUID
+	RequestPayload   []byte
+	AdjustmentNumber string
 }
 
 type AppStockAdjustmentItem struct {
@@ -856,6 +874,7 @@ type AppTransportationStage struct {
 	CreatedAt            pgtype.Timestamptz
 	UpdatedAt            pgtype.Timestamptz
 	RequestID            pgtype.UUID
+	TransportationNumber string
 }
 
 type AppUnit struct {
