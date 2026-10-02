@@ -13,6 +13,7 @@ The user supplied the v1.2 redesign scope: one resumable purchase workflow throu
 
 - `/purchases/:id` is the daily workflow workspace. Progress comes from purchase-item allocations, shipment states, finalized costs and posted receipts. All quantities must be allocated and every active linked shipment received before completion.
 - Arrange shipment preloads the purchase's remaining goods; partial and consolidated shipments still work. Warehouse creation/edit/archive, shipment editing, transport stages, optional shipment expenses, transit/arrival, landed-cost confirmation and receiving happen in the same workspace.
+- Receive Goods uses a wide desktop dialog with responsive product cards, separate quantity/batch sections and prominent received/missing/sellable totals. Other edit dialogs retain their compact size.
 - Shipment and goods-receipt lists remain available for record history. Original purchase details and financial history expand within the purchase.
 - Optional product/supplier/purchase/shipment/transport sections use checkboxes. Collapsing retains existing values rather than silently discarding costs.
 - Normal creation forms no longer request product/supplier/purchase/shipment/receipt IDs. All requested IDs have readable type/year sequences, with UUIDs retained internally. Added sales-order/transportation/adjustment/damage/loss references also cover existing rows; preexisting identity columns remain unchanged.

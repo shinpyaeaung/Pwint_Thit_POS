@@ -123,7 +123,7 @@ test('shipment goods, transportation timeline, expenses and restricted staff acc
  await page.getByLabel('Batch number 1',{exact:true}).fill(`BATCH-${suffix}`)
  await page.getByLabel('Add count discrepancy notes 1',{exact:true}).check()
  await page.getByLabel('Count discrepancy notes 1',{exact:true}).fill('Five bottles missing and five damaged in transit')
- await expect(page.getByTestId('receiving-preview-0')).toHaveText('Received 55 · Missing 5 · Sellable 50')
+ await expect(page.getByTestId('receiving-preview-0')).toHaveText('Received55Missing5Sellable50')
  await page.setViewportSize({width:375,height:812})
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true)
  await page.screenshot({path:'/tmp/pwint-receiving-mobile.png',fullPage:true})
