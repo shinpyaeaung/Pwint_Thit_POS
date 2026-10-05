@@ -11,6 +11,7 @@ import (
 )
 
 type Querier interface {
+	AddSupplierPaymentMethod(ctx context.Context, arg AddSupplierPaymentMethodParams) error
 	AdjustInventory(ctx context.Context, arg AdjustInventoryParams) (pgtype.UUID, error)
 	ArchiveProduct(ctx context.Context, id pgtype.UUID) error
 	ArchiveSupplier(ctx context.Context, id pgtype.UUID) error
@@ -118,6 +119,7 @@ type Querier interface {
 	ReceivingShipment(ctx context.Context, id pgtype.UUID) ([]byte, error)
 	RecordAuthAudit(ctx context.Context, arg RecordAuthAuditParams) error
 	RecordProductAudit(ctx context.Context, arg RecordProductAuditParams) error
+	RecordSupplierPayment(ctx context.Context, arg RecordSupplierPaymentParams) (pgtype.UUID, error)
 	RemoveProductUnits(ctx context.Context, arg RemoveProductUnitsParams) error
 	ReportCurrency(ctx context.Context, arg ReportCurrencyParams) ([]byte, error)
 	ReportCustomerDebt(ctx context.Context, arg ReportCustomerDebtParams) ([]byte, error)
@@ -144,6 +146,7 @@ type Querier interface {
 	SalesReturnPost(ctx context.Context, arg SalesReturnPostParams) ([]byte, error)
 	SaveCostDocument(ctx context.Context, arg SaveCostDocumentParams) error
 	SaveCostItem(ctx context.Context, arg SaveCostItemParams) error
+	SetProductUnitPrices(ctx context.Context, arg SetProductUnitPricesParams) error
 	ShipmentChildHasPayment(ctx context.Context, transportationStageID pgtype.UUID) (bool, error)
 	ShipmentExpenses(ctx context.Context, arg ShipmentExpensesParams) ([]byte, error)
 	ShipmentHasReceiving(ctx context.Context, shipmentID pgtype.UUID) (bool, error)
@@ -156,6 +159,9 @@ type Querier interface {
 	StockIssue(ctx context.Context, arg StockIssueParams) ([]byte, error)
 	StockIssueChoices(ctx context.Context, search string) ([]byte, error)
 	StockIssuesHistory(ctx context.Context, arg StockIssuesHistoryParams) ([]byte, error)
+	SupplierPaymentHistory(ctx context.Context, purchaseID pgtype.UUID) ([]byte, error)
+	SupplierPaymentMethods(ctx context.Context) ([]byte, error)
+	SupplierPaymentPurchases(ctx context.Context, arg SupplierPaymentPurchasesParams) ([]byte, error)
 	SupplierPurchaseBalance(ctx context.Context, id pgtype.UUID) ([]byte, error)
 	SupplierPurchaseHistory(ctx context.Context, arg SupplierPurchaseHistoryParams) ([]byte, error)
 	TouchShipment(ctx context.Context, id pgtype.UUID) error

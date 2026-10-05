@@ -111,6 +111,26 @@ func TestPOSIntegration(t *testing.T) {
 	line := map[string]any{"product_id": "00000000-0000-0000-0000-000000000020", "unit_code": "BOTTLE", "units_per_pack": "1", "quantity": "10", "unit_price_mmk": "40000", "discount_mmk": "0"}
 	body := map[string]any{"request_id": "60000000-0000-0000-0000-000000000001", "warehouse_id": "00000000-0000-0000-0000-000000000012", "customer_id": "", "pricing_mode": "RETAIL", "payment_method": "CASH", "payment_reference": "", "tender_mmk": "450000", "reason": "", "due_date": "", "quote_hash": "", "items": []map[string]any{line}}
 
+	// Mixed units reserve across earlier lines while quoting FIFO. A carton and
+	// ten bottles consume 22 base units, including the second cost batch once.
+	mixed := map[string]any{}
+	for k, v := range body {
+		mixed[k] = v
+	}
+	carton := map[string]any{"product_id": line["product_id"], "unit_code": "CARTON", "units_per_pack": "12", "quantity": "1", "unit_price_mmk": "480000", "discount_mmk": "0"}
+	mixed["items"] = []map[string]any{carton, line}
+	mixed["tender_mmk"] = "880000"
+	mixedQuote := call("POST", "/pos/quote", mixed, owner, 200)
+	if mixedQuote["cost_mmk"] != "520000.0000" {
+		t.Fatal("mixed FIFO cost", mixedQuote)
+	}
+	mixedLines := mixedQuote["lines"].([]any)
+	if mixedLines[1].(map[string]any)["cost_mmk"] != "200000.0000" {
+		t.Fatal("reused FIFO stock", mixedLines)
+	}
+	line["quantity"] = "17"
+	call("POST", "/pos/quote", mixed, owner, 409)
+	line["quantity"] = "10"
 	// Customer-specific prices use the selected pack and preserve below-cost rules.
 	customerInput := map[string]any{"code": "SPECIAL", "name": "Wholesale customer", "business_name": "Shop", "phone": "099", "address": "Yangon", "customer_type": "WHOLESALE", "credit_limit_mmk": "1000000", "notes": "Account", "is_active": true}
 	call("POST", "/customers", customerInput, staff, 403)

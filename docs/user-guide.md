@@ -103,3 +103,13 @@ If an expected page is missing even for Super Admin, the running app may be an o
 If a form reports that stock, prices or a record changed, refresh the record and review the new values before submitting. After a connection error during a financial action, first check whether the invoice or payment was already saved; do not create another transaction blindly.
 
 When reporting an error, include the page, action, message and time, and whether you are Super Admin or Staff Admin. Never share passwords or database credentials.
+
+## Packaging and supplier payments
+
+Select **Bottle** as the base stock unit and **Carton** as the purchase packaging type, then enter the number of bottles per carton. Reference purchase prices in MMK can default new purchase lines; actual purchase prices and landed costs remain recorded separately. Set carton and bottle selling prices independently.
+
+In a purchase, **Shipment allocation** shows purchased, assigned and remaining quantities. **Arrange shipment** can accept purchase packages (for example 40 cartons) or base units. Each shipment can have its own transport providers and legs.
+
+Use **Supplier Payments** or **Record Payment** inside the purchase. Enter the amount in the purchase currency, payment method, date, reference and notes. Every partial payment remains in history; the remaining balance updates from the ledger. Transport-provider debts stay separate from supplier invoice debts. Authorized settings users can add payment methods on Supplier Payments.
+
+To sell cartons plus loose bottles in POS, choose Carton on the first line and add the product again for Bottle, or scan the two packaging barcodes. Stock is deducted in base units across both lines using FIFO batch costs.

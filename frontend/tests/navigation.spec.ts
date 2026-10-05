@@ -46,7 +46,7 @@ test('business menu scrolls independently and every destination loads', async ({
   await expect(page.getByRole('combobox', { name: 'Pricing mode', exact: true })).toContainText('Wholesale prices')
   await page.unroute('**/api/v1/pos/warehouses')
   await page.goto('/products/new')
-  await expect(page.getByText('1 · Fixed base conversion', { exact: true })).toBeVisible()
+  await expect(page.getByText('1 selling unit', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Add packaging', exact: true }).click()
   const quantity = page.getByLabel('Base units per pack 2', { exact: true })
   await quantity.pressSequentially('12.25')

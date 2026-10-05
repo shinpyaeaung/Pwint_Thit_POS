@@ -1,7 +1,7 @@
 import { type LucideIcon, BookOpen, Boxes, ChartNoAxesCombined, CircleDollarSign, ClipboardList, Coins, LayoutDashboard, Package, PackageCheck, Receipt, RotateCcw, ShieldCheck, ShoppingCart, Tags, TriangleAlert, Truck, Users } from 'lucide-react'
 import { can, permissions, type CurrentUser } from '@/permissions'
 
-export type NavigationItem = { href: string; label: string; icon: LucideIcon; permission?: string }
+export type NavigationItem = { href: string; label: string; icon: LucideIcon; permission?: string; additionalPermission?:string }
 type ProtectedLink = NavigationItem & { permission: string }
 
 export const overviewLinks: ProtectedLink[] = [
@@ -24,6 +24,7 @@ export const navigationGroups: { title: string; items: ProtectedLink[] }[] = [
   ] },
   { title: 'Purchasing', items: [
     { href: '/suppliers', label: 'Suppliers', icon: Users, permission: permissions.suppliersView },
+    { href: '/supplier-payments', label: 'Supplier Payments', icon: Coins, permission: permissions.purchasesViewCost, additionalPermission:permissions.purchasesView },
     { href: '/purchases', label: 'Purchases', icon: ShoppingCart, permission: permissions.purchasesView },
     { href: '/shipments', label: 'Shipments', icon: Truck, permission: permissions.shipmentsView },
     { href: '/receiving', label: 'Goods receiving', icon: PackageCheck, permission: permissions.receivingManage },
@@ -39,4 +40,4 @@ export const navigationGroups: { title: string; items: ProtectedLink[] }[] = [
   ] },
 ]
 export const guideLink = { href: '/guide', label: 'User guide', icon: BookOpen }
-export const visibleNavigation = (user: CurrentUser) => [...overviewLinks, ...navigationGroups.flatMap(group => group.items)].filter(item => can(user, item.permission))
+export const visibleNavigation = (user: CurrentUser) => [...overviewLinks, ...navigationGroups.flatMap(group => group.items)].filter(item => can(user, item.permission)&&(!item.additionalPermission||can(user,item.additionalPermission)))

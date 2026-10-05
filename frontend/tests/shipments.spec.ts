@@ -442,4 +442,30 @@ test('shipment goods, transportation timeline, expenses and restricted staff acc
  await expect(reader.getByRole('region',{name:'Monthly profit',exact:true})).toHaveCount(0)
  }finally{await dashboardContext.close()}
 
+ // One completed invoice can contain both packaging units for the same product.
+ await page.setViewportSize({width:1280,height:900})
+ const currentProduct=await(await page.request.get(`/api/v1/products/${(await product.json()).id}`)).json()
+ expect((await page.request.put('/api/v1/pos/prices',{headers,data:{product_id:currentProduct.id,unit_code:'BOTTLE',version:currentProduct.version,retail_price_mmk:'4000',wholesale_price_mmk:'3500'}})).status()).toBe(204)
+ const beforeStock=await(await page.request.get(`/api/v1/inventory?q=${suffix}`)).json()
+ const before=beforeStock.stock[0]
+ if(!/^0(?:\.0+)?$/.test(before.reserved_quantity)){
+  expect((await page.request.post('/api/v1/inventory/adjustments',{headers,data:{request_id:crypto.randomUUID(),warehouse_id:before.warehouse_id,batch_id:before.batch_id,version:before.version,bucket:'RESERVED',quantity_delta:`-${before.reserved_quantity}`,reason:'Release reservation for mixed packaging sale'}})).status()).toBe(201)
+ }
+ const availableBefore=await(await page.request.get(`/api/v1/inventory?q=${suffix}`)).json()
+ await page.goto('/pos')
+ await page.getByRole('combobox',{name:'POS warehouse',exact:true}).click()
+ await page.getByRole('option',{name:`Pwint Thit Warehouse ${suffix}`,exact:true}).click()
+ for(const barcode of [`C${suffix}`,`B${suffix}`]){
+  await page.getByLabel('Scan barcode or search products',{exact:true}).fill(barcode)
+  await page.getByLabel('Scan barcode or search products',{exact:true}).press('Enter')
+ }
+ await expect(page.getByTestId('pos-total')).toHaveText('52,000 MMK')
+ await page.getByRole('button',{name:'Review checkout · F8',exact:true}).click()
+ await page.getByRole('button',{name:'Complete sale',exact:true}).click()
+ await expect(page).toHaveURL(/\/sales\/[a-f0-9-]{36}$/)
+ await expect(page.getByRole('article')).toContainText('1 CARTON')
+ await expect(page.getByRole('article')).toContainText('1 BOTTLE')
+ const afterStock=await(await page.request.get(`/api/v1/inventory?q=${suffix}`)).json()
+ expect(BigInt(availableBefore.stock[0].available_quantity.replace('.',''))-BigInt(afterStock.stock[0].available_quantity.replace('.',''))).toBe(13000000n)
+
 })

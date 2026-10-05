@@ -98,12 +98,22 @@ func TestProductIntegration(t *testing.T) {
 	body := input("TEA-001", "000123")
 	body["category_id"] = category["id"]
 	body["brand_id"] = brand["id"]
+	body["packaging"].([]map[string]any)[0]["retail_price_mmk"] = "12000"
+	body["packaging"].([]map[string]any)[1]["wholesale_price_mmk"] = "176000"
+	body["packaging"].([]map[string]any)[1]["purchase_price_mmk"] = "160000"
 	p := call("POST", "/products", body, owner, 201)
 	id := p["id"].(string)
 	if p["minimum_stock"] != "99999999999999.123456" {
 		t.Fatalf("decimal changed: %v", p)
 	}
 	packs := p["packaging"].([]any)
+	if packs[0].(map[string]any)["retail_price_mmk"] != "12000.0000" || packs[1].(map[string]any)["wholesale_price_mmk"] != "176000.0000" || packs[1].(map[string]any)["purchase_price_mmk"] != "160000.0000" {
+		t.Fatal("independent package prices", packs)
+	}
+	invalidPrice := input("INVALID-PRICE", "INVALID-PRICE")
+	invalidPrice["packaging"].([]map[string]any)[0]["retail_price_mmk"] = "1.00001"
+	call("POST", "/products", invalidPrice, owner, 400)
+
 	if packs[1].(map[string]any)["units_per_pack"] != "12.000000" {
 		t.Fatal("pack conversion lost")
 	}

@@ -6,8 +6,8 @@ import { guideLink, navigationGroups, overviewLinks, type NavigationItem } from 
 
 export function Sidebar({ user, onNavigate }: { user: CurrentUser; onNavigate?: () => void }) {
   const scroll = useSidebarScroll(user.id, !!onNavigate)
-  const overview = overviewLinks.filter(item => can(user, item.permission))
-  const groups = navigationGroups.map(group => ({ ...group, items: group.items.filter(item => can(user, item.permission)) })).filter(group => group.items.length)
+  const overview = overviewLinks.filter(item => can(user, item.permission)&&(!item.additionalPermission||can(user,item.additionalPermission)))
+  const groups = navigationGroups.map(group => ({ ...group, items: group.items.filter(item => can(user, item.permission)&&(!item.additionalPermission||can(user,item.additionalPermission))) })).filter(group => group.items.length)
   function link(item: NavigationItem) {
     const path = window.location.pathname
     const active = path === item.href || path.startsWith(`${item.href}/`) || (item.href === '/dashboard' && path === '/')

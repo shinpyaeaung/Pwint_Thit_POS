@@ -6,7 +6,7 @@ INSERT INTO app.warehouses(code,name,address) VALUES($1,$2,$3) RETURNING id;
 SELECT id FROM app.warehouses WHERE id=$1 AND is_active FOR SHARE;
 -- name: ShipmentPurchaseChoices :one
 SELECT COALESCE(jsonb_agg(to_jsonb(x) ORDER BY purchase_number,line_number),'[]'::jsonb)::jsonb FROM (
- SELECT i.id,p.purchase_number,i.line_number,p.supplier_id,s.name AS supplier_name,COALESCE(i.product_name_snapshot,pr.name) AS product_name,COALESCE(i.sku_snapshot,pr.sku) AS sku,i.unit_code,i.quantity::text AS purchased_quantity,i.base_quantity::text AS base_quantity,
+ SELECT i.id,p.purchase_number,i.line_number,p.supplier_id,s.name AS supplier_name,COALESCE(i.product_name_snapshot,pr.name) AS product_name,COALESCE(i.sku_snapshot,pr.sku) AS sku,i.units_per_pack::text AS units_per_pack,i.unit_code,i.quantity::text AS purchased_quantity,i.base_quantity::text AS base_quantity,
  (i.base_quantity-COALESCE((SELECT sum(si.expected_quantity) FROM app.shipment_items si JOIN app.shipments sh ON sh.id=si.shipment_id WHERE si.purchase_item_id=i.id AND sh.status<>'CANCELLED'),0))::text AS available_quantity
  FROM app.purchase_items i JOIN app.purchases p ON p.id=i.purchase_id JOIN app.suppliers s ON s.id=p.supplier_id JOIN app.products pr ON pr.id=i.product_id
  WHERE p.status='POSTED' AND (sqlc.arg(search)::text='' OR strpos(lower(p.purchase_number||' '||s.name||' '||pr.name),lower(sqlc.arg(search)))>0)

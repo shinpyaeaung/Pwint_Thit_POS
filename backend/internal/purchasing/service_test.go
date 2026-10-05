@@ -323,4 +323,80 @@ func TestPurchasingIntegration(t *testing.T) {
 		t.Fatal("reversal history was mutable")
 	}
 
+	t.Run("supplier payment ledger", func(t *testing.T) {
+		data := input("99999999-0000-0000-0000-000000000001", "PAYMENT-TEST")
+		data["items"].([]map[string]any)[0]["units_per_pack"] = "24"
+		doc := call("POST", "/purchases", data, owner, 201)
+		path := "/purchases/" + doc["id"].(string) + "/payments"
+		payment := map[string]any{"request_id": "99999999-0000-0000-0000-000000000002", "amount": "4000", "method_code": "KBZPAY", "paid_at": "2026-10-05T12:00:00+06:30", "reference_number": "KBZ-REF", "bank_account": "Account", "notes": "First payment"}
+		call("POST", path, payment, staff, 403)
+		first := call("POST", path, payment, owner, 200)
+		if len(first["payments"].([]any)) != 1 {
+			t.Fatal(first)
+		}
+		retry := call("POST", path, payment, owner, 200)
+		if len(retry["payments"].([]any)) != 1 {
+			t.Fatal("duplicate retry", retry)
+		}
+		payment["amount"] = "4001"
+		call("POST", path, payment, owner, 409)
+		payment["request_id"] = "99999999-0000-0000-0000-000000000003"
+		payment["amount"] = "6001"
+		call("POST", path, payment, owner, 409)
+
+		// A failure after the payment/allocation writes must roll back all of them.
+		if _, e := conn.Exec(ctx, `CREATE FUNCTION app.fail_supplier_payment_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action='supplier_payments.create' THEN RAISE EXCEPTION 'injected audit failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER fail_supplier_payment_audit BEFORE INSERT ON app.audit_logs FOR EACH ROW EXECUTE FUNCTION app.fail_supplier_payment_audit()`); e != nil {
+			t.Fatal(e)
+		}
+		payment["amount"] = "1"
+		call("POST", path, payment, owner, 503)
+		afterFailure := call("GET", path, nil, owner, 200)
+		if len(afterFailure["payments"].([]any)) != 1 {
+			t.Fatal("partial payment committed", afterFailure)
+		}
+		if _, e := conn.Exec(ctx, `DROP TRIGGER fail_supplier_payment_audit ON app.audit_logs; DROP FUNCTION app.fail_supplier_payment_audit()`); e != nil {
+			t.Fatal(e)
+		}
+		payment["amount"] = "6000"
+		var wg sync.WaitGroup
+		codes := make(chan int, 2)
+		for i, key := range []string{"99999999-0000-0000-0000-000000000004", "99999999-0000-0000-0000-000000000005"} {
+			_ = i
+			wg.Add(1)
+			go func(key string) {
+				defer wg.Done()
+				p := map[string]any{}
+				for k, v := range payment {
+					p[k] = v
+				}
+				p["request_id"] = key
+				codes <- raw("POST", path, p, owner).Code
+			}(key)
+		}
+		wg.Wait()
+		close(codes)
+		ok, denied := 0, 0
+		for code := range codes {
+			if code == 200 {
+				ok++
+			} else if code == 409 {
+				denied++
+			} else {
+				t.Fatal(code)
+			}
+		}
+		if ok != 1 || denied != 1 {
+			t.Fatal("concurrent overpayment", ok, denied)
+		}
+		result := call("GET", "/purchases/"+doc["id"].(string), nil, owner, 200)
+		if result["outstanding_original"] != "0.0000" || result["payment_status"] != "PAID" {
+			t.Fatal(result)
+		}
+		call("GET", "/supplier-payments?payment_status=PAID", nil, owner, 200)
+		call("POST", "/supplier-payment-methods", map[string]any{"code": "TEST_BANK", "name": "Test bank", "category": "BANK_TRANSFER"}, owner, 201)
+		if _, e := conn.Exec(ctx, `UPDATE app.payments SET notes='overwritten' WHERE id=(SELECT payment_id FROM app.supplier_payment_requests WHERE request_id='99999999-0000-0000-0000-000000000002')`); e == nil {
+			t.Fatal("payment history mutable")
+		}
+	})
+
 }

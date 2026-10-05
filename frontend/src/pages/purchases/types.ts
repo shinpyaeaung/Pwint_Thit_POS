@@ -1,7 +1,7 @@
 export type Currency = { code: string; name: string; minor_units: number }
 export type Rate = { id: string; currency_code: string; mmk_per_unit: string; effective_at: string; source: string }
 export type SupplierOption = { id: string; name: string; code: string }
-export type Pack = { unit_code: string; unit_name: string; units_per_pack: string; is_default_purchase: boolean }
+export type Pack = { purchase_price_mmk?:string|null; unit_code: string; unit_name: string; units_per_pack: string; is_default_purchase: boolean }
 export type ProductOption = { id: string; name: string; sku: string; packaging: Pack[] }
 export type LineInput = { product_id: string; unit_code: string; quantity: string; units_per_pack: string; unit_price_original: string; discount_original: string; tax_original: string }
 export type Purchase = {
@@ -34,3 +34,8 @@ export function preview(lines: LineInput[], rate: string) {
 }
 export function amount(value?: string | null) { if (value == null) return '—'; const [whole, fraction] = value.split('.'); const tail = fraction?.replace(/0+$/, ''); return whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (tail ? `.${tail}` : '') }
 export const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
+
+export function baseQuantity(quantity:string,units:string) { try { const n=scaled(quantity,6)*scaled(units,6); if(n%1000000n) return '—'; const s=(n/1000000n).toString().padStart(7,'0');return `${s.slice(0,-6)}.${s.slice(-6)}` } catch { return '—' } }
+export function basePurchaseCost(price:string,units:string) { try { const u=scaled(units,6);if(u===0n)return '—';return fixed(rounded(scaled(price,6)*10000n,u)) } catch { return '—' } }
+export function quantityDifference(total:string,remaining:string) { try {const n=scaled(total,6)-scaled(remaining,6);const s=n.toString().padStart(7,'0');return `${s.slice(0,-6)}.${s.slice(-6)}`}catch{return '—'} }
+export function packageQuantity(base:string,units:string) { try {const u=scaled(units,6);if(u===0n)return '—';const n=scaled(base,6)*1000000n/u;const s=n.toString().padStart(7,'0');return `${s.slice(0,-6)}.${s.slice(-6)}`}catch{return '—'} }

@@ -65,3 +65,7 @@ The migration deliberately fails on conflicting legacy SKUs/barcodes rather than
 This phase implements catalog and packaging, not purchasing, stock receiving, inventory balances, batch costing, price management, supplier management or image uploads. Minimum stock is a threshold, not opening stock. Product Details explains that stock/batch information will come from the corresponding vertical slices. Financial cost/profit data is not exposed by these endpoints.
 
 Substring search currently scans candidate products after filters. Category/brand/status and stable page ordering have indexes; add measured search optimization when catalog scale warrants it.
+
+## Packaging and selling prices update
+
+Select the smallest selling unit first (Bottle), then choose **Purchase packaging type** (Carton) and enter the number of base units per pack (16). Conversions belong to each product. Each packaging row now accepts independent retail and wholesale selling prices in MMK; no carton-to-retail price assumption is made. Blank prices preserve existing values. Optional reference purchase prices in MMK default new purchase lines and show a per-base-unit preview. Recorded purchase prices remain immutable transaction values; they are not substituted for actual landed cost.

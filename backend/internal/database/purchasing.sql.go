@@ -253,7 +253,7 @@ func (q *Queries) PurchaseCurrencies(ctx context.Context) ([]byte, error) {
 }
 
 const purchaseProductOptions = `-- name: PurchaseProductOptions :one
-SELECT COALESCE(jsonb_agg(jsonb_build_object('id',p.id,'name',p.name,'sku',p.sku,'packaging',COALESCE((SELECT jsonb_agg(jsonb_build_object('unit_code',u.unit_code,'unit_name',un.name,'units_per_pack',u.units_per_pack::text,'is_default_purchase',u.is_default_purchase) ORDER BY u.units_per_pack) FROM app.product_units u JOIN app.units un ON un.code=u.unit_code WHERE u.product_id=p.id),'[]'::jsonb)) ORDER BY p.name,p.id),'[]'::jsonb)::jsonb FROM (SELECT id,name,sku FROM app.products WHERE is_active AND archived_at IS NULL AND ($1::text='' OR strpos(lower(name||' '||sku),lower($1))>0) ORDER BY name,id LIMIT 50) p
+SELECT COALESCE(jsonb_agg(jsonb_build_object('id',p.id,'name',p.name,'sku',p.sku,'packaging',COALESCE((SELECT jsonb_agg(jsonb_build_object('unit_code',u.unit_code,'unit_name',un.name,'units_per_pack',u.units_per_pack::text,'purchase_price_mmk',u.purchase_price_mmk::text,'is_default_purchase',u.is_default_purchase) ORDER BY u.units_per_pack) FROM app.product_units u JOIN app.units un ON un.code=u.unit_code WHERE u.product_id=p.id),'[]'::jsonb)) ORDER BY p.name,p.id),'[]'::jsonb)::jsonb FROM (SELECT id,name,sku FROM app.products WHERE is_active AND archived_at IS NULL AND ($1::text='' OR strpos(lower(name||' '||sku),lower($1))>0) ORDER BY name,id LIMIT 50) p
 `
 
 func (q *Queries) PurchaseProductOptions(ctx context.Context, search string) ([]byte, error) {

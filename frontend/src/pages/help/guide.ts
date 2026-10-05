@@ -5,11 +5,12 @@ export const guideSections = [
     'Start with suppliers and products, then record purchases, shipments, landed costs and receiving. Goods become available for sale only after receiving. A purchase alone does not add sellable stock.',
   ] },
   { id: 'setup', title: '2. Set up products and suppliers', href: '/products', link: 'Open Products', paragraphs: [
-    'Use Catalog setup to define categories, brands and units. In Products, enter the name, base unit and packaging conversions. For example, one carton may contain 12 bottles. Check conversions before recording purchases or sales.',
+    'Use Catalog setup to define categories, brands and units. In Products, enter the name, base unit and packaging conversions. For example, one carton may contain 12 bottles. Choose the smallest selling unit first, select Purchase packaging type, then enter units per pack. Set independent retail and wholesale prices for every selling unit. Check conversions before recording purchases or sales.',
     'Product and supplier IDs are generated automatically. Enable optional sections for barcode, origin, contact details, payment terms and alerts. Use Suppliers to add supplier names, contact details and payment terms. Currency & rates opens the currency settings when your account has exchange-rate access.',
     'Super Admin has every backend permission. Archive or deactivate unused master records; edit open shipments and remove unpaid stages with an audit reason. Posted purchases and finalized costs are protected accounting history. A purchase with no active shipment, payment or return can be reversed with a reason; other corrections use linked returns, voids and stock adjustments.',
   ] },
   { id: 'purchasing', title: '3. Purchase, transport and receive', href: '/purchases', link: 'Open Purchases', paragraphs: [
+    'Use Supplier Payments or Record Payment inside a purchase to record each partial or full supplier payment. Review the remaining balance and payment history. Supplier debt stays separate from transport-provider costs.',
     'In Purchases, choose a supplier, purchase date, currency and transaction exchange rate. Add products, quantities, units and original-currency prices. Review the original and MMK totals before posting.',
     'After saving a purchase, stay on its purchase workspace. Transportation can remain pending. Reopen the same purchase later and select Arrange shipment: its remaining products are included automatically. Choose an origin and destination warehouse; add or manage a warehouse here if needed. Enable Transportation timeline and Additional shipment costs only when needed. Record departure and arrival inside the purchase.',
     'Within the purchase workspace, open the shipment’s Landed cost section. Choose an allocation method and confirm expected sellable quantities, allowing for damage or missing goods. Preview and review the costs before finalizing. Finalized costing is preserved as history.',
@@ -21,7 +22,7 @@ export const guideSections = [
     'When an authorized correction is needed, use the stock adjustment workflow and record a reason. Never edit database stock totals directly.',
   ] },
   { id: 'sales', title: '5. Make a sale and review the invoice', href: '/pos', link: 'Open Point of sale', paragraphs: [
-    'Choose the warehouse and, where needed, a customer. Select retail or wholesale mode, search or scan a product and choose its selling unit and quantity.',
+    'Choose the warehouse and, where needed, a customer. Select retail or wholesale mode, search or scan a product and choose its selling unit and quantity. To sell cartons plus loose bottles, change the first line to Carton and add the product again for Bottle, or scan each packaging barcode.',
     'Review prices, discounts, stock availability and the total. Choose the payment method and amount received. Unpaid credit requires a customer and must stay within the customer’s credit limit.',
     'A below-cost sale needs the separate approval workflow and the correct permission. Cost Journey price and profit scenarios are estimates; they do not record a sale.',
     'Complete checkout once and review the resulting invoice. The backend records the sale, batch allocations, stock movements, payment and audit history together. Use Invoices to reopen or print a sale.',

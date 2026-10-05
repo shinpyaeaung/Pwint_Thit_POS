@@ -1,7 +1,7 @@
 export type Lookup = { id: string; name: string; is_active: boolean }
 export type Unit = { code: string; name: string }
 export type Catalog = { categories: Lookup[]; brands: Lookup[]; units: Unit[] }
-export type Packaging = { unit_code: string; units_per_pack: string; barcode: string | null; is_default_purchase: boolean; is_default_sale: boolean }
+export type Packaging = { purchase_price_mmk?:string|null; retail_price_mmk?:string|null; wholesale_price_mmk?:string|null; unit_code: string; units_per_pack: string; barcode: string | null; is_default_purchase: boolean; is_default_sale: boolean }
 export type ProductInput = { sku: string; name: string; barcode: string; category_id: string; brand_id: string; country_code: string; description: string; base_unit_code: string; minimum_stock: string; tracks_expiry: boolean; is_active: boolean; version: string; packaging: Packaging[] }
 export type Product = Omit<ProductInput, 'barcode' | 'category_id' | 'brand_id' | 'country_code' | 'description' | 'minimum_stock'> & { id: string; barcode: string | null; category_id: string | null; brand_id: string | null; category_name: string | null; brand_name: string | null; country_code: string | null; description: string | null; minimum_stock: string | null; archived_at: string | null; created_at: string; updated_at: string }
 export const decimalText = (value: string) => value.includes('.') ? value.replace(/0+$/, '').replace(/\.$/, '') : value

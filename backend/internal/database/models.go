@@ -346,27 +346,30 @@ type AppMissingProduct struct {
 }
 
 type AppPayment struct {
-	ID                pgtype.UUID
-	PaymentNumber     string
-	Direction         string
-	Method            string
-	CurrencyCode      string
-	AmountOriginal    pgtype.Numeric
-	MmkPerUnit        pgtype.Numeric
-	AmountMmk         pgtype.Numeric
-	CustomerID        pgtype.UUID
-	SupplierID        pgtype.UUID
-	PaidAt            pgtype.Timestamptz
-	ReferenceNumber   pgtype.Text
-	Notes             pgtype.Text
-	Status            string
-	PostedAt          pgtype.Timestamptz
-	ReversesPaymentID pgtype.UUID
-	RecordedBy        pgtype.UUID
-	CreatedAt         pgtype.Timestamptz
-	UpdatedAt         pgtype.Timestamptz
-	RequestID         pgtype.UUID
-	RequestPayload    []byte
+	ID                 pgtype.UUID
+	PaymentNumber      string
+	Direction          string
+	Method             string
+	CurrencyCode       string
+	AmountOriginal     pgtype.Numeric
+	MmkPerUnit         pgtype.Numeric
+	AmountMmk          pgtype.Numeric
+	CustomerID         pgtype.UUID
+	SupplierID         pgtype.UUID
+	PaidAt             pgtype.Timestamptz
+	ReferenceNumber    pgtype.Text
+	Notes              pgtype.Text
+	Status             string
+	PostedAt           pgtype.Timestamptz
+	ReversesPaymentID  pgtype.UUID
+	RecordedBy         pgtype.UUID
+	CreatedAt          pgtype.Timestamptz
+	UpdatedAt          pgtype.Timestamptz
+	RequestID          pgtype.UUID
+	RequestPayload     []byte
+	SupplierMethodCode pgtype.Text
+	MethodNameSnapshot pgtype.Text
+	BankAccount        pgtype.Text
 }
 
 type AppPaymentAllocation struct {
@@ -455,6 +458,7 @@ type AppProductUnit struct {
 	IsDefaultSale     bool
 	CreatedAt         pgtype.Timestamptz
 	UpdatedAt         pgtype.Timestamptz
+	PurchasePriceMmk  pgtype.Numeric
 }
 
 type AppProfitExpenseEvent struct {
@@ -852,6 +856,20 @@ type AppSupplierPayable struct {
 	OutstandingOriginal pgtype.Numeric
 	OutstandingMmk      pgtype.Numeric
 	PaymentStatus       string
+}
+
+type AppSupplierPaymentMethod struct {
+	Code      string
+	Name      string
+	Category  string
+	CreatedAt pgtype.Timestamptz
+}
+
+type AppSupplierPaymentRequest struct {
+	RequestID  pgtype.UUID
+	PurchaseID pgtype.UUID
+	PaymentID  pgtype.UUID
+	Payload    []byte
 }
 
 type AppTransportationStage struct {

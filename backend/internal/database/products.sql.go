@@ -189,6 +189,29 @@ func (q *Queries) ResetProductDefaults(ctx context.Context, productID pgtype.UUI
 	return err
 }
 
+const setProductUnitPrices = `-- name: SetProductUnitPrices :exec
+UPDATE app.product_units SET purchase_price_mmk=COALESCE($1::numeric,purchase_price_mmk),retail_price_mmk=COALESCE($2::numeric,retail_price_mmk),wholesale_price_mmk=COALESCE($3::numeric,wholesale_price_mmk) WHERE product_id=$4 AND unit_code=$5
+`
+
+type SetProductUnitPricesParams struct {
+	PurchasePrice pgtype.Numeric
+	Retail        pgtype.Numeric
+	Wholesale     pgtype.Numeric
+	ProductID     pgtype.UUID
+	UnitCode      string
+}
+
+func (q *Queries) SetProductUnitPrices(ctx context.Context, arg SetProductUnitPricesParams) error {
+	_, err := q.db.Exec(ctx, setProductUnitPrices,
+		arg.PurchasePrice,
+		arg.Retail,
+		arg.Wholesale,
+		arg.ProductID,
+		arg.UnitCode,
+	)
+	return err
+}
+
 const updateProduct = `-- name: UpdateProduct :exec
 UPDATE app.products SET sku=d->>'sku',name=d->>'name',barcode=NULLIF(d->>'barcode',''),category_id=NULLIF(d->>'category_id','')::uuid,brand_id=NULLIF(d->>'brand_id','')::uuid,country_code=NULLIF(d->>'country_code',''),description=NULLIF(d->>'description',''),base_unit_code=d->>'base_unit_code',minimum_stock=NULLIF(d->>'minimum_stock','')::numeric,tracks_expiry=(d->>'tracks_expiry')::boolean,is_active=(d->>'is_active')::boolean FROM (SELECT $2::jsonb d) t WHERE id=$1
 `

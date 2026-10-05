@@ -32,6 +32,11 @@ type Service struct {
 func New(db DB) *Service { return &Service{db: db, q: database.New(db)} }
 func (s *Service) Register(r *gin.Engine, a *authz.Service) {
 	s.a = a
+	r.GET("/api/v1/supplier-payments", a.Require(permissions.PurchasesView), a.Require(permissions.PurchasesViewCost), s.PaymentPurchases)
+	r.GET("/api/v1/supplier-payment-methods", a.Require(permissions.PaymentsManage), s.PaymentMethods)
+	r.POST("/api/v1/supplier-payment-methods", a.Require(permissions.SettingsManage), s.AddPaymentMethod)
+	r.GET("/api/v1/purchases/:id/payments", a.Require(permissions.PurchasesView), a.Require(permissions.PurchasesViewCost), s.PaymentHistory)
+	r.POST("/api/v1/purchases/:id/payments", a.Require(permissions.PurchasesView), a.Require(permissions.PurchasesViewCost), a.Require(permissions.PaymentsManage), s.RecordPayment)
 	r.GET("/api/v1/currencies", a.RequireAny(permissions.PurchasesView, permissions.PurchasesCreate, permissions.ExchangeRatesManage, permissions.SettingsManage, permissions.ShipmentsViewCost), s.Currencies)
 	r.POST("/api/v1/currencies", a.Require(permissions.SettingsManage), s.CreateCurrency)
 	r.GET("/api/v1/exchange-rates", a.RequireAny(permissions.PurchasesCreate, permissions.PurchasesViewCost, permissions.ExchangeRatesManage), s.Rates)

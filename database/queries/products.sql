@@ -35,3 +35,6 @@ SELECT (EXISTS(SELECT 1 FROM app.units WHERE code=sqlc.arg(base_unit)::text)
  AND (sqlc.narg(brand_id)::uuid IS NULL OR EXISTS(SELECT 1 FROM app.brands WHERE id=sqlc.narg(brand_id) AND is_active)))::boolean;
 -- name: RecordProductAudit :exec
 INSERT INTO app.audit_logs(actor_id,action,entity_type,entity_id,old_value,new_value) VALUES($1,$2,$3,$4,$5,$6);
+
+-- name: SetProductUnitPrices :exec
+UPDATE app.product_units SET purchase_price_mmk=COALESCE(sqlc.narg(purchase_price)::numeric,purchase_price_mmk),retail_price_mmk=COALESCE(sqlc.narg(retail)::numeric,retail_price_mmk),wholesale_price_mmk=COALESCE(sqlc.narg(wholesale)::numeric,wholesale_price_mmk) WHERE product_id=sqlc.arg(product_id) AND unit_code=sqlc.arg(unit_code);

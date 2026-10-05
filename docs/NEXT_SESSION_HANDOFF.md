@@ -38,3 +38,16 @@ The user supplied the v1.2 redesign scope: one resumable purchase workflow throu
 - User guide: `docs/user-guide.md` and `frontend/src/pages/help/guide.ts`.
 
 User authorized committing and pushing verified completed phases to origin. Keep secrets, credentials, local backups, build output and browser artifacts out of Git.
+
+## Packaging, shipments and supplier payments follow-up
+
+The user supplied `Pwint_Thit_POS_Packaging_Shipment_Payment_Requirements.md`. See `docs/packaging-shipment-payments.md` for the implementation review and business decisions. The user explicitly confirmed supplier invoice debts and transport-provider debts must remain separate.
+
+- Product forms expose purchase packaging, per-product contents, reference purchase prices in MMK and independent retail/wholesale prices for each unit. Purchase defaults and reference cost previews never replace historical purchases or landed batch costs.
+- Purchase workspace includes package allocation totals; shipment entry can accept package counts. Existing split/consolidated shipment and multi-leg costing integrity is retained.
+- POS supports carton and bottle lines together, reserving quoted FIFO quantities across lines.
+- `/supplier-payments` and purchase details provide partial/full supplier payments, histories, method setup, filtering and balances. Transactions serialize against the purchase and deduplicate retries; payment, allocation and audit writes commit together. Payments currently settle in the purchase currency at its historical rate. No supplier advance or cross-currency settlement feature is implied.
+- Additive migrations 000025–000028; sqlc-generated query files are committed. Existing financial/stock data is preserved.
+- Verification includes `make check`, PostgreSQL integration tests (concurrent overpayment, retry deduplication, audit-failure rollback, immutable payment history, independent prices and mixed-unit FIFO), and 26 real-stack Chromium/WebKit browser tests. The browser suite covers 80 cartons × 16 bottles, two 40-carton shipments, rejected excess allocation, partial/full payments and completed mixed-unit sales.
+
+Wait for the next user scope before adding another module. The v1.2 controls above continue to apply.

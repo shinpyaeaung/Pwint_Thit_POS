@@ -48,11 +48,14 @@ func (s *Service) Register(r *gin.Engine, a *authz.Service) {
 }
 
 type Pack struct {
-	UnitCode        string `json:"unit_code"`
-	UnitsPerPack    string `json:"units_per_pack"`
-	Barcode         string `json:"barcode"`
-	DefaultPurchase bool   `json:"is_default_purchase"`
-	DefaultSale     bool   `json:"is_default_sale"`
+	PurchasePrice   *string `json:"purchase_price_mmk"`
+	Retail          *string `json:"retail_price_mmk"`
+	Wholesale       *string `json:"wholesale_price_mmk"`
+	UnitCode        string  `json:"unit_code"`
+	UnitsPerPack    string  `json:"units_per_pack"`
+	Barcode         string  `json:"barcode"`
+	DefaultPurchase bool    `json:"is_default_purchase"`
+	DefaultSale     bool    `json:"is_default_sale"`
 }
 type Input struct {
 	SKU          string `json:"sku"`
@@ -142,6 +145,11 @@ func (in *Input) validate() string {
 	for i := range in.Packaging {
 		p := &in.Packaging[i]
 		p.Barcode = strings.TrimSpace(p.Barcode)
+		for _, price := range []*string{p.PurchasePrice, p.Retail, p.Wholesale} {
+			if price != nil && *price != "" && !regexp.MustCompile(`^[0-9]{1,16}(\.[0-9]{1,4})?$`).MatchString(*price) {
+				return "Prices must be non-negative amounts with at most four decimal places."
+			}
+		}
 		if seen[p.UnitCode] || !codePattern.MatchString(p.UnitCode) || !validDecimal(p.UnitsPerPack, true) {
 			return "Packaging units must be unique, with positive conversions of at most 6 decimal places."
 		}
@@ -359,6 +367,22 @@ func (s *Service) Save(c *gin.Context) {
 		_ = n.Scan(p.UnitsPerPack)
 		err = q.UpsertProductUnit(ctx, database.UpsertProductUnitParams{ProductID: id, UnitCode: p.UnitCode, UnitsPerPack: n, Barcode: pgtype.Text{String: p.Barcode, Valid: p.Barcode != ""}, IsDefaultPurchase: p.DefaultPurchase, IsDefaultSale: p.DefaultSale})
 		if err != nil {
+			dbError(c, err)
+			return
+		}
+	}
+	for _, p := range in.Packaging {
+		var retail, wholesale, purchasePrice pgtype.Numeric
+		if p.PurchasePrice != nil && *p.PurchasePrice != "" {
+			_ = purchasePrice.Scan(*p.PurchasePrice)
+		}
+		if p.Retail != nil && *p.Retail != "" {
+			_ = retail.Scan(*p.Retail)
+		}
+		if p.Wholesale != nil && *p.Wholesale != "" {
+			_ = wholesale.Scan(*p.Wholesale)
+		}
+		if err = q.SetProductUnitPrices(ctx, database.SetProductUnitPricesParams{ProductID: id, UnitCode: p.UnitCode, Retail: retail, Wholesale: wholesale, PurchasePrice: purchasePrice}); err != nil {
 			dbError(c, err)
 			return
 		}
