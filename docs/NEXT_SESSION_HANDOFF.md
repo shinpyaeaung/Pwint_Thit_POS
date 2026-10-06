@@ -51,3 +51,9 @@ The user supplied `Pwint_Thit_POS_Packaging_Shipment_Payment_Requirements.md`. S
 - Verification includes `make check`, PostgreSQL integration tests (concurrent overpayment, retry deduplication, audit-failure rollback, immutable payment history, independent prices and mixed-unit FIFO), and 26 real-stack Chromium/WebKit browser tests. The browser suite covers 80 cartons × 16 bottles, two 40-carton shipments, rejected excess allocation, partial/full payments and completed mixed-unit sales.
 
 Wait for the next user scope before adding another module. The v1.2 controls above continue to apply.
+
+## October 6 continuation verification
+
+Re-reviewed the original packaging/shipment/payment requirements after the interrupted session. The implementation was already in local commit `0ebc0a4`; no duplicate feature implementation was needed. Requirement coverage and accounting boundaries are recorded in `docs/packaging-shipment-payments.md`.
+
+Fresh verification passed: `make check`, `make test-integration`, and all 26 real-stack browser tests from `make test-e2e`. Started the existing Colima runtime and rebuilt/started the local app with `make up`; migration exited successfully and PostgreSQL, backend and frontend are healthy at http://localhost:8088. Existing database volume was preserved. Initial test attempts were blocked by a stopped runtime and sandbox network access; the authorized reruns passed.
