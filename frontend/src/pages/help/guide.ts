@@ -1,7 +1,7 @@
 export const guideSections = [
  { id:'payment-centre',title:'Payments, warehouse prices and deliveries',href:'/payments',link:'Open Payment centre',paragraphs:[
  'Use Payment centre for supplier purchases, customer invoices and cargo-terminal payments. Each payment stays linked to its transaction. Additional shipment costs remain separate charges; cargo payments do not increase supplier debt.',
- 'Warehouse prices sets independent carton and individual-unit prices at each warehouse, including your home warehouse. Customer special prices take priority, then warehouse prices, then product defaults. Product creation defines packaging but does not add stock.',
+ 'Warehouse prices shows finalized purchase, allocated cargo and additional costs per carton and individual unit for each warehouse, including home. Select a finalized shipment, then enter a bottle/piece price or markup percentage; saving calculates both unit prices together. Customer special prices take priority, then warehouse prices, then product defaults. Product creation defines packaging but does not add stock.',
  'Damage & missing accepts carton or individual-unit quantities and shows the affected base units. Stock is changed only by the posted movement.',
  'Choose delivery or collection on shipments and at POS. Enable Record person and vehicle details when needed. Saved details appear on the shipment or invoice.'
  ] },
@@ -11,7 +11,7 @@ export const guideSections = [
     'Start with suppliers and products, then record purchases, shipments, landed costs and receiving. Goods become available for sale only after receiving. A purchase alone does not add sellable stock.',
   ] },
   { id: 'setup', title: '2. Set up products and suppliers', href: '/products', link: 'Open Products', paragraphs: [
-    'Use Catalog setup to define categories, brands and units. In Products, enter the name, base unit and packaging conversions. For example, one carton may contain 12 bottles. Choose the smallest selling unit first, select Purchase packaging type, then enter units per pack. Set independent retail and wholesale prices for every selling unit. Check conversions before recording purchases or sales.',
+    'Use Catalog setup to define categories, brands and units. In Products, enter the name, base unit and packaging conversions. For example, one carton may contain 12 bottles. Choose the smallest selling unit first, select Purchase packaging type, then enter units per pack. Enter purchase prices when buying from the supplier. Set retail and wholesale selling prices in Warehouse prices after finalizing landed costs. Check conversions before recording purchases or sales.',
     'Product and supplier IDs are generated automatically. Enable optional sections for barcode, origin, contact details, payment terms and alerts. Use Suppliers to add supplier names, contact details and payment terms. Currency & rates opens the currency settings when your account has exchange-rate access.',
     'Super Admin has every backend permission. Archive or deactivate unused master records; edit open shipments and remove unpaid stages with an audit reason. Posted purchases and finalized costs are protected accounting history. A purchase with no active shipment, payment or return can be reversed with a reason; other corrections use linked returns, voids and stock adjustments.',
   ] },

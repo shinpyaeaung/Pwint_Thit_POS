@@ -970,3 +970,18 @@ type AppWarehousePrice struct {
 	RetailPriceMmk    pgtype.Numeric
 	WholesalePriceMmk pgtype.Numeric
 }
+
+type AppWarehousePricingCost struct {
+	ShipmentItemID    pgtype.UUID
+	ProductID         pgtype.UUID
+	WarehouseID       pgtype.UUID
+	ShipmentID        pgtype.UUID
+	ShipmentNumber    string
+	CostsFinalizedAt  pgtype.Timestamptz
+	PurchaseNumber    string
+	PurchaseCostMmk   pgtype.Numeric
+	CargoCostMmk      pgtype.Numeric
+	AdditionalCostMmk pgtype.Numeric
+	LandedCostMmk     pgtype.Numeric
+	SellableQuantity  pgtype.Numeric
+}

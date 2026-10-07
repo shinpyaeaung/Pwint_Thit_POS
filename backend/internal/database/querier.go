@@ -73,6 +73,7 @@ type Querier interface {
 	InventoryMovements(ctx context.Context, arg InventoryMovementsParams) ([]byte, error)
 	InventoryWarehouses(ctx context.Context) ([]byte, error)
 	LandedCostSources(ctx context.Context, id pgtype.UUID) ([]byte, error)
+	LandedWarehousePricesSave(ctx context.Context, arg LandedWarehousePricesSaveParams) error
 	ListBatches(ctx context.Context, arg ListBatchesParams) ([]byte, error)
 	ListInventory(ctx context.Context, arg ListInventoryParams) ([]byte, error)
 	ListPermissions(ctx context.Context) ([]ListPermissionsRow, error)
@@ -180,6 +181,7 @@ type Querier interface {
 	UpsertProductUnit(ctx context.Context, arg UpsertProductUnitParams) error
 	VoidShipmentExpense(ctx context.Context, arg VoidShipmentExpenseParams) (int64, error)
 	WarehousePricesSave(ctx context.Context, arg WarehousePricesSaveParams) error
+	WarehousePricingCosts(ctx context.Context, arg WarehousePricingCostsParams) ([]byte, error)
 }
 
 var _ Querier = (*Queries)(nil)

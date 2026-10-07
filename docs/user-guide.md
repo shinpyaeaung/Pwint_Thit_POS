@@ -106,7 +106,7 @@ When reporting an error, include the page, action, message and time, and whether
 
 ## Packaging and supplier payments
 
-Select **Bottle** as the base stock unit and **Carton** as the purchase packaging type, then enter the number of bottles per carton. Reference purchase prices in MMK can default new purchase lines; actual purchase prices and landed costs remain recorded separately. Set carton and bottle selling prices independently.
+Select **Bottle** as the base stock unit and **Carton** as the purchase packaging type, then enter the number of bottles per carton. Product creation only defines packaging; enter actual supplier prices in the purchase. After finalizing shipment costs, set selling prices in Warehouse prices.
 
 In a purchase, **Shipment allocation** shows purchased, assigned and remaining quantities. **Arrange shipment** can accept purchase packages (for example 40 cartons) or base units. Each shipment can have its own transport providers and legs.
 
@@ -118,7 +118,7 @@ To sell cartons plus loose bottles in POS, choose Carton on the first line and a
 
 Open **Payments → Payment centre** to select Supplier Payments, Customer Payments or Transportation Payments. Search for the related purchase, customer invoice or cargo terminal, then record a partial or full payment. Transportation payments settle the cargo terminal's charge; additional shipment costs are separate rows. History stays linked to the original transaction.
 
-Open **Products & stock → Warehouse prices**, choose a warehouse (including your home warehouse), and set each product's carton and individual-unit prices. Customer special prices take priority, followed by warehouse prices and then product defaults. The POS uses its selected warehouse's prices.
+Open **Products & stock → Warehouse prices**, choose a warehouse (including your home warehouse), and select a finalized shipment cost reference for the product. The breakdown shows purchase cost, allocated cargo fees, additional costs and landed cost per carton and bottle. Enter a bottle price or choose a markup percentage on landed cost; retail and wholesale prices are supported. Saving updates bottle and carton prices together. For 220,000 MMK purchase cost plus 20,000 MMK cargo per 12-bottle carton, landed cost is 240,000 per carton / 20,000 per bottle. A 5% markup or 21,000 MMK bottle price gives 252,000 MMK per carton. Costs use confirmed sellable quantities; shipment-wide cargo is allocated first, not charged in full to each carton. Bottle prices round to four decimal places, then package prices are calculated from the rounded bottle price. Customer special prices take priority, followed by warehouse prices and then product defaults. The POS uses its selected warehouse's prices.
 
 In **Damage & missing**, choose the issue unit to record a whole carton or individual pieces. The preview shows the exact base units affected. POS also allows carton and individual-unit lines together.
 

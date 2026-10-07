@@ -29,6 +29,7 @@ func (s *Service) Register(r *gin.Engine, a *authz.Service) {
 	s.a = a
 	s.registerCustomers(r, a)
 	s.registerPayments(r, a)
+	s.registerPricing(r, a)
 	s.registerReturns(r, a)
 	r.GET("/api/v1/pos/products", a.RequireAny(permissions.SalesCreate, permissions.ProductsUpdate), s.Products)
 	r.GET("/api/v1/pos/warehouses", a.RequireAny(permissions.SalesCreate, permissions.ProductsUpdate), s.Warehouses)
