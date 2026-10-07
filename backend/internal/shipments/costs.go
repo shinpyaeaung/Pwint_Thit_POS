@@ -13,20 +13,23 @@ import (
 )
 
 type stageInput struct {
-	Version     string `json:"version"`
-	RequestID   string `json:"request_id"`
-	Origin      string `json:"start_location"`
-	Destination string `json:"destination"`
-	Provider    string `json:"provider_name"`
-	Type        string `json:"transportation_type"`
-	Vehicle     string `json:"vehicle_information"`
-	Departed    string `json:"departed_at"`
-	Arrived     string `json:"arrived_at"`
-	Fee         string `json:"transportation_fee_mmk"`
-	Loading     string `json:"loading_fee_mmk"`
-	Unloading   string `json:"unloading_fee_mmk"`
-	Other       string `json:"other_fee_mmk"`
-	Notes       string `json:"notes"`
+	FeeBasis       string `json:"fee_basis"`
+	FeePerCarton   string `json:"fee_per_carton_mmk"`
+	ChargedCartons string `json:"charged_cartons"`
+	Version        string `json:"version"`
+	RequestID      string `json:"request_id"`
+	Origin         string `json:"start_location"`
+	Destination    string `json:"destination"`
+	Provider       string `json:"provider_name"`
+	Type           string `json:"transportation_type"`
+	Vehicle        string `json:"vehicle_information"`
+	Departed       string `json:"departed_at"`
+	Arrived        string `json:"arrived_at"`
+	Fee            string `json:"transportation_fee_mmk"`
+	Loading        string `json:"loading_fee_mmk"`
+	Unloading      string `json:"unloading_fee_mmk"`
+	Other          string `json:"other_fee_mmk"`
+	Notes          string `json:"notes"`
 }
 
 func (s *Service) SaveStage(c *gin.Context) {
@@ -43,6 +46,23 @@ func (s *Service) SaveStage(c *gin.Context) {
 	if !required(in.Origin, 200) || !required(in.Destination, 200) || !required(in.Provider, 200) || len(in.Type) > 100 || len(in.Vehicle) > 200 || len(in.Notes) > 4000 || !ok || !ok2 || (arr.Valid && (!dep.Valid || arr.Time.Before(dep.Time))) || (!updating && !validID(in.RequestID)) {
 		fail(c, 400, "Enter stage locations/provider and valid dates. Arrival requires an earlier departure.")
 		return
+	}
+	if in.FeeBasis == "" {
+		in.FeeBasis = "TOTAL"
+	}
+	if in.FeeBasis != "TOTAL" && in.FeeBasis != "PER_CARTON" {
+		fail(c, 400, "Choose total shipment fee or per-carton fee.")
+		return
+	}
+	if in.FeeBasis == "PER_CARTON" {
+		if !decimal(in.FeePerCarton, 16, 4, false) || !decimal(in.ChargedCartons, 14, 6, true) {
+			fail(c, 400, "Enter a valid fee per carton and a positive carton count.")
+			return
+		}
+		in.Fee = "0" // The database calculates the total exactly from the saved rate and count.
+	} else {
+		in.FeePerCarton = ""
+		in.ChargedCartons = ""
 	}
 	for _, v := range []string{in.Fee, in.Loading, in.Unloading, in.Other} {
 		if !decimal(v, 16, 4, false) {

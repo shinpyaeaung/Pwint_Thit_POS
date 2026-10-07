@@ -60,7 +60,7 @@ test('owner creates staff and grants then revokes access', async ({ page, browse
   try {
     const other = await context.newPage()
     await signIn(other, name)
-    await expect(other.getByRole('link', { name: 'Users & access' })).toBeVisible()
+    await expect(other.getByRole('region', { name: 'Administration', exact: true }).getByRole('link', { name: 'Users & access', exact: true })).toBeVisible()
     expect((await other.request.get('/api/v1/users')).status()).toBe(200)
     await page.getByRole('button', { name: `Manage permissions for ${name}` }).click()
     await editor.getByRole('checkbox', { name: /^users.manage/ }).uncheck()

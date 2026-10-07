@@ -109,6 +109,13 @@ func TestShipmentIntegration(t *testing.T) {
 		return map[string]any{"request_id": fmt.Sprintf("20000000-0000-0000-0000-%012d", n), "version": version(), "start_location": "India", "destination": fmt.Sprintf("City %d", n), "provider_name": "Road carrier", "transportation_fee_mmk": "30000.1234", "loading_fee_mmk": "100", "unloading_fee_mmk": "200", "other_fee_mmk": "50", "departed_at": "2026-09-01T00:00:00Z", "arrived_at": "2026-09-02T00:00:00Z"}
 	}
 	first := stage(1)
+	first["fee_basis"] = "PER_CARTON"
+	first["fee_per_carton_mmk"] = "60000.2468"
+	first["charged_cartons"] = "0.5"
+	first["transportation_fee_mmk"] = "1" // Ignore a client-supplied total.
+	if ship["suggested_cartons"] != nil {
+		t.Fatal("guessed cartons for unconfigured packaging", ship)
+	}
 	call("POST", "/shipments/"+id+"/stages", first, owner, 204)
 	call("POST", "/shipments/"+id+"/stages", first, owner, 409)
 	for n := 2; n <= 25; n++ {
@@ -124,10 +131,41 @@ func TestShipmentIntegration(t *testing.T) {
 	}
 	stages := call("GET", "/shipments/"+id+"/stages", nil, owner, 200)
 	child := stages["stages"].([]any)[0].(map[string]any)["id"].(string)
+	firstSaved := stages["stages"].([]any)[0].(map[string]any)
+	if firstSaved["fee_basis"] != "PER_CARTON" || firstSaved["charged_cartons"] != "0.500000" || firstSaved["fee_per_carton_mmk"] != "60000.2468" || firstSaved["transportation_fee_mmk"] != "30000.1234" {
+		t.Fatal("carton fee snapshot", firstSaved)
+	}
+	for _, count := range []string{"0", "-1", "NaN", "1.0000001"} {
+		bad := stage(26)
+		bad["fee_basis"] = "PER_CARTON"
+		bad["fee_per_carton_mmk"] = "10"
+		bad["charged_cartons"] = count
+		call("POST", "/shipments/"+id+"/stages", bad, owner, 400)
+	}
+	badBasis := stage(26)
+	badBasis["fee_basis"] = "PER_BOTTLE"
+	call("POST", "/shipments/"+id+"/stages", badBasis, owner, 400)
+
 	edit := stage(99)
 	delete(edit, "request_id")
 	edit["transportation_fee_mmk"] = "30001.1234"
+	// Fee and shipment version must roll back if the audit cannot be recorded.
+	if _, err = conn.Exec(ctx, `CREATE FUNCTION app.fail_transport_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action='transportation.update' THEN RAISE EXCEPTION 'test audit failure'; END IF; RETURN NEW; END $$;CREATE TRIGGER fail_transport_audit BEFORE INSERT ON app.audit_logs FOR EACH ROW EXECUTE FUNCTION app.fail_transport_audit()`); err != nil {
+		t.Fatal(err)
+	}
+	call("PUT", "/shipments/"+id+"/stages/"+child, edit, owner, 503)
+	if got := call("GET", "/shipments/"+id+"/stages", nil, owner, 200)["stages"].([]any)[0].(map[string]any); got["fee_basis"] != "PER_CARTON" || got["transportation_fee_mmk"] != "30000.1234" {
+		t.Fatal("fee update leaked on rollback", got)
+	}
+	if _, err = conn.Exec(ctx, `DROP TRIGGER fail_transport_audit ON app.audit_logs`); err != nil {
+		t.Fatal(err)
+	}
 	call("PUT", "/shipments/"+id+"/stages/"+child, edit, owner, 204)
+	totalSaved := call("GET", "/shipments/"+id+"/stages", nil, owner, 200)["stages"].([]any)[0].(map[string]any)
+	if totalSaved["fee_basis"] != "TOTAL" || totalSaved["charged_cartons"] != nil || totalSaved["fee_per_carton_mmk"] != nil {
+		t.Fatal("total mode retains carton fields", totalSaved)
+	}
+
 	bad := stage(26)
 	bad["transportation_fee_mmk"] = "NaN"
 	call("POST", "/shipments/"+id+"/stages", bad, owner, 400)
@@ -170,6 +208,9 @@ func TestShipmentIntegration(t *testing.T) {
 		t.Fatal("cost exposed")
 	}
 	hidden = call("GET", "/shipments/"+id+"/stages", nil, staff, 200)
+	if _, ok := hidden["stages"].([]any)[0].(map[string]any)["fee_per_carton_mmk"]; ok {
+		t.Fatal("carton rate exposed")
+	}
 	if _, ok := hidden["stages"].([]any)[0].(map[string]any)["total_mmk"]; ok {
 		t.Fatal("stage cost exposed")
 	}

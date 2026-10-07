@@ -915,6 +915,9 @@ type AppTransportationStage struct {
 	UpdatedAt            pgtype.Timestamptz
 	RequestID            pgtype.UUID
 	TransportationNumber string
+	FeeBasis             string
+	FeePerCartonMmk      pgtype.Numeric
+	ChargedCartons       pgtype.Numeric
 }
 
 type AppUnit struct {

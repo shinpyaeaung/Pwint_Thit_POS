@@ -123,3 +123,7 @@ Open **Products & stock → Warehouse prices**, choose a warehouse (including yo
 In **Damage & missing**, choose the issue unit to record a whole carton or individual pieces. The preview shows the exact base units affected. POS also allows carton and individual-unit lines together.
 
 During shipment creation or editing, choose cargo-terminal delivery or collection from the terminal. At POS choose customer collection or delivery by us. Check **Record person and vehicle details** when needed. These details are shown on the shipment or invoice.
+
+### Transportation fee basis
+
+In **Transportation timeline → Add stage / Edit stage**, choose **Total for shipment (all cartons)** to enter one transport fee, or **Per carton** to enter a rate and the cartons charged. The form suggests cartons from the shipment packaging when every line has a known carton conversion. Confirm or adjust the count to match the cargo bill; partial cartons are supported. The live preview shows transport fee and stage total. Loading, unloading and other charges remain separate totals. The saved timeline retains the billing basis, rate and count; paid or finalized stages retain their existing editing restrictions.
