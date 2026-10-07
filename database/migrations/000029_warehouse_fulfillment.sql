@@ -21,13 +21,12 @@ BEGIN
  INSERT INTO app.audit_logs(actor_id,action,entity_type,entity_id,old_value,new_value) VALUES(actor,'warehouse_prices.save','products',p.id,before,d);
 END $$;
 
--- Existing shipments keep an unknown method instead of inventing historical delivery details.
-ALTER TABLE app.shipments ADD COLUMN fulfillment jsonb;
+ALTER TABLE app.shipments ADD COLUMN fulfillment jsonb NOT NULL DEFAULT '{"mode":"DELIVERY"}'::jsonb;
 CREATE FUNCTION app.valid_fulfillment(d jsonb) RETURNS boolean LANGUAGE sql IMMUTABLE AS $$
  SELECT jsonb_typeof(d)='object' AND coalesce(d->>'mode','') IN ('DELIVERY','COLLECTION')
  AND length(coalesce(d->>'person_name',''))<=200 AND length(coalesce(d->>'vehicle_number',''))<=100
 $$;
-ALTER TABLE app.shipments ADD CONSTRAINT shipment_fulfillment_valid CHECK(fulfillment IS NULL OR app.valid_fulfillment(fulfillment));
+ALTER TABLE app.shipments ADD CONSTRAINT shipment_fulfillment_valid CHECK(app.valid_fulfillment(fulfillment));
 
 -- Preserve the current checkout, approvals, numbering and FIFO reservation logic.
 DO $$ DECLARE definition text; needle text;
