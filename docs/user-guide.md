@@ -113,3 +113,13 @@ In a purchase, **Shipment allocation** shows purchased, assigned and remaining q
 Use **Supplier Payments** or **Record Payment** inside the purchase. Enter the amount in the purchase currency, payment method, date, reference and notes. Every partial payment remains in history; the remaining balance updates from the ledger. Transport-provider debts stay separate from supplier invoice debts. Authorized settings users can add payment methods on Supplier Payments.
 
 To sell cartons plus loose bottles in POS, choose Carton on the first line and add the product again for Bottle, or scan the two packaging barcodes. Stock is deducted in base units across both lines using FIFO batch costs.
+
+## Central payments, warehouse prices and deliveries
+
+Open **Payments → Payment centre** to select Supplier Payments, Customer Payments or Transportation Payments. Search for the related purchase, customer invoice or cargo terminal, then record a partial or full payment. Transportation payments settle the cargo terminal's charge; additional shipment costs are separate rows. History stays linked to the original transaction.
+
+Open **Products & stock → Warehouse prices**, choose a warehouse (including your home warehouse), and set each product's carton and individual-unit prices. Customer special prices take priority, followed by warehouse prices and then product defaults. The POS uses its selected warehouse's prices.
+
+In **Damage & missing**, choose the issue unit to record a whole carton or individual pieces. The preview shows the exact base units affected. POS also allows carton and individual-unit lines together.
+
+During shipment creation or editing, choose cargo-terminal delivery or collection from the terminal. At POS choose customer collection or delivery by us. Check **Record person and vehicle details** when needed. These details are shown on the shipment or invoice.

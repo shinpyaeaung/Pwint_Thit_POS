@@ -210,13 +210,14 @@ func (s *Service) CreateWarehouse(c *gin.Context) {
 }
 
 type shipmentInput struct {
-	RequestID string `json:"request_id"`
-	Number    string `json:"shipment_number"`
-	Origin    string `json:"start_location"`
-	Warehouse string `json:"destination_warehouse_id"`
-	Expected  string `json:"expected_arrival_at"`
-	Notes     string `json:"notes"`
-	Items     []struct {
+	Fulfillment *Fulfillment `json:"fulfillment,omitempty"`
+	RequestID   string       `json:"request_id"`
+	Number      string       `json:"shipment_number"`
+	Origin      string       `json:"start_location"`
+	Warehouse   string       `json:"destination_warehouse_id"`
+	Expected    string       `json:"expected_arrival_at"`
+	Notes       string       `json:"notes"`
+	Items       []struct {
 		PurchaseItem string `json:"purchase_item_id"`
 		Quantity     string `json:"expected_quantity"`
 	} `json:"items"`
@@ -230,7 +231,7 @@ func (s *Service) Create(c *gin.Context) {
 	in.Number = strings.TrimSpace(in.Number)
 	in.Origin = strings.TrimSpace(in.Origin)
 	_, datesOK := date(in.Expected)
-	if !validID(in.RequestID) || !validID(in.Warehouse) || (in.Number != "" && !required(in.Number, 100)) || !required(in.Origin, 200) || len(in.Notes) > 4000 || !datesOK || len(in.Items) == 0 || len(in.Items) > 100 {
+	if (in.Fulfillment != nil && !in.Fulfillment.valid()) || !validID(in.RequestID) || !validID(in.Warehouse) || (in.Number != "" && !required(in.Number, 100)) || !required(in.Origin, 200) || len(in.Notes) > 4000 || !datesOK || len(in.Items) == 0 || len(in.Items) > 100 {
 		fail(c, 400, "Enter shipment identity, destination and 1–100 valid purchase items.")
 		return
 	}

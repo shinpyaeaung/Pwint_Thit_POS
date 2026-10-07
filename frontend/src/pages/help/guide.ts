@@ -1,4 +1,10 @@
 export const guideSections = [
+ { id:'payment-centre',title:'Payments, warehouse prices and deliveries',href:'/payments',link:'Open Payment centre',paragraphs:[
+ 'Use Payment centre for supplier purchases, customer invoices and cargo-terminal payments. Each payment stays linked to its transaction. Additional shipment costs remain separate charges; cargo payments do not increase supplier debt.',
+ 'Warehouse prices sets independent carton and individual-unit prices at each warehouse, including your home warehouse. Customer special prices take priority, then warehouse prices, then product defaults. Product creation defines packaging but does not add stock.',
+ 'Damage & missing accepts carton or individual-unit quantities and shows the affected base units. Stock is changed only by the posted movement.',
+ 'Choose delivery or collection on shipments and at POS. Enable Record person and vehicle details when needed. Saved details appear on the shipment or invoice.'
+ ] },
   { id: 'start', title: '1. Find your tools', href: '/dashboard', link: 'Open Dashboard', paragraphs: [
     'Dashboard and Reports stay at the top of the sidebar. Scroll inside the menu to reach the remaining tools. On a phone or narrow window, use the menu button at the top left.',
     'User guide stays at the bottom of the menu. System status and UI library are developer tools, so they are not part of the daily business menu.',

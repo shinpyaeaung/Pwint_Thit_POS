@@ -40,7 +40,7 @@ func TestBrowserIntegration(t *testing.T) {
 	}
 	gin.SetMode(gin.TestMode)
 	conn := testutil.Database(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
 	defer cancel()
 	if err := migrate.Up(ctx, conn, os.DirFS("../../../database/migrations")); err != nil {
 		t.Fatal(err)

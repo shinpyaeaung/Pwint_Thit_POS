@@ -123,8 +123,8 @@ func (q *Queries) StockIssue(ctx context.Context, arg StockIssueParams) ([]byte,
 
 const stockIssueChoices = `-- name: StockIssueChoices :one
 SELECT coalesce(jsonb_agg(to_jsonb(x)),'[]'::jsonb)::jsonb FROM (
- SELECT i.warehouse_id,i.batch_id,i.version::text AS version,w.name AS warehouse_name,p.id AS product_id,p.name AS product_name,p.sku,p.base_unit_code,b.batch_number,i.available_quantity::text AS available_quantity,i.damaged_quantity::text AS damaged_quantity,u.retail_price_mmk::text AS original_price_mmk
- FROM app.inventory i JOIN app.batches b ON b.id=i.batch_id JOIN app.products p ON p.id=b.product_id JOIN app.warehouses w ON w.id=i.warehouse_id LEFT JOIN app.product_units u ON u.product_id=p.id AND u.unit_code=p.base_unit_code AND u.units_per_pack=1
+ SELECT i.warehouse_id,i.batch_id,i.version::text AS version,w.name AS warehouse_name,p.id AS product_id,p.name AS product_name,p.sku,p.base_unit_code,b.batch_number,i.available_quantity::text AS available_quantity,i.damaged_quantity::text AS damaged_quantity,coalesce(wp.retail_price_mmk,u.retail_price_mmk)::text AS original_price_mmk,(SELECT jsonb_agg(jsonb_build_object('unit_code',pu.unit_code,'units_per_pack',pu.units_per_pack::text) ORDER BY pu.units_per_pack) FROM app.product_units pu WHERE pu.product_id=p.id) AS packaging
+ FROM app.inventory i JOIN app.batches b ON b.id=i.batch_id JOIN app.products p ON p.id=b.product_id JOIN app.warehouses w ON w.id=i.warehouse_id LEFT JOIN app.product_units u ON u.product_id=p.id AND u.unit_code=p.base_unit_code AND u.units_per_pack=1 LEFT JOIN app.warehouse_prices wp ON wp.warehouse_id=i.warehouse_id AND wp.product_id=p.id AND wp.unit_code=p.base_unit_code
  WHERE ($1::text='' OR strpos(lower(p.name||' '||p.sku||' '||b.batch_number),lower($1))>0) ORDER BY p.name,b.batch_number,i.warehouse_id LIMIT 100) x
 `
 

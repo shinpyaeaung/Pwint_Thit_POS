@@ -33,6 +33,7 @@ type Querier interface {
 	CustomerDetail(ctx context.Context, id pgtype.UUID) ([]byte, error)
 	CustomerHistory(ctx context.Context, arg CustomerHistoryParams) ([]byte, error)
 	CustomerPayment(ctx context.Context, arg CustomerPaymentParams) (pgtype.UUID, error)
+	CustomerPaymentList(ctx context.Context, arg CustomerPaymentListParams) ([]byte, error)
 	CustomerPayments(ctx context.Context, id pgtype.UUID) ([]byte, error)
 	CustomerPrice(ctx context.Context, arg CustomerPriceParams) error
 	CustomerPrices(ctx context.Context, id pgtype.UUID) ([]byte, error)
@@ -165,6 +166,9 @@ type Querier interface {
 	SupplierPurchaseBalance(ctx context.Context, id pgtype.UUID) ([]byte, error)
 	SupplierPurchaseHistory(ctx context.Context, arg SupplierPurchaseHistoryParams) ([]byte, error)
 	TouchShipment(ctx context.Context, id pgtype.UUID) error
+	TransportPaymentHistory(ctx context.Context, id pgtype.UUID) ([]byte, error)
+	TransportPaymentList(ctx context.Context, arg TransportPaymentListParams) ([]byte, error)
+	TransportPaymentPost(ctx context.Context, arg TransportPaymentPostParams) (pgtype.UUID, error)
 	UpdateBrand(ctx context.Context, arg UpdateBrandParams) (UpdateBrandRow, error)
 	UpdateCategory(ctx context.Context, arg UpdateCategoryParams) (UpdateCategoryRow, error)
 	UpdateManagedWarehouse(ctx context.Context, arg UpdateManagedWarehouseParams) error
@@ -175,6 +179,7 @@ type Querier interface {
 	UpdateSupplier(ctx context.Context, arg UpdateSupplierParams) error
 	UpsertProductUnit(ctx context.Context, arg UpsertProductUnitParams) error
 	VoidShipmentExpense(ctx context.Context, arg VoidShipmentExpenseParams) (int64, error)
+	WarehousePricesSave(ctx context.Context, arg WarehousePricesSaveParams) error
 }
 
 var _ Querier = (*Queries)(nil)

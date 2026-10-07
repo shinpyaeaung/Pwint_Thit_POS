@@ -2,7 +2,7 @@
 SELECT coalesce(jsonb_agg(to_jsonb(x)),'[]'::jsonb)::jsonb FROM (
  SELECT p.id,p.name,p.sku,p.barcode,p.base_unit_code,p.version::text,
  coalesce((SELECT sum(available_quantity)::text FROM app.pos_eligible_stock i WHERE i.product_id=p.id AND i.warehouse_id=sqlc.arg(warehouse_id)::uuid),'0') AS available_quantity,
- (SELECT coalesce(jsonb_agg(jsonb_build_object('unit_code',u.unit_code,'units_per_pack',u.units_per_pack::text,'barcode',u.barcode,'retail_price_mmk',u.retail_price_mmk::text,'wholesale_price_mmk',u.wholesale_price_mmk::text,'is_default_sale',u.is_default_sale) ORDER BY u.is_default_sale DESC,u.unit_code),'[]'::jsonb) FROM app.product_units u WHERE u.product_id=p.id) AS packaging
+ (SELECT coalesce(jsonb_agg(jsonb_build_object('unit_code',u.unit_code,'units_per_pack',u.units_per_pack::text,'barcode',u.barcode,'retail_price_mmk',coalesce(wp.retail_price_mmk,u.retail_price_mmk)::text,'wholesale_price_mmk',coalesce(wp.wholesale_price_mmk,u.wholesale_price_mmk)::text,'is_default_sale',u.is_default_sale) ORDER BY u.is_default_sale DESC,u.unit_code),'[]'::jsonb) FROM app.product_units u LEFT JOIN app.warehouse_prices wp ON wp.product_id=u.product_id AND wp.unit_code=u.unit_code AND wp.warehouse_id=sqlc.arg(warehouse_id)::uuid WHERE u.product_id=p.id) AS packaging
  FROM app.products p WHERE p.is_active AND p.archived_at IS NULL AND (sqlc.arg(search)::text='' OR strpos(lower(p.name||' '||p.sku),lower(sqlc.arg(search)))>0 OR p.barcode=sqlc.arg(search) OR EXISTS(SELECT 1 FROM app.product_units u WHERE u.product_id=p.id AND u.barcode=sqlc.arg(search)))
  ORDER BY (p.barcode=sqlc.arg(search) OR EXISTS(SELECT 1 FROM app.product_units u WHERE u.product_id=p.id AND u.barcode=sqlc.arg(search))) DESC NULLS LAST,p.name,p.id LIMIT 50
 ) x;
@@ -22,3 +22,6 @@ SELECT (jsonb_build_object('id',s.id,'invoice_number',s.invoice_number,'order_nu
 -- name: POSSales :one
 WITH filtered AS (SELECT s.id,s.invoice_number,s.order_number,s.sold_at,s.invoice_document->>'customer_name' AS customer_name,s.invoice_document->>'total_mmk' AS total_mmk,s.invoice_document->>'paid_mmk' AS paid_mmk,s.invoice_document->>'outstanding_mmk' AS outstanding_mmk FROM app.sales s WHERE s.invoice_document IS NOT NULL AND (sqlc.arg(search)::text='' OR strpos(lower(s.invoice_number||' '||(s.invoice_document->>'customer_name')),lower(sqlc.arg(search)))>0)),page AS (SELECT * FROM filtered ORDER BY sold_at DESC,id LIMIT sqlc.arg(page_size)::int OFFSET sqlc.arg(page_offset)::int)
 SELECT jsonb_build_object('total',(SELECT count(*) FROM filtered),'sales',coalesce((SELECT jsonb_agg(to_jsonb(page) ORDER BY sold_at DESC,id) FROM page),'[]'::jsonb))::jsonb;
+
+-- name: WarehousePricesSave :exec
+SELECT app.warehouse_prices_save(sqlc.arg(data)::jsonb,sqlc.arg(actor)::uuid);

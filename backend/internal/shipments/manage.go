@@ -10,17 +10,18 @@ import (
 
 func (s *Service) Edit(c *gin.Context) {
 	var in struct {
-		Version   string `json:"version"`
-		Origin    string `json:"start_location"`
-		Warehouse string `json:"destination_warehouse_id"`
-		Expected  string `json:"expected_arrival_at"`
-		Notes     string `json:"notes"`
+		Fulfillment *Fulfillment `json:"fulfillment,omitempty"`
+		Version     string       `json:"version"`
+		Origin      string       `json:"start_location"`
+		Warehouse   string       `json:"destination_warehouse_id"`
+		Expected    string       `json:"expected_arrival_at"`
+		Notes       string       `json:"notes"`
 	}
 	if !decode(c, &in) {
 		return
 	}
 	_, datesOK := date(in.Expected)
-	if !required(in.Origin, 200) || !validID(in.Warehouse) || !datesOK || len(in.Notes) > 4000 {
+	if (in.Fulfillment != nil && !in.Fulfillment.valid()) || !required(in.Origin, 200) || !validID(in.Warehouse) || !datesOK || len(in.Notes) > 4000 {
 		fail(c, 400, "Enter an origin, active destination warehouse and valid arrival date.")
 		return
 	}

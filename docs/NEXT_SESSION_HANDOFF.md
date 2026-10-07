@@ -57,3 +57,17 @@ Wait for the next user scope before adding another module. The v1.2 controls abo
 Re-reviewed the original packaging/shipment/payment requirements after the interrupted session. The implementation was already in local commit `0ebc0a4`; no duplicate feature implementation was needed. Requirement coverage and accounting boundaries are recorded in `docs/packaging-shipment-payments.md`.
 
 Fresh verification passed: `make check`, `make test-integration`, and all 26 real-stack browser tests from `make test-e2e`. Started the existing Colima runtime and rebuilt/started the local app with `make up`; migration exited successfully and PostgreSQL, backend and frontend are healthy at http://localhost:8088. Existing database volume was preserved. Initial test attempts were blocked by a stopped runtime and sandbox network access; the authorized reruns passed.
+
+## October 7: central payments, warehouse pricing and delivery follow-up
+
+The user's six-part scope is implemented. See `docs/distribution-payments-warehouse-pricing.md` for business rules and screen locations.
+
+- Product creation explains that packaging defines future purchase/sale units and does not create stock. Existing packaging is retained.
+- `/payments` centrally manages supplier payments, customer invoice collections, cargo-terminal payments and separate shipment-cost settlements. Categories and mutations enforce existing backend permissions. Cargo payments use the immutable ledger, historical rates, request deduplication, shipment locking and atomic payment/allocation/audit transactions. Cancelled shipment charges remain visible with their status; cancellation does not erase financial history.
+- `/warehouse-prices` and POS's Prices button configure independent retail/wholesale prices for each warehouse/product/unit, including cartons and individual units. Priority: customer special price, warehouse price, product default. Existing invoices and batch costs are unchanged.
+- Stock issue entry accepts configured cartons or individual units, previews affected stock, and converts on the server before immutable movement posting. Mixed-unit FIFO sales remain supported.
+- Shipment creation/edit records cargo-terminal delivery or collection. POS records customer collection or delivery by us. An optional checkbox enables person/vehicle details. Saved details appear in shipment summaries and invoice snapshots. Older records remain unspecified rather than receiving invented historical details.
+- Migrations 000029–000030 are additive; generated sqlc bindings are included. No real business records are seeded, reset or converted by tests.
+- Verification: `make check`, PostgreSQL integration tests and all 26 real-stack Chromium/WebKit tests pass. Added coverage includes warehouse price validation, exact package damage, delivery persistence, central customer collections, cargo partial payment/history, concurrent overpayment protection, audit-failure rollback, foreign-currency cost settlement, cancelled-charge history and permissions.
+
+Wait for the user's next scope before starting another module.

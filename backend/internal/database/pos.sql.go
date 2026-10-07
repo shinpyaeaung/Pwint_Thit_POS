@@ -111,7 +111,7 @@ const pOSProducts = `-- name: POSProducts :one
 SELECT coalesce(jsonb_agg(to_jsonb(x)),'[]'::jsonb)::jsonb FROM (
  SELECT p.id,p.name,p.sku,p.barcode,p.base_unit_code,p.version::text,
  coalesce((SELECT sum(available_quantity)::text FROM app.pos_eligible_stock i WHERE i.product_id=p.id AND i.warehouse_id=$1::uuid),'0') AS available_quantity,
- (SELECT coalesce(jsonb_agg(jsonb_build_object('unit_code',u.unit_code,'units_per_pack',u.units_per_pack::text,'barcode',u.barcode,'retail_price_mmk',u.retail_price_mmk::text,'wholesale_price_mmk',u.wholesale_price_mmk::text,'is_default_sale',u.is_default_sale) ORDER BY u.is_default_sale DESC,u.unit_code),'[]'::jsonb) FROM app.product_units u WHERE u.product_id=p.id) AS packaging
+ (SELECT coalesce(jsonb_agg(jsonb_build_object('unit_code',u.unit_code,'units_per_pack',u.units_per_pack::text,'barcode',u.barcode,'retail_price_mmk',coalesce(wp.retail_price_mmk,u.retail_price_mmk)::text,'wholesale_price_mmk',coalesce(wp.wholesale_price_mmk,u.wholesale_price_mmk)::text,'is_default_sale',u.is_default_sale) ORDER BY u.is_default_sale DESC,u.unit_code),'[]'::jsonb) FROM app.product_units u LEFT JOIN app.warehouse_prices wp ON wp.product_id=u.product_id AND wp.unit_code=u.unit_code AND wp.warehouse_id=$1::uuid WHERE u.product_id=p.id) AS packaging
  FROM app.products p WHERE p.is_active AND p.archived_at IS NULL AND ($2::text='' OR strpos(lower(p.name||' '||p.sku),lower($2))>0 OR p.barcode=$2 OR EXISTS(SELECT 1 FROM app.product_units u WHERE u.product_id=p.id AND u.barcode=$2))
  ORDER BY (p.barcode=$2 OR EXISTS(SELECT 1 FROM app.product_units u WHERE u.product_id=p.id AND u.barcode=$2)) DESC NULLS LAST,p.name,p.id LIMIT 50
 ) x
@@ -156,4 +156,18 @@ func (q *Queries) POSWarehouses(ctx context.Context) ([]byte, error) {
 	var column_1 []byte
 	err := row.Scan(&column_1)
 	return column_1, err
+}
+
+const warehousePricesSave = `-- name: WarehousePricesSave :exec
+SELECT app.warehouse_prices_save($1::jsonb,$2::uuid)
+`
+
+type WarehousePricesSaveParams struct {
+	Data  []byte
+	Actor pgtype.UUID
+}
+
+func (q *Queries) WarehousePricesSave(ctx context.Context, arg WarehousePricesSaveParams) error {
+	_, err := q.db.Exec(ctx, warehousePricesSave, arg.Data, arg.Actor)
+	return err
 }

@@ -77,8 +77,8 @@ func (q *Queries) GetShipmentStage(ctx context.Context, arg GetShipmentStagePara
 }
 
 const insertShipment = `-- name: InsertShipment :one
-INSERT INTO app.shipments(shipment_number,start_location,destination_warehouse_id,expected_arrival_at,created_by,notes,request_id)
-SELECT d->>'shipment_number',d->>'start_location',(d->>'destination_warehouse_id')::uuid,NULLIF(d->>'expected_arrival_at','')::timestamptz,$1,NULLIF(d->>'notes',''),(d->>'request_id')::uuid FROM (SELECT $2::jsonb d) x RETURNING id
+INSERT INTO app.shipments(shipment_number,start_location,destination_warehouse_id,expected_arrival_at,created_by,notes,request_id,fulfillment)
+SELECT d->>'shipment_number',d->>'start_location',(d->>'destination_warehouse_id')::uuid,NULLIF(d->>'expected_arrival_at','')::timestamptz,$1,NULLIF(d->>'notes',''),(d->>'request_id')::uuid,coalesce(d->'fulfillment','{"mode":"DELIVERY"}'::jsonb) FROM (SELECT $2::jsonb d) x RETURNING id
 `
 
 type InsertShipmentParams struct {
@@ -150,7 +150,7 @@ func (q *Queries) InsertShipmentStage(ctx context.Context, arg InsertShipmentSta
 }
 
 const listShipments = `-- name: ListShipments :one
-WITH filtered AS (SELECT id, shipment_number, start_location, destination_warehouse_id, shipped_at, expected_arrival_at, arrived_at, status, allocation_method, costs_finalized_at, costs_finalized_by, created_by, notes, created_at, updated_at, version, request_id FROM app.shipments WHERE ($2::text='' OR strpos(lower(shipment_number||' '||start_location),lower($2))>0) AND ($3::text='' OR status=$3)), page AS (SELECT id FROM filtered ORDER BY created_at DESC,id LIMIT $5::int OFFSET $4::int)
+WITH filtered AS (SELECT id, shipment_number, start_location, destination_warehouse_id, shipped_at, expected_arrival_at, arrived_at, status, allocation_method, costs_finalized_at, costs_finalized_by, created_by, notes, created_at, updated_at, version, request_id, fulfillment FROM app.shipments WHERE ($2::text='' OR strpos(lower(shipment_number||' '||start_location),lower($2))>0) AND ($3::text='' OR status=$3)), page AS (SELECT id FROM filtered ORDER BY created_at DESC,id LIMIT $5::int OFFSET $4::int)
 SELECT jsonb_build_object('total',(SELECT count(*) FROM filtered),'shipments',COALESCE((SELECT jsonb_agg(app.shipment_document(s,$1::boolean) ORDER BY s.created_at DESC,s.id) FROM app.shipments s JOIN page USING(id)),'[]'::jsonb))::jsonb
 `
 

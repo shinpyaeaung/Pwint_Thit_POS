@@ -4,7 +4,7 @@ SELECT jsonb_build_object(
  'shipments',COALESCE((SELECT jsonb_agg(app.shipment_document(sh,sqlc.arg(costs)::boolean) || jsonb_build_object('receipt_id',(SELECT id FROM app.goods_receiving WHERE shipment_id=sh.id AND status='POSTED'),'receipt_number',(SELECT receipt_number FROM app.goods_receiving WHERE shipment_id=sh.id AND status='POSTED')) ORDER BY sh.created_at,sh.id) FROM app.shipments sh WHERE EXISTS(SELECT 1 FROM app.shipment_items si JOIN app.purchase_items pi ON pi.id=si.purchase_item_id WHERE si.shipment_id=sh.id AND pi.purchase_id=p.id)),'[]'::jsonb)
 )::jsonb FROM app.purchases p WHERE p.id=sqlc.arg(id);
 -- name: UpdateOpenShipmentDetails :exec
-UPDATE app.shipments SET start_location=d->>'start_location',destination_warehouse_id=(d->>'destination_warehouse_id')::uuid,expected_arrival_at=nullif(d->>'expected_arrival_at','')::timestamptz,notes=nullif(d->>'notes','') FROM (SELECT sqlc.arg(data)::jsonb d) x WHERE id=sqlc.arg(id);
+UPDATE app.shipments SET start_location=d->>'start_location',destination_warehouse_id=(d->>'destination_warehouse_id')::uuid,expected_arrival_at=nullif(d->>'expected_arrival_at','')::timestamptz,fulfillment=coalesce(d->'fulfillment',fulfillment),notes=nullif(d->>'notes','') FROM (SELECT sqlc.arg(data)::jsonb d) x WHERE id=sqlc.arg(id);
 -- name: DeleteUnpaidShipmentStage :execrows
 DELETE FROM app.transportation_stages WHERE id=sqlc.arg(id) AND shipment_id=sqlc.arg(shipment_id);
 -- name: GetManagedWarehouse :one

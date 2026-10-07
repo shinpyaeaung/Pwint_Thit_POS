@@ -103,6 +103,8 @@ func (s *Service) StockIssue(c *gin.Context) {
 		Version   string `json:"version"`
 		Kind      string `json:"kind"`
 		Bucket    string `json:"bucket"`
+		Unit      string `json:"unit_code,omitempty"`
+		Pack      string `json:"units_per_pack,omitempty"`
 		Quantity  string `json:"quantity"`
 		Reason    string `json:"reason"`
 		Notes     string `json:"notes"`
@@ -111,7 +113,7 @@ func (s *Service) StockIssue(c *gin.Context) {
 		return
 	}
 	in.Reason = strings.TrimSpace(in.Reason)
-	if !id(in.Request) || !id(in.Batch) || !id(in.Warehouse) || in.Version == "" || len(in.Version) > 20 || !quantity.MatchString(in.Quantity) || in.Reason == "" || len(in.Reason) > 2000 || len(in.Notes) > 4000 || (in.Kind != "DAMAGE" && in.Kind != "MISSING" && in.Kind != "DISCARD") || (in.Bucket != "SELLABLE" && in.Bucket != "DAMAGED") {
+	if (in.Unit != "" && (len(in.Unit) > 20 || !quantity.MatchString(in.Pack))) || !id(in.Request) || !id(in.Batch) || !id(in.Warehouse) || in.Version == "" || len(in.Version) > 20 || !quantity.MatchString(in.Quantity) || in.Reason == "" || len(in.Reason) > 2000 || len(in.Notes) > 4000 || (in.Kind != "DAMAGE" && in.Kind != "MISSING" && in.Kind != "DISCARD") || (in.Bucket != "SELLABLE" && in.Bucket != "DAMAGED") {
 		fail(c, 400, "Choose stock, quantity, disposition and a reason.")
 		return
 	}

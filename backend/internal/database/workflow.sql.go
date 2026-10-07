@@ -88,7 +88,7 @@ func (q *Queries) UpdateManagedWarehouse(ctx context.Context, arg UpdateManagedW
 }
 
 const updateOpenShipmentDetails = `-- name: UpdateOpenShipmentDetails :exec
-UPDATE app.shipments SET start_location=d->>'start_location',destination_warehouse_id=(d->>'destination_warehouse_id')::uuid,expected_arrival_at=nullif(d->>'expected_arrival_at','')::timestamptz,notes=nullif(d->>'notes','') FROM (SELECT $2::jsonb d) x WHERE id=$1
+UPDATE app.shipments SET start_location=d->>'start_location',destination_warehouse_id=(d->>'destination_warehouse_id')::uuid,expected_arrival_at=nullif(d->>'expected_arrival_at','')::timestamptz,fulfillment=coalesce(d->'fulfillment',fulfillment),notes=nullif(d->>'notes','') FROM (SELECT $2::jsonb d) x WHERE id=$1
 `
 
 type UpdateOpenShipmentDetailsParams struct {

@@ -28,6 +28,7 @@ func New(db DB) *Service { return &Service{db: db, q: database.New(db)} }
 func (s *Service) Register(r *gin.Engine, a *authz.Service) {
 	s.a = a
 	s.registerCustomers(r, a)
+	s.registerPayments(r, a)
 	s.registerReturns(r, a)
 	r.GET("/api/v1/pos/products", a.RequireAny(permissions.SalesCreate, permissions.ProductsUpdate), s.Products)
 	r.GET("/api/v1/pos/warehouses", a.RequireAny(permissions.SalesCreate, permissions.ProductsUpdate), s.Warehouses)
@@ -110,6 +111,7 @@ func (s *Service) CreateCustomer(c *gin.Context) {
 }
 func (s *Service) Prices(c *gin.Context) {
 	var in struct {
+		Warehouse string `json:"warehouse_id,omitempty"`
 		Product   string `json:"product_id"`
 		Unit      string `json:"unit_code"`
 		Version   string `json:"version"`
@@ -119,13 +121,19 @@ func (s *Service) Prices(c *gin.Context) {
 	if !decode(c, &in) {
 		return
 	}
-	if !id(in.Product) || len(in.Unit) > 20 || in.Unit == "" || len(in.Version) > 20 || in.Version == "" || !money.MatchString(in.Retail) || !money.MatchString(in.Wholesale) {
+	if (in.Warehouse != "" && !id(in.Warehouse)) || !id(in.Product) || len(in.Unit) > 20 || in.Unit == "" || len(in.Version) > 20 || in.Version == "" || !money.MatchString(in.Retail) || !money.MatchString(in.Wholesale) {
 		fail(c, 400, "Enter valid retail and wholesale prices.")
 		return
 	}
 	d, _ := json.Marshal(in)
 	actor, _ := authz.Principal(c)
-	if e := s.q.POSPrices(c.Request.Context(), database.POSPricesParams{Data: d, Actor: actor.ID}); e != nil {
+	var e error
+	if in.Warehouse != "" {
+		e = s.q.WarehousePricesSave(c.Request.Context(), database.WarehousePricesSaveParams{Data: d, Actor: actor.ID})
+	} else {
+		e = s.q.POSPrices(c.Request.Context(), database.POSPricesParams{Data: d, Actor: actor.ID})
+	}
+	if e != nil {
 		dbError(c, e)
 		return
 	}
@@ -142,19 +150,30 @@ type Line struct {
 	Price       string `json:"unit_price_mmk"`
 	Discount    string `json:"discount_mmk"`
 }
+type Fulfillment struct {
+	Mode    string `json:"mode"`
+	Person  string `json:"person_name"`
+	Vehicle string `json:"vehicle_number"`
+}
+
+func (f Fulfillment) valid() bool {
+	return (f.Mode == "COLLECTION" || f.Mode == "DELIVERY") && len(f.Person) <= 200 && len(f.Vehicle) <= 100
+}
+
 type Checkout struct {
-	ApproveBelowCost bool   `json:"approve_below_cost"`
-	Request          string `json:"request_id"`
-	Warehouse        string `json:"warehouse_id"`
-	Customer         string `json:"customer_id"`
-	Mode             string `json:"pricing_mode"`
-	Tender           string `json:"tender_mmk"`
-	Method           string `json:"payment_method"`
-	Reference        string `json:"payment_reference"`
-	Due              string `json:"due_date"`
-	Reason           string `json:"reason"`
-	Quote            string `json:"quote_hash"`
-	Items            []Line `json:"items"`
+	Fulfillment      *Fulfillment `json:"fulfillment,omitempty"`
+	ApproveBelowCost bool         `json:"approve_below_cost"`
+	Request          string       `json:"request_id"`
+	Warehouse        string       `json:"warehouse_id"`
+	Customer         string       `json:"customer_id"`
+	Mode             string       `json:"pricing_mode"`
+	Tender           string       `json:"tender_mmk"`
+	Method           string       `json:"payment_method"`
+	Reference        string       `json:"payment_reference"`
+	Due              string       `json:"due_date"`
+	Reason           string       `json:"reason"`
+	Quote            string       `json:"quote_hash"`
+	Items            []Line       `json:"items"`
 }
 
 func (s *Service) allowed(c *gin.Context, p permissions.Code) (bool, bool) {
@@ -171,7 +190,7 @@ func (s *Service) Checkout(preview bool) gin.HandlerFunc {
 		if !decode(c, &in) {
 			return
 		}
-		if !id(in.Request) || !id(in.Warehouse) || (in.Customer != "" && !id(in.Customer)) || (in.Mode != "RETAIL" && in.Mode != "WHOLESALE") || !money.MatchString(in.Tender) || len(in.Reference) > 200 || len(in.Reason) > 2000 || len(in.Quote) > 100 || len(in.Items) < 1 || len(in.Items) > 100 {
+		if (in.Fulfillment != nil && !in.Fulfillment.valid()) || !id(in.Request) || !id(in.Warehouse) || (in.Customer != "" && !id(in.Customer)) || (in.Mode != "RETAIL" && in.Mode != "WHOLESALE") || !money.MatchString(in.Tender) || len(in.Reference) > 200 || len(in.Reason) > 2000 || len(in.Quote) > 100 || len(in.Items) < 1 || len(in.Items) > 100 {
 			fail(c, 400, "Enter valid checkout details.")
 			return
 		}

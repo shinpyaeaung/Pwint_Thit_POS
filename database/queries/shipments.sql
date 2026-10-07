@@ -16,8 +16,8 @@ SELECT i.product_id,i.base_quantity::text AS base_quantity FROM app.purchase_ite
 -- name: ShipmentReservedQuantity :one
 SELECT COALESCE(sum(i.expected_quantity),0)::text FROM app.shipment_items i JOIN app.shipments s ON s.id=i.shipment_id WHERE i.purchase_item_id=$1 AND s.status<>'CANCELLED';
 -- name: InsertShipment :one
-INSERT INTO app.shipments(shipment_number,start_location,destination_warehouse_id,expected_arrival_at,created_by,notes,request_id)
-SELECT d->>'shipment_number',d->>'start_location',(d->>'destination_warehouse_id')::uuid,NULLIF(d->>'expected_arrival_at','')::timestamptz,sqlc.arg(actor),NULLIF(d->>'notes',''),(d->>'request_id')::uuid FROM (SELECT sqlc.arg(data)::jsonb d) x RETURNING id;
+INSERT INTO app.shipments(shipment_number,start_location,destination_warehouse_id,expected_arrival_at,created_by,notes,request_id,fulfillment)
+SELECT d->>'shipment_number',d->>'start_location',(d->>'destination_warehouse_id')::uuid,NULLIF(d->>'expected_arrival_at','')::timestamptz,sqlc.arg(actor),NULLIF(d->>'notes',''),(d->>'request_id')::uuid,coalesce(d->'fulfillment','{"mode":"DELIVERY"}'::jsonb) FROM (SELECT sqlc.arg(data)::jsonb d) x RETURNING id;
 -- name: InsertShipmentItem :exec
 INSERT INTO app.shipment_items(shipment_id,purchase_item_id,product_id,expected_quantity) VALUES($1,$2,$3,$4);
 -- name: LockShipment :one

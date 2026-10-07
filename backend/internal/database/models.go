@@ -699,6 +699,7 @@ type AppShipment struct {
 	UpdatedAt              pgtype.Timestamptz
 	Version                int64
 	RequestID              pgtype.UUID
+	Fulfillment            []byte
 }
 
 type AppShipmentCosting struct {
@@ -872,6 +873,27 @@ type AppSupplierPaymentRequest struct {
 	Payload    []byte
 }
 
+type AppTransportBalance struct {
+	ID             pgtype.UUID
+	Kind           string
+	ShipmentID     pgtype.UUID
+	ShipmentNumber string
+	ShipmentStatus string
+	Reference      string
+	Payee          string
+	CurrencyCode   string
+	Rate           pgtype.Numeric
+	Total          pgtype.Numeric
+	Paid           interface{}
+}
+
+type AppTransportPaymentRequest struct {
+	RequestID pgtype.UUID
+	PaymentID pgtype.UUID
+	ActorID   pgtype.UUID
+	Payload   []byte
+}
+
 type AppTransportationStage struct {
 	ID                   pgtype.UUID
 	ShipmentID           pgtype.UUID
@@ -939,4 +961,12 @@ type AppWarehouse struct {
 	IsActive     bool
 	CreatedAt    pgtype.Timestamptz
 	UpdatedAt    pgtype.Timestamptz
+}
+
+type AppWarehousePrice struct {
+	WarehouseID       pgtype.UUID
+	ProductID         pgtype.UUID
+	UnitCode          string
+	RetailPriceMmk    pgtype.Numeric
+	WholesalePriceMmk pgtype.Numeric
 }
