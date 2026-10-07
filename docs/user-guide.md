@@ -131,3 +131,7 @@ In **Transportation timeline → Add stage / Edit stage**, choose **Total for sh
 ### Sellable quantity after arrival
 
 In the shipment Landed cost section, received/damaged inputs are available only after **Mark arrived**. Enter total received units (including damaged goods) and damaged units; the system calculates **sellable = received − damaged**. Before arrival, planning uses expected quantities only. Finalizing costing locks the confirmed arrival counts and costs. Receive goods reuses those counts and adds batch/date details before posting inventory. Historical finalized shipments keep their original snapshots.
+
+### Shipment quantity display
+
+Shipment creation shows available goods and the quantity being shipped in cartons plus individual stock units, e.g. **5 cartons + 1 bottle (61 bottles)** for 12 bottles per carton. This updates while entering pieces or purchase packages and works in both Arrange shipment and the standalone shipment page. Purchases recorded in cartons use their saved carton conversion; other purchase units use the product's carton configuration. Products without a carton conversion display their individual units and indicate that carton size is not set.

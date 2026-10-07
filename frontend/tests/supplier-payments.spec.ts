@@ -29,8 +29,10 @@ test('product packaging, independent prices and partial supplier payments',async
   await page.getByLabel('Origin',{exact:true}).fill('Supplier')
   await page.getByRole('combobox',{name:'Final warehouse',exact:true}).click()
   await page.getByRole('option',{name:`Packaging warehouse ${suffix}`,exact:true}).click()
+  await expect(page.getByText(`Available: ${shipment===0?'80 cartons (1,280 bottles)':'40 cartons (640 bottles)'}`,{exact:true})).toBeVisible()
   await page.getByLabel('Enter CARTON packages',{exact:true}).check()
   await page.getByLabel(`Quantity: ${product.sku}`,{exact:true}).fill('40')
+  await expect(page.getByTestId(`shipment-quantity-${purchase.items[0].id}`)).toHaveText('In this shipment: 40 cartons (640 bottles)')
   await page.getByRole('button',{name:'Create shipment',exact:true}).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   if(shipment===0){
