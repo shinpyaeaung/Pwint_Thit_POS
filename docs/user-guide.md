@@ -127,3 +127,7 @@ During shipment creation or editing, choose cargo-terminal delivery or collectio
 ### Transportation fee basis
 
 In **Transportation timeline → Add stage / Edit stage**, choose **Total for shipment (all cartons)** to enter one transport fee, or **Per carton** to enter a rate and the cartons charged. The form suggests cartons from the shipment packaging when every line has a known carton conversion. Confirm or adjust the count to match the cargo bill; partial cartons are supported. The live preview shows transport fee and stage total. Loading, unloading and other charges remain separate totals. The saved timeline retains the billing basis, rate and count; paid or finalized stages retain their existing editing restrictions.
+
+### Sellable quantity after arrival
+
+In the shipment Landed cost section, received/damaged inputs are available only after **Mark arrived**. Enter total received units (including damaged goods) and damaged units; the system calculates **sellable = received − damaged**. Before arrival, planning uses expected quantities only. Finalizing costing locks the confirmed arrival counts and costs. Receive goods reuses those counts and adds batch/date details before posting inventory. Historical finalized shipments keep their original snapshots.

@@ -104,7 +104,9 @@ test('shipment goods, transportation timeline, expenses and restricted staff acc
  }finally{await context.close()}
 
  await page.setViewportSize({width:1280,height:900})
- await page.getByLabel('Sellable quantity 1',{exact:true}).fill('50')
+ await page.getByLabel('Arrival received quantity 1',{exact:true}).fill('55')
+ await page.getByLabel('Arrival damaged quantity 1',{exact:true}).fill('5')
+ await expect(page.getByLabel('Calculated sellable quantity 1',{exact:true})).toHaveText('50 BOTTLE')
  await page.getByLabel('Costing confirmation note',{exact:true}).fill('Confirmed 50 sellable bottles; all costs complete')
  for(const method of ['Quantity','Purchase value','Weight','Carton quantity','Manual allocation']){
   await page.getByRole('combobox',{name:'Allocation method',exact:true}).click()
@@ -141,6 +143,8 @@ test('shipment goods, transportation timeline, expenses and restricted staff acc
  await expect(page.getByRole('region',{name:'Purchase workflow',exact:true}).getByRole('region',{name:'Cost journey',exact:true}).filter({hasText:'Finalized'})).toContainText('120,800.2468 MMK')
  await page.goto('/shipments');await page.getByRole('searchbox',{name:'Search shipments'}).fill(shipmentNumber);await expect(page.getByRole('link',{name:shipmentNumber,exact:true})).toBeVisible()
  await page.goto(`/receiving/new?shipment=${id}`)
+ await expect(page.getByLabel('Received individual units 1',{exact:true})).toHaveValue('55.000000')
+ await expect(page.getByLabel('Damaged units 1',{exact:true})).toHaveValue('5.000000')
  await page.getByLabel('Count cartons 1',{exact:true}).check()
  await page.getByLabel('Received cartons 1',{exact:true}).fill('4')
  await page.getByLabel('Received individual units 1',{exact:true}).fill('7')

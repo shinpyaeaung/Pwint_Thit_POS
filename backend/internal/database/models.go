@@ -744,6 +744,8 @@ type AppShipmentItem struct {
 	CostingSellableQuantity pgtype.Numeric
 	LandedCostMmk           pgtype.Numeric
 	ActualUnitCostMmk       pgtype.Numeric
+	ArrivalReceivedQuantity pgtype.Numeric
+	ArrivalDamagedQuantity  pgtype.Numeric
 }
 
 type AppStockAdjustment struct {

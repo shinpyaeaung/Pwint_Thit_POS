@@ -99,6 +99,18 @@ func TestShipmentIntegration(t *testing.T) {
 	call("POST", "/shipments", create(1, "60"), staff, 403)
 	ship := call("POST", "/shipments", create(1, "60"), owner, 201)
 	id := ship["id"].(string)
+	planningSource := call("GET", "/shipments/"+id+"/landed-cost", nil, owner, 200)["source"].(map[string]any)
+	planningItem := map[string]any{"id": planningSource["items"].([]any)[0].(map[string]any)["id"], "sellable_quantity": "1"}
+	planning := map[string]any{"version": ship["version"], "method": "QUANTITY", "notes": "Planning only", "items": []any{planningItem}}
+	estimate := call("POST", "/shipments/"+id+"/landed-cost/preview", planning, owner, 200)
+	if estimate["counts_confirmed"] != false || estimate["items"].([]any)[0].(map[string]any)["sellable_quantity"] != "60.000000" {
+		t.Fatal("pre-arrival counts treated as actual", estimate)
+	}
+	planningItem["received_quantity"] = "55"
+	planningItem["damaged_quantity"] = "5"
+	call("POST", "/shipments/"+id+"/landed-cost/preview", planning, owner, 400)
+	call("POST", "/shipments/"+id+"/landed-cost/finalize", planning, owner, 409)
+
 	call("POST", "/shipments", create(1, "60"), owner, 409)
 	call("POST", "/shipments", create(2, "50"), owner, 409)
 	if got := call("GET", "/shipments", nil, owner, 200); got["total"] != float64(1) {
@@ -257,7 +269,7 @@ func TestShipmentIntegration(t *testing.T) {
 	call("GET", costPath, nil, staff, 403)
 	source := call("GET", costPath, nil, owner, 200)["source"].(map[string]any)
 	costItem := source["items"].([]any)[0].(map[string]any)["id"]
-	costIn := map[string]any{"version": version(), "method": "QUANTITY", "notes": "Confirmed 50 sellable units after transit", "items": []map[string]any{{"id": costItem, "sellable_quantity": "50"}}}
+	costIn := map[string]any{"version": version(), "method": "QUANTITY", "notes": "Confirmed 50 sellable units after transit", "items": []map[string]any{{"id": costItem, "received_quantity": "55", "damaged_quantity": "5", "sellable_quantity": "50"}}}
 	cost := call("POST", costPath+"/preview", costIn, owner, 200)
 	if cost["purchase_mmk"] != "6000.0000" || cost["landed_mmk"] != "764754.0850" {
 		t.Fatal("landed formula", cost)
@@ -347,7 +359,7 @@ func TestShipmentIntegration(t *testing.T) {
 		}
 		path := "/shipments/" + sid + "/landed-cost"
 		src := call("GET", path, nil, owner, 200)["source"].(map[string]any)
-		body := map[string]any{"version": "1", "method": "QUANTITY", "notes": "Confirmed split quantity", "items": []map[string]any{{"id": src["items"].([]any)[0].(map[string]any)["id"], "sellable_quantity": "1"}}}
+		body := map[string]any{"version": "1", "method": "QUANTITY", "notes": "Confirmed split quantity", "items": []map[string]any{{"id": src["items"].([]any)[0].(map[string]any)["id"], "received_quantity": "1", "damaged_quantity": "0", "sellable_quantity": "1"}}}
 		body["preview_token"] = call("POST", path+"/preview", body, owner, 200)["preview_token"]
 		paths = append(paths, path)
 		bodies = append(bodies, body)

@@ -48,12 +48,15 @@ test('purchase workspace resumes shipment, costs and receiving with generated ID
  await page.getByLabel('Removal reason',{exact:true}).fill('Duplicate stage correction')
  await page.getByRole('button',{name:'Save changes',exact:true}).click()
  await expect(workspace.getByText('No transportation stages',{exact:true})).toBeVisible()
+ await expect(page.getByLabel('Arrival received quantity 1',{exact:true})).toHaveCount(0)
+ await expect(page.getByText('Sellable quantity: pending arrival and inspection.',{exact:true})).toBeVisible()
  for(const name of ['Mark in transit','Mark arrived']){
   await page.getByRole('button',{name,exact:true}).click()
   await page.getByRole('button',{name:'Save changes',exact:true}).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
  }
  await page.getByLabel('Costing confirmation note',{exact:true}).fill('All goods counted; no transportation costs')
+ await page.getByLabel('Arrival received quantity 1',{exact:true}).fill('10')
  await page.getByRole('button',{name:'Calculate landed cost',exact:true}).click()
  await page.getByRole('button',{name:'Review finalization',exact:true}).click()
  await page.getByRole('button',{name:'Finalize landed cost',exact:true}).click()

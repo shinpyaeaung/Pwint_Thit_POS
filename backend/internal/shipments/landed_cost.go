@@ -94,11 +94,16 @@ func (s *Service) calculateCost(c *gin.Context, final bool) {
 		dbError(c, e)
 		return
 	}
+	if e = arrivalCounts(source, &in); e != nil {
+		fail(c, 400, e.Error())
+		return
+	}
 	result, e := costing.Calculate(source, in)
 	if e != nil {
 		fail(c, 400, e.Error())
 		return
 	}
+	result.CountsConfirmed = parent.Status == "ARRIVED"
 	supplied := in.PreviewToken
 	in.PreviewToken = ""
 	input, _ := json.Marshal(in)

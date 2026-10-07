@@ -11,7 +11,7 @@ SELECT pi.id FROM app.purchase_items pi JOIN app.shipment_items si ON si.purchas
 -- name: GetFinalizedCost :one
 SELECT document FROM app.shipment_costings WHERE shipment_id=$1;
 -- name: SaveCostItem :exec
-UPDATE app.shipment_items SET purchase_cost_mmk=(d->>'purchase_mmk')::numeric,costing_sellable_quantity=(d->>'sellable_quantity')::numeric,allocated_transport_mmk=(d->>'transport_mmk')::numeric,allocated_expense_mmk=(d->>'expense_mmk')::numeric,weight_kg=nullif(d->>'weight_kg','')::numeric,carton_quantity=nullif(d->>'carton_quantity','')::numeric FROM (SELECT sqlc.arg(data)::jsonb d) x WHERE id=(d->>'id')::uuid AND shipment_id=sqlc.arg(shipment_id);
+UPDATE app.shipment_items SET arrival_received_quantity=nullif(d->>'received_quantity','')::numeric,arrival_damaged_quantity=nullif(d->>'damaged_quantity','')::numeric,purchase_cost_mmk=(d->>'purchase_mmk')::numeric,costing_sellable_quantity=(d->>'sellable_quantity')::numeric,allocated_transport_mmk=(d->>'transport_mmk')::numeric,allocated_expense_mmk=(d->>'expense_mmk')::numeric,weight_kg=nullif(d->>'weight_kg','')::numeric,carton_quantity=nullif(d->>'carton_quantity','')::numeric FROM (SELECT sqlc.arg(data)::jsonb d) x WHERE id=(d->>'id')::uuid AND shipment_id=sqlc.arg(shipment_id);
 -- name: SaveCostDocument :exec
 INSERT INTO app.shipment_costings(shipment_id,document,finalized_by) VALUES($1,$2,$3);
 -- name: FinalizeShipmentCost :exec

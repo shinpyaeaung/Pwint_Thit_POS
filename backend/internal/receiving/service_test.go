@@ -98,7 +98,7 @@ func TestReceivingIntegration(t *testing.T) {
 
 	ship := call("POST", "/shipments", map[string]any{"request_id": "10000000-0000-0000-0000-000000000001", "shipment_number": "REC-SHIP", "start_location": "India", "destination_warehouse_id": warehouse["id"], "items": []map[string]any{{"purchase_item_id": "00000000-0000-0000-0000-000000000004", "expected_quantity": "60"}}}, owner, 201)
 	sid := ship["id"].(string)
-	_, err = conn.Exec(ctx, `INSERT INTO app.product_units(product_id,unit_code,units_per_pack) VALUES('00000000-0000-0000-0000-000000000002','CARTON',12);UPDATE app.shipment_items SET purchase_cost_mmk=6000,allocated_transport_mmk=1000,allocated_expense_mmk=500,costing_sellable_quantity=50 WHERE shipment_id=$1;INSERT INTO app.shipment_costings(shipment_id,document,finalized_by) SELECT $1,'{}',id FROM app.users WHERE username='owner';UPDATE app.shipments SET status='ARRIVED',arrived_at='2026-09-01T00:00:00Z',costs_finalized_at=now(),costs_finalized_by=(SELECT id FROM app.users WHERE username='owner') WHERE id=$1`, pgx.QueryExecModeSimpleProtocol, sid)
+	_, err = conn.Exec(ctx, `INSERT INTO app.product_units(product_id,unit_code,units_per_pack) VALUES('00000000-0000-0000-0000-000000000002','CARTON',12);UPDATE app.shipments SET status='ARRIVED' WHERE id=$1;UPDATE app.shipment_items SET arrival_received_quantity=55,arrival_damaged_quantity=5,purchase_cost_mmk=6000,allocated_transport_mmk=1000,allocated_expense_mmk=500,costing_sellable_quantity=50 WHERE shipment_id=$1;INSERT INTO app.shipment_costings(shipment_id,document,finalized_by) SELECT $1,'{}',id FROM app.users WHERE username='owner';UPDATE app.shipments SET status='ARRIVED',arrived_at='2026-09-01T00:00:00Z',costs_finalized_at=now(),costs_finalized_by=(SELECT id FROM app.users WHERE username='owner') WHERE id=$1`, pgx.QueryExecModeSimpleProtocol, sid)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,6 +108,10 @@ func TestReceivingIntegration(t *testing.T) {
 	body := map[string]any{"request_id": "20000000-0000-0000-0000-000000000001", "shipment_id": sid, "version": info["version"], "receipt_number": "REC-1", "received_at": "2026-09-02T00:00:00Z", "items": []map[string]any{line}}
 	call("POST", "/receiving", body, "", 401)
 	call("POST", "/receiving", body, staff, 403)
+	line["received_units"] = "8"
+	line["damaged_quantity"] = "6"
+	call("POST", "/receiving", body, owner, 409) // Same sellable count cannot conceal different arrival counts.
+	line["damaged_quantity"] = "5"
 	line["received_units"] = "8"
 	call("POST", "/receiving", body, owner, 409)
 	if got := call("GET", "/inventory", nil, owner, 200); got["total"] != float64(0) {

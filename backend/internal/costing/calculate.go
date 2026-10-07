@@ -30,6 +30,8 @@ type Source struct {
 	Items     []SourceItem `json:"items"`
 }
 type InputItem struct {
+	Received  string `json:"received_quantity,omitempty"`
+	Damaged   string `json:"damaged_quantity,omitempty"`
 	ID        string `json:"id"`
 	Sellable  string `json:"sellable_quantity"`
 	Weight    string `json:"weight_kg"`
@@ -45,6 +47,8 @@ type Input struct {
 	PreviewToken string      `json:"preview_token"`
 }
 type Item struct {
+	Received    string  `json:"received_quantity,omitempty"`
+	Damaged     string  `json:"damaged_quantity,omitempty"`
 	ID          string  `json:"id"`
 	ProductName string  `json:"product_name"`
 	SKU         string  `json:"sku"`
@@ -60,15 +64,16 @@ type Item struct {
 	Unit        *string `json:"actual_unit_cost_mmk"`
 }
 type Result struct {
-	Method       string `json:"method"`
-	Notes        string `json:"notes"`
-	Purchase     string `json:"purchase_mmk"`
-	Transport    string `json:"transport_mmk"`
-	Expense      string `json:"expense_mmk"`
-	Landed       string `json:"landed_mmk"`
-	Items        []Item `json:"items"`
-	PreviewToken string `json:"preview_token,omitempty"`
-	Finalized    bool   `json:"finalized"`
+	CountsConfirmed bool   `json:"counts_confirmed"`
+	Method          string `json:"method"`
+	Notes           string `json:"notes"`
+	Purchase        string `json:"purchase_mmk"`
+	Transport       string `json:"transport_mmk"`
+	Expense         string `json:"expense_mmk"`
+	Landed          string `json:"landed_mmk"`
+	Items           []Item `json:"items"`
+	PreviewToken    string `json:"preview_token,omitempty"`
+	Finalized       bool   `json:"finalized"`
 }
 
 func number(v string, whole, scale int) (*big.Rat, error) {
@@ -239,7 +244,7 @@ func Calculate(src Source, in Input) (Result, error) {
 			es = append(es, units(x))
 		}
 		weights = append(weights, w)
-		r.Items = append(r.Items, Item{ID: row.ID, ProductName: row.ProductName, SKU: row.SKU, BaseUnit: row.BaseUnit, Expected: row.Expected, Sellable: v.Sellable, Weight: v.Weight, Cartons: v.Cartons, Purchase: money(pc)})
+		r.Items = append(r.Items, Item{Received: v.Received, Damaged: v.Damaged, ID: row.ID, ProductName: row.ProductName, SKU: row.SKU, BaseUnit: row.BaseUnit, Expected: row.Expected, Sellable: v.Sellable, Weight: v.Weight, Cartons: v.Cartons, Purchase: money(pc)})
 	}
 	if in.Method == "MANUAL" {
 		sumT, sumE := new(big.Int), new(big.Int)

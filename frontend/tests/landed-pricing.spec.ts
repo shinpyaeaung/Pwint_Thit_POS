@@ -20,7 +20,7 @@ test('warehouse prices use finalized landed cost and save linked bottle/carton p
   }
   const path=`/shipments/${shipment.id}/landed-cost`
   const {source}=await(await page.request.get(`/api/v1${path}`)).json()
-  const input={version:source.version,method:'QUANTITY',notes:'Confirmed all 12 bottles',items:[{id:source.items[0].id,sellable_quantity:'12'}]}
+  const input={version:source.version,method:'QUANTITY',notes:'Confirmed all 12 bottles',items:[{id:source.items[0].id,received_quantity:'12',damaged_quantity:'0'}]}
   const preview=await create(`${path}/preview`,input,200)
   await create(`${path}/finalize`,{...input,preview_token:preview.preview_token},201)
  }
