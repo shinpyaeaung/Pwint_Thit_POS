@@ -133,8 +133,8 @@ func (q *Queries) InsertShipmentItem(ctx context.Context, arg InsertShipmentItem
 }
 
 const insertShipmentStage = `-- name: InsertShipmentStage :one
-INSERT INTO app.transportation_stages(shipment_id,stage_number,start_location,destination,provider_name,transportation_type,vehicle_information,departed_at,arrived_at,transportation_fee_mmk,loading_fee_mmk,unloading_fee_mmk,other_fee_mmk,notes,request_id,fee_basis,fee_per_carton_mmk,charged_cartons)
-SELECT $1,(SELECT COALESCE(max(stage_number),0)+1 FROM app.transportation_stages WHERE shipment_id=$1),d->>'start_location',d->>'destination',d->>'provider_name',NULLIF(d->>'transportation_type',''),NULLIF(d->>'vehicle_information',''),NULLIF(d->>'departed_at','')::timestamptz,NULLIF(d->>'arrived_at','')::timestamptz,(d->>'transportation_fee_mmk')::numeric,(d->>'loading_fee_mmk')::numeric,(d->>'unloading_fee_mmk')::numeric,(d->>'other_fee_mmk')::numeric,NULLIF(d->>'notes',''),(d->>'request_id')::uuid,coalesce(nullif(d->>'fee_basis',''),'TOTAL'),nullif(d->>'fee_per_carton_mmk','')::numeric,nullif(d->>'charged_cartons','')::numeric FROM (SELECT $2::jsonb d) x RETURNING id
+INSERT INTO app.transportation_stages(shipment_id,stage_number,start_location,destination,provider_name,transportation_type,vehicle_information,departed_at,arrived_at,transportation_fee_mmk,loading_fee_mmk,unloading_fee_mmk,other_fee_mmk,notes,request_id,fee_basis,fee_per_carton_mmk,charged_cartons,package_type,package_quantity,fee_per_package_mmk)
+SELECT $1,(SELECT COALESCE(max(stage_number),0)+1 FROM app.transportation_stages WHERE shipment_id=$1),d->>'start_location',d->>'destination',d->>'provider_name',NULLIF(d->>'transportation_type',''),NULLIF(d->>'vehicle_information',''),NULLIF(d->>'departed_at','')::timestamptz,NULLIF(d->>'arrived_at','')::timestamptz,(d->>'transportation_fee_mmk')::numeric,(d->>'loading_fee_mmk')::numeric,(d->>'unloading_fee_mmk')::numeric,(d->>'other_fee_mmk')::numeric,NULLIF(d->>'notes',''),(d->>'request_id')::uuid,coalesce(nullif(d->>'fee_basis',''),'TOTAL'),nullif(d->>'fee_per_carton_mmk','')::numeric,nullif(d->>'charged_cartons','')::numeric,nullif(d->>'package_type',''),nullif(d->>'package_quantity','')::numeric,nullif(d->>'fee_per_package_mmk','')::numeric FROM (SELECT $2::jsonb d) x RETURNING id
 `
 
 type InsertShipmentStageParams struct {
@@ -273,7 +273,7 @@ func (q *Queries) ShipmentHasReceiving(ctx context.Context, shipmentID pgtype.UU
 }
 
 const shipmentItems = `-- name: ShipmentItems :one
-SELECT COALESCE(jsonb_agg(jsonb_build_object('id',si.id,'purchase_number',p.purchase_number,'supplier_name',s.name,'product_name',COALESCE(i.product_name_snapshot,pr.name),'sku',COALESCE(i.sku_snapshot,pr.sku),'expected_quantity',si.expected_quantity::text,'base_unit_code',pr.base_unit_code) ORDER BY p.purchase_number,i.line_number),'[]'::jsonb)::jsonb FROM app.shipment_items si JOIN app.purchase_items i ON i.id=si.purchase_item_id JOIN app.purchases p ON p.id=i.purchase_id JOIN app.suppliers s ON s.id=p.supplier_id JOIN app.products pr ON pr.id=i.product_id WHERE si.shipment_id=$1
+SELECT COALESCE(jsonb_agg(jsonb_build_object('id',si.id,'purchase_number',p.purchase_number,'supplier_name',s.name,'product_name',COALESCE(i.product_name_snapshot,pr.name),'sku',COALESCE(i.sku_snapshot,pr.sku),'expected_quantity',si.expected_quantity::text,'base_unit_code',pr.base_unit_code)||(SELECT jsonb_build_object('package_type',u.unit_code,'package_size',u.units_per_pack::text) FROM (SELECT i.unit_code,i.units_per_pack, true AS purchased UNION ALL SELECT pu.unit_code,pu.units_per_pack,false FROM app.product_units pu WHERE pu.product_id=i.product_id AND pu.unit_code<>i.unit_code) u ORDER BY (u.units_per_pack>1 AND u.purchased) DESC,u.units_per_pack DESC,u.unit_code LIMIT 1) ORDER BY p.purchase_number,i.line_number),'[]'::jsonb)::jsonb FROM app.shipment_items si JOIN app.purchase_items i ON i.id=si.purchase_item_id JOIN app.purchases p ON p.id=i.purchase_id JOIN app.suppliers s ON s.id=p.supplier_id JOIN app.products pr ON pr.id=i.product_id WHERE si.shipment_id=$1
 `
 
 func (q *Queries) ShipmentItems(ctx context.Context, shipmentID pgtype.UUID) ([]byte, error) {
@@ -283,9 +283,25 @@ func (q *Queries) ShipmentItems(ctx context.Context, shipmentID pgtype.UUID) ([]
 	return column_1, err
 }
 
+const shipmentPackageAllowed = `-- name: ShipmentPackageAllowed :one
+SELECT (app.shipment_package_options($1::uuid) @> jsonb_build_array(jsonb_build_object('code',$2::text)))::boolean
+`
+
+type ShipmentPackageAllowedParams struct {
+	ShipmentID  pgtype.UUID
+	PackageType string
+}
+
+func (q *Queries) ShipmentPackageAllowed(ctx context.Context, arg ShipmentPackageAllowedParams) (bool, error) {
+	row := q.db.QueryRow(ctx, shipmentPackageAllowed, arg.ShipmentID, arg.PackageType)
+	var column_1 bool
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const shipmentPurchaseChoices = `-- name: ShipmentPurchaseChoices :one
 SELECT COALESCE(jsonb_agg(to_jsonb(x) ORDER BY purchase_number,line_number),'[]'::jsonb)::jsonb FROM (
- SELECT i.id,p.purchase_number,i.line_number,p.supplier_id,s.name AS supplier_name,COALESCE(i.product_name_snapshot,pr.name) AS product_name,COALESCE(i.sku_snapshot,pr.sku) AS sku,pr.base_unit_code,(CASE WHEN i.unit_code='CARTON' THEN i.units_per_pack ELSE (SELECT units_per_pack FROM app.product_units WHERE product_id=i.product_id AND unit_code='CARTON') END)::text AS carton_size,i.units_per_pack::text AS units_per_pack,i.unit_code,i.quantity::text AS purchased_quantity,i.base_quantity::text AS base_quantity,
+ SELECT i.id,p.purchase_number,i.line_number,p.supplier_id,s.name AS supplier_name,COALESCE(i.product_name_snapshot,pr.name) AS product_name,COALESCE(i.sku_snapshot,pr.sku) AS sku,pr.base_unit_code,(SELECT jsonb_build_object('package_type',u.unit_code,'package_size',u.units_per_pack::text) FROM (SELECT i.unit_code,i.units_per_pack, true AS purchased UNION ALL SELECT pu.unit_code,pu.units_per_pack,false FROM app.product_units pu WHERE pu.product_id=i.product_id AND pu.unit_code<>i.unit_code) u ORDER BY (u.units_per_pack>1 AND u.purchased) DESC,u.units_per_pack DESC,u.unit_code LIMIT 1)->>'package_type' AS package_type,(SELECT jsonb_build_object('package_type',u.unit_code,'package_size',u.units_per_pack::text) FROM (SELECT i.unit_code,i.units_per_pack, true AS purchased UNION ALL SELECT pu.unit_code,pu.units_per_pack,false FROM app.product_units pu WHERE pu.product_id=i.product_id AND pu.unit_code<>i.unit_code) u ORDER BY (u.units_per_pack>1 AND u.purchased) DESC,u.units_per_pack DESC,u.unit_code LIMIT 1)->>'package_size' AS package_size,(CASE WHEN i.unit_code='CARTON' THEN i.units_per_pack ELSE (SELECT units_per_pack FROM app.product_units WHERE product_id=i.product_id AND unit_code='CARTON') END)::text AS carton_size,i.units_per_pack::text AS units_per_pack,i.unit_code,i.quantity::text AS purchased_quantity,i.base_quantity::text AS base_quantity,
  (i.base_quantity-COALESCE((SELECT sum(si.expected_quantity) FROM app.shipment_items si JOIN app.shipments sh ON sh.id=si.shipment_id WHERE si.purchase_item_id=i.id AND sh.status<>'CANCELLED'),0))::text AS available_quantity
  FROM app.purchase_items i JOIN app.purchases p ON p.id=i.purchase_id JOIN app.suppliers s ON s.id=p.supplier_id JOIN app.products pr ON pr.id=i.product_id
  WHERE p.status='POSTED' AND ($1::text='' OR strpos(lower(p.purchase_number||' '||s.name||' '||pr.name),lower($1))>0)
@@ -354,7 +370,7 @@ func (q *Queries) TouchShipment(ctx context.Context, id pgtype.UUID) error {
 }
 
 const updateShipmentStage = `-- name: UpdateShipmentStage :execrows
-UPDATE app.transportation_stages SET start_location=d->>'start_location',destination=d->>'destination',provider_name=d->>'provider_name',transportation_type=NULLIF(d->>'transportation_type',''),vehicle_information=NULLIF(d->>'vehicle_information',''),departed_at=NULLIF(d->>'departed_at','')::timestamptz,arrived_at=NULLIF(d->>'arrived_at','')::timestamptz,fee_basis=coalesce(nullif(d->>'fee_basis',''),'TOTAL'),fee_per_carton_mmk=nullif(d->>'fee_per_carton_mmk','')::numeric,charged_cartons=nullif(d->>'charged_cartons','')::numeric,transportation_fee_mmk=(d->>'transportation_fee_mmk')::numeric,loading_fee_mmk=(d->>'loading_fee_mmk')::numeric,unloading_fee_mmk=(d->>'unloading_fee_mmk')::numeric,other_fee_mmk=(d->>'other_fee_mmk')::numeric,notes=NULLIF(d->>'notes','') FROM (SELECT $3::jsonb d) x WHERE id=$1 AND shipment_id=$2
+UPDATE app.transportation_stages SET start_location=d->>'start_location',destination=d->>'destination',provider_name=d->>'provider_name',transportation_type=NULLIF(d->>'transportation_type',''),vehicle_information=NULLIF(d->>'vehicle_information',''),departed_at=NULLIF(d->>'departed_at','')::timestamptz,arrived_at=NULLIF(d->>'arrived_at','')::timestamptz,fee_basis=coalesce(nullif(d->>'fee_basis',''),'TOTAL'),fee_per_carton_mmk=nullif(d->>'fee_per_carton_mmk','')::numeric,charged_cartons=nullif(d->>'charged_cartons','')::numeric,package_type=nullif(d->>'package_type',''),package_quantity=nullif(d->>'package_quantity','')::numeric,fee_per_package_mmk=nullif(d->>'fee_per_package_mmk','')::numeric,transportation_fee_mmk=(d->>'transportation_fee_mmk')::numeric,loading_fee_mmk=(d->>'loading_fee_mmk')::numeric,unloading_fee_mmk=(d->>'unloading_fee_mmk')::numeric,other_fee_mmk=(d->>'other_fee_mmk')::numeric,notes=NULLIF(d->>'notes','') FROM (SELECT $3::jsonb d) x WHERE id=$1 AND shipment_id=$2
 `
 
 type UpdateShipmentStageParams struct {

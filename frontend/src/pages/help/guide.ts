@@ -1,7 +1,7 @@
 export const guideSections = [
  { id:'payment-centre',title:'Payments, warehouse prices and deliveries',href:'/payments',link:'Open Payment centre',paragraphs:[
  'Use Payment centre for supplier purchases, customer invoices and cargo-terminal payments. Each payment stays linked to its transaction. Additional shipment costs remain separate charges; cargo payments do not increase supplier debt.',
- 'Transportation stages support a total fee for all cartons or a fee per carton. For per-carton billing, confirm the suggested carton count against the cargo bill. Loading, unloading and additional charges remain separate totals.',
+ 'Transportation stages use Package Type, Package Quantity and Fee per Package. Total Cargo Fee is calculated as the fee for one package multiplied by package quantity. Confirm the suggested quantity against the cargo bill. Loading, unloading and additional charges remain separate totals.',
  'Warehouse prices shows finalized purchase, allocated cargo and additional costs per carton and individual unit for each warehouse, including home. Select a finalized shipment, then enter a bottle/piece price or markup percentage; saving calculates both unit prices together. Customer special prices take priority, then warehouse prices, then product defaults. Product creation defines packaging but does not add stock.',
  'Damage & missing accepts carton or individual-unit quantities and shows the affected base units. Stock is changed only by the posted movement.',
  'Choose delivery or collection on shipments and at POS. Enable Record person and vehicle details when needed. Saved details appear on the shipment or invoice.'

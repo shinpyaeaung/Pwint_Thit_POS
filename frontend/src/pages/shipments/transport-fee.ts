@@ -4,9 +4,9 @@ const money=(n:bigint)=>{const v=n.toString().padStart(5,'0');return `${v.slice(
 export function transportFee(values:Record<string,string>){
  try{
   let transport=0n
-  if(values.fee_basis==='PER_CARTON'){
-   const count=units(values.charged_cartons,14,6);if(count<=0n)return null
-   transport=(units(values.fee_per_carton_mmk,16,4)*count+500000n)/1000000n
+  if(values.fee_basis==='PER_PACKAGE'){
+   const count=units(values.package_quantity,14,6);if(count<=0n)return null
+   transport=(units(values.fee_per_package_mmk,16,4)*count+500000n)/1000000n
   }else transport=units(values.transportation_fee_mmk,16,4)
   const total=transport+units(values.loading_fee_mmk,16,4)+units(values.unloading_fee_mmk,16,4)+units(values.other_fee_mmk,16,4)
   if(total>=100000000000000000000n)return null

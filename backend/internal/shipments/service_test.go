@@ -130,7 +130,45 @@ func TestShipmentIntegration(t *testing.T) {
 	}
 	call("POST", "/shipments/"+id+"/stages", first, owner, 204)
 	call("POST", "/shipments/"+id+"/stages", first, owner, 409)
-	for n := 2; n <= 25; n++ {
+	if _, err = conn.Exec(ctx, `INSERT INTO app.product_units(product_id,unit_code,units_per_pack) VALUES('00000000-0000-0000-0000-000000000002','PACK',12)`); err != nil {
+		t.Fatal(err)
+	}
+	packageStage := stage(2)
+	packageStage["fee_basis"] = "PER_PACKAGE"
+	packageStage["package_type"] = "PACK"
+	packageStage["package_quantity"] = "0.5"
+	packageStage["fee_per_package_mmk"] = "60000.2468"
+	packageStage["transportation_fee_mmk"] = "1"
+	call("POST", "/shipments/"+id+"/stages", packageStage, owner, 204)
+	savedPackage := call("GET", "/shipments/"+id+"/stages", nil, owner, 200)["stages"].([]any)[1].(map[string]any)
+	if savedPackage["package_type"] != "PACK" || savedPackage["package_quantity"] != "0.500000" || savedPackage["fee_per_package_mmk"] != "60000.2468" || savedPackage["transportation_fee_mmk"] != "30000.1234" {
+		t.Fatal("package fee snapshot", savedPackage)
+	}
+	packageStage["version"] = version()
+	packageStage["package_quantity"] = "5"
+	packageStage["fee_per_package_mmk"] = "20000"
+	call("PUT", "/shipments/"+id+"/stages/"+savedPackage["id"].(string), packageStage, owner, 204)
+	exactPackage := call("GET", "/shipments/"+id+"/stages", nil, owner, 200)["stages"].([]any)[1].(map[string]any)
+	if exactPackage["transportation_fee_mmk"] != "100000.0000" {
+		t.Fatal("20,000 per pack times 5 packs", exactPackage)
+	}
+	packageStage["version"] = version()
+	packageStage["package_quantity"] = "0.5"
+	packageStage["fee_per_package_mmk"] = "60000.2468"
+	call("PUT", "/shipments/"+id+"/stages/"+savedPackage["id"].(string), packageStage, owner, 204)
+	options := call("GET", "/shipments/"+id, nil, owner, 200)["package_options"].([]any)
+	if options[0].(map[string]any)["code"] != "PACK" || options[0].(map[string]any)["quantity"] != "5.000000" {
+		t.Fatal("package suggestion", options)
+	}
+	for _, count := range []string{"0", "-1", "NaN", "1.0000001"} {
+		packageStage["version"] = version()
+		packageStage["package_quantity"] = count
+		call("POST", "/shipments/"+id+"/stages", packageStage, owner, 400)
+	}
+	packageStage["package_quantity"] = "5"
+	packageStage["package_type"] = "CARTON"
+	call("POST", "/shipments/"+id+"/stages", packageStage, owner, 400)
+	for n := 3; n <= 25; n++ {
 		call("POST", "/shipments/"+id+"/stages", stage(n), owner, 204)
 	}
 	page := call("GET", "/shipments/"+id+"/stages?page=2&page_size=20", nil, owner, 200)
@@ -220,6 +258,10 @@ func TestShipmentIntegration(t *testing.T) {
 		t.Fatal("cost exposed")
 	}
 	hidden = call("GET", "/shipments/"+id+"/stages", nil, staff, 200)
+	if _, ok := hidden["stages"].([]any)[1].(map[string]any)["fee_per_package_mmk"]; ok {
+		t.Fatal("package rate exposed")
+	}
+
 	if _, ok := hidden["stages"].([]any)[0].(map[string]any)["fee_per_carton_mmk"]; ok {
 		t.Fatal("carton rate exposed")
 	}
@@ -395,7 +437,7 @@ func TestShipmentIntegration(t *testing.T) {
 		t.Fatal("invented recorded profit")
 	}
 	var audits int
-	if err = conn.QueryRow(ctx, `SELECT count(*) FROM app.audit_logs WHERE entity_type='transportation_stages'`).Scan(&audits); err != nil || audits != 26 {
+	if err = conn.QueryRow(ctx, `SELECT count(*) FROM app.audit_logs WHERE entity_type='transportation_stages'`).Scan(&audits); err != nil || audits != 28 {
 		t.Fatal("audit", audits, err)
 	}
 }

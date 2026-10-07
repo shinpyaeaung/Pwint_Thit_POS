@@ -13,23 +13,26 @@ import (
 )
 
 type stageInput struct {
-	FeeBasis       string `json:"fee_basis"`
-	FeePerCarton   string `json:"fee_per_carton_mmk"`
-	ChargedCartons string `json:"charged_cartons"`
-	Version        string `json:"version"`
-	RequestID      string `json:"request_id"`
-	Origin         string `json:"start_location"`
-	Destination    string `json:"destination"`
-	Provider       string `json:"provider_name"`
-	Type           string `json:"transportation_type"`
-	Vehicle        string `json:"vehicle_information"`
-	Departed       string `json:"departed_at"`
-	Arrived        string `json:"arrived_at"`
-	Fee            string `json:"transportation_fee_mmk"`
-	Loading        string `json:"loading_fee_mmk"`
-	Unloading      string `json:"unloading_fee_mmk"`
-	Other          string `json:"other_fee_mmk"`
-	Notes          string `json:"notes"`
+	PackageType     string `json:"package_type"`
+	PackageQuantity string `json:"package_quantity"`
+	FeePerPackage   string `json:"fee_per_package_mmk"`
+	FeeBasis        string `json:"fee_basis"`
+	FeePerCarton    string `json:"fee_per_carton_mmk"`
+	ChargedCartons  string `json:"charged_cartons"`
+	Version         string `json:"version"`
+	RequestID       string `json:"request_id"`
+	Origin          string `json:"start_location"`
+	Destination     string `json:"destination"`
+	Provider        string `json:"provider_name"`
+	Type            string `json:"transportation_type"`
+	Vehicle         string `json:"vehicle_information"`
+	Departed        string `json:"departed_at"`
+	Arrived         string `json:"arrived_at"`
+	Fee             string `json:"transportation_fee_mmk"`
+	Loading         string `json:"loading_fee_mmk"`
+	Unloading       string `json:"unloading_fee_mmk"`
+	Other           string `json:"other_fee_mmk"`
+	Notes           string `json:"notes"`
 }
 
 func (s *Service) SaveStage(c *gin.Context) {
@@ -50,11 +53,19 @@ func (s *Service) SaveStage(c *gin.Context) {
 	if in.FeeBasis == "" {
 		in.FeeBasis = "TOTAL"
 	}
-	if in.FeeBasis != "TOTAL" && in.FeeBasis != "PER_CARTON" {
-		fail(c, 400, "Choose total shipment fee or per-carton fee.")
+	if in.FeeBasis != "TOTAL" && in.FeeBasis != "PER_CARTON" && in.FeeBasis != "PER_PACKAGE" {
+		fail(c, 400, "Choose a valid cargo fee basis.")
 		return
 	}
-	if in.FeeBasis == "PER_CARTON" {
+	if in.FeeBasis == "PER_PACKAGE" {
+		if !required(in.PackageType, 50) || !decimal(in.FeePerPackage, 16, 4, false) || !decimal(in.PackageQuantity, 14, 6, true) {
+			fail(c, 400, "Choose a package type, a valid fee per package and a positive package quantity.")
+			return
+		}
+		in.Fee = "0"
+		in.FeePerCarton = ""
+		in.ChargedCartons = ""
+	} else if in.FeeBasis == "PER_CARTON" {
 		if !decimal(in.FeePerCarton, 16, 4, false) || !decimal(in.ChargedCartons, 14, 6, true) {
 			fail(c, 400, "Enter a valid fee per carton and a positive carton count.")
 			return
@@ -77,6 +88,15 @@ func (s *Service) SaveStage(c *gin.Context) {
 	}
 	data, _ := json.Marshal(in)
 	s.mutate(c, in.Version, func(ctx context.Context, q *database.Queries, id pgtype.UUID) error {
+		if in.FeeBasis == "PER_PACKAGE" {
+			allowed, err := q.ShipmentPackageAllowed(ctx, database.ShipmentPackageAllowedParams{ShipmentID: id, PackageType: in.PackageType})
+			if err != nil {
+				return err
+			}
+			if !allowed {
+				return rejected(c, 400, "Choose packaging configured for a product in this shipment.")
+			}
+		}
 		var before []byte
 		var err error
 		action := "transportation.create"

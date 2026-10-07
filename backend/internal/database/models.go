@@ -920,6 +920,9 @@ type AppTransportationStage struct {
 	FeeBasis             string
 	FeePerCartonMmk      pgtype.Numeric
 	ChargedCartons       pgtype.Numeric
+	PackageType          pgtype.Text
+	PackageQuantity      pgtype.Numeric
+	FeePerPackageMmk     pgtype.Numeric
 }
 
 type AppUnit struct {

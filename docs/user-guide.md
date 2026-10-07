@@ -126,7 +126,7 @@ During shipment creation or editing, choose cargo-terminal delivery or collectio
 
 ### Transportation fee basis
 
-In **Transportation timeline → Add stage / Edit stage**, choose **Total for shipment (all cartons)** to enter one transport fee, or **Per carton** to enter a rate and the cartons charged. The form suggests cartons from the shipment packaging when every line has a known carton conversion. Confirm or adjust the count to match the cargo bill; partial cartons are supported. The live preview shows transport fee and stage total. Loading, unloading and other charges remain separate totals. The saved timeline retains the billing basis, rate and count; paid or finalized stages retain their existing editing restrictions.
+In **Transportation timeline → Add stage / Edit stage**, select **Package Type**, confirm **Package Quantity**, and enter **Fee per Package (MMK)** for one package. **Total Cargo Fee** is calculated automatically: 20,000 MMK per carton × 5 cartons = 100,000 MMK. Types come from shipment products' packaging (carton, pack, or another configured unit). The count is suggested only when every shipment line supports the selected type; otherwise enter the billed count. Partial packages are supported. Loading, unloading and additional charges remain separate. The saved timeline shows the package rate and quantity. Existing total-only fees retain their amounts; editing them requires an explicit package quantity and rate. Paid or finalized stages retain their editing restrictions.
 
 ### Sellable quantity after arrival
 
@@ -134,4 +134,4 @@ In the shipment Landed cost section, received/damaged inputs are available only 
 
 ### Shipment quantity display
 
-Shipment creation shows available goods and the quantity being shipped in cartons plus individual stock units, e.g. **5 cartons + 1 bottle (61 bottles)** for 12 bottles per carton. This updates while entering pieces or purchase packages and works in both Arrange shipment and the standalone shipment page. Purchases recorded in cartons use their saved carton conversion; other purchase units use the product's carton configuration. Products without a carton conversion display their individual units and indicate that carton size is not set.
+Shipment creation and **Expected Base Quantity** show packages plus equivalent individual stock units, e.g. **5 cartons + 1 bottle (61 bottles)** for 12 bottles per carton, or **5 packs (10 pieces)** for 2 pieces per pack. Historical purchase-package conversions take precedence; otherwise the largest configured package is shown. Products with only a base stock unit show that unit's count.

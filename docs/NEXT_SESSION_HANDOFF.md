@@ -112,3 +112,13 @@ The user requested carton and piece quantities during shipment creation. Purchas
 Verification: `make check`, `make test-integration`, and all 28 real-stack Chrome/Safari tests passed. Browser coverage verifies 40 cartons / 640 bottles in the purchase workspace and 5 cartons + 1 bottle / 61 bottles in standalone shipment creation. The mobile shipment form screenshot was visually reviewed. Wait for the next user scope.
 
 Deployment: `make up` completed successfully; frontend, backend and PostgreSQL are healthy at http://localhost:8088. Existing database records and volumes were preserved.
+
+## Package-based cargo fees and expected quantity
+
+The latest scope replaces carton-specific/total-basis form controls with Package Type, Package Quantity, Fee per Package (MMK), and calculated Total Cargo Fee. Types come from shipment product packaging, including historical purchase conversions. The suggested count is the sum of expected stock divided by the selected conversion, only when every line supports that type; users confirm the cargo bill's actual count. New stages always start with a unit rate. PostgreSQL calculates rate × count exactly, stores both inputs, ignores client totals, and retains separate additional costs. Migration 000035 adds PER_PACKAGE alongside legacy modes without rewriting old rows. Existing total-only stages show their saved amount and require an explicit package rate/count to replace it. Paid/finalized protections, permissions, transactions and audit history remain enforced.
+
+Expected Base Quantity and both shipment-creation entry points display packages with equivalent base-unit counts (including loose pieces). Historical purchase packages take priority; otherwise the largest configured package is displayed. No inventory quantities are changed by these display calculations.
+
+Verification: `make check`, `make test-integration`, and all 28 real-stack Chrome/Safari browser tests passed. Coverage includes 20,000 × 5 = 100,000, PACK billing, fractional quantities and exact rounding, ignoring spoofed totals, invalid counts/types, package rate persistence/editing, cost permission filtering, shipment display and unchanged downstream landed costs. An unrelated supplier pagination dropdown timed out on the first browser run; the full rerun passed. The integration audit-count expectation includes the two new package update assertions.
+
+Deployment: `make up` applied migration 000035 successfully. Frontend, backend and PostgreSQL are healthy; the local health endpoint reports a connected database at http://localhost:8088. Existing records and database volumes were preserved. Wait for the next user scope.
