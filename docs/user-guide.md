@@ -46,7 +46,7 @@ When an authorized correction is needed, use the stock adjustment workflow and r
 
 Choose the warehouse and, where needed, a customer. If no warehouse is available, a Super Admin can use **Purchases → Open purchase → Arrange shipment → Add warehouse** to create one, then receive costed goods before selling. The warehouse stays locked while the cart contains items; clear the cart to change it. Select retail or wholesale mode, search or scan a product and choose its selling unit and quantity.
 
-Review prices, discounts, stock availability and the total. Choose the payment method and amount received. Unpaid credit requires a customer and must stay within the customer’s credit limit.
+Review prices, discounts, stock availability and the total. Choose the payment method and amount received. **Sell on Credit** is unchecked by default: full payment is required and a blank amount means exact payment. Check it to allow zero or partial payment, then select a customer and enter the credit due date. A blank amount on credit means nothing paid now. The unpaid balance must stay within the customer’s credit limit.
 
 A below-cost sale needs the separate approval workflow and the correct permission. Cost Journey price and profit scenarios are estimates; they do not record a sale.
 

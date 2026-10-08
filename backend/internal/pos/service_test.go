@@ -138,9 +138,14 @@ func TestPOSIntegration(t *testing.T) {
 	specialPath := "/customers/" + specialCustomer
 	call("PUT", specialPath+"/prices", map[string]any{"version": "1", "product_id": line["product_id"], "unit_code": "BOTTLE", "price_mmk": "50000", "remove": false}, owner, 204)
 	body["customer_id"] = specialCustomer
+	body["sell_on_credit"] = true
 	body["due_date"] = "2099-01-01"
 	body["tender_mmk"] = "300000"
 	line["unit_price_mmk"] = "50000"
+	body["sell_on_credit"] = false
+	call("POST", "/pos/quote", body, owner, 409)
+	call("POST", "/pos/checkout", body, owner, 409)
+	body["sell_on_credit"] = true
 	specialQuote := call("POST", "/pos/quote", body, owner, 200)
 	if specialQuote["total_mmk"] != "500000.0000" || specialQuote["outstanding_mmk"] != "200000.0000" {
 		t.Fatal("special pricing", specialQuote)
@@ -267,6 +272,7 @@ func TestPOSIntegration(t *testing.T) {
 	body["tender_mmk"] = "10000"
 	call("POST", "/pos/quote", body, owner, 409)
 	body["customer_id"] = "00000000-0000-0000-0000-000000000011"
+	body["sell_on_credit"] = true
 	body["due_date"] = "2099-01-01"
 	call("POST", "/pos/quote", body, owner, 409)
 	_, err = conn.Exec(ctx, `UPDATE app.customers SET credit_limit_mmk=100000;INSERT INTO app.user_permissions(user_id,permission_code,granted_by) SELECT '00000000-0000-0000-0000-000000000002',code,'00000000-0000-0000-0000-000000000001' FROM app.permissions WHERE code IN ('sales.create','payments.manage')`)
