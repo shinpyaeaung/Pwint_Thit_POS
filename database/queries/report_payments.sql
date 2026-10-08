@@ -1,0 +1,7 @@
+-- name: ReportPayments :one
+WITH filtered AS (
+ SELECT p.id,p.payment_number,p.paid_at,p.direction,p.status,p.method,p.currency_code,p.amount_original,p.amount_mmk,p.reference_number,
+ coalesce((SELECT string_agg(coalesce(s.invoice_number,pu.purchase_number,t.transportation_number,sh.shipment_number,a.sales_return_id::text,a.purchase_return_id::text,a.expense_id::text),' · ' ORDER BY a.id) FROM app.payment_allocations a LEFT JOIN app.sales s ON s.id=a.sale_id LEFT JOIN app.purchases pu ON pu.id=a.purchase_id LEFT JOIN app.transportation_stages t ON t.id=a.transportation_stage_id LEFT JOIN app.shipment_expenses e ON e.id=a.shipment_expense_id LEFT JOIN app.shipments sh ON sh.id=e.shipment_id WHERE a.payment_id=p.id),'Unallocated') AS transactions
+ FROM app.payments p WHERE p.status IN('POSTED','REVERSED') AND p.paid_at>=sqlc.arg(start_on)::text::date::timestamp AT TIME ZONE 'Asia/Yangon' AND p.paid_at<(sqlc.arg(end_on)::text::date+1)::timestamp AT TIME ZONE 'Asia/Yangon'
+), page AS (SELECT * FROM filtered ORDER BY paid_at DESC,id LIMIT sqlc.arg(page_size)::int OFFSET sqlc.arg(page_offset)::int)
+SELECT jsonb_build_object('total',(SELECT count(*) FROM filtered),'summary',(SELECT jsonb_build_object('incoming_mmk',coalesce(sum(amount_mmk) FILTER(WHERE direction='IN'),0)::text,'outgoing_mmk',coalesce(sum(amount_mmk) FILTER(WHERE direction='OUT'),0)::text) FROM filtered),'rows',coalesce((SELECT jsonb_agg(app.report_decimal_row(to_jsonb(page)) ORDER BY paid_at DESC,id) FROM page),'[]'))::jsonb;

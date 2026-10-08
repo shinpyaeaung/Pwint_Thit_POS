@@ -27,6 +27,7 @@ export const navigationGroups: { title: string; items: ProtectedLink[] }[] = [
     { href: '/suppliers', label: 'Suppliers', icon: Users, permission: permissions.suppliersView },
     { href: '/purchases', label: 'Purchases', icon: ShoppingCart, permission: permissions.purchasesView },
     { href: '/shipments', label: 'Shipments', icon: Truck, permission: permissions.shipmentsView },
+    { href: '/transfers/new', label:'Ship between warehouses',icon:Truck,permission:'stock_transfers.manage' },
     { href: '/receiving', label: 'Goods receiving', icon: PackageCheck, permission: permissions.receivingManage },
     { href: '/purchasing-settings', label: 'Currency & rates', icon: Coins, permission: permissions.exchangeRatesManage },
   ] },
@@ -36,6 +37,9 @@ export const navigationGroups: { title: string; items: ProtectedLink[] }[] = [
  { href:'/payments',label:'Payment centre',icon:Coins,permission:permissions.paymentsManage },
  ] },
  { title: 'Finance', items: [
+ {href:'/business-data',label:'Business data',icon:ClipboardList,permission:permissions.reportsView},
+ {href:'/assistant',label:'AI assistant demo',icon:ChartNoAxesCombined,permission:permissions.reportsView},
+
     { href: '/expenses', label: 'Operating expenses', icon: Receipt, permission: permissions.expensesManage },
     { href: '/finance/profit', label: 'Expenses & profit', icon: CircleDollarSign, permission: permissions.financeViewProfit },
   ] },

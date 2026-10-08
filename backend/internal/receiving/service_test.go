@@ -242,4 +242,101 @@ func TestReceivingIntegration(t *testing.T) {
 		t.Fatal("expiry boundaries", statuses, err)
 	}
 
+	t.Run("warehouse transfer", func(t *testing.T) {
+		dest := call("POST", "/warehouses", map[string]any{"code": "DEST", "name": "Destination"}, owner, 201)
+		stock := call("GET", "/inventory?warehouse_id="+warehouse["id"].(string), nil, owner, 200)["stock"].([]any)[0].(map[string]any)
+		request := map[string]any{"request_id": "74000000-0000-0000-0000-000000000001", "from_warehouse_id": warehouse["id"], "to_warehouse_id": dest["id"], "notes": "Partial transfer", "items": []map[string]any{{"batch_id": stock["batch_id"], "version": stock["version"], "quantity": "2"}}}
+		call("POST", "/transfers", request, staff, 403)
+		transfer := call("POST", "/transfers", request, owner, 201)
+		transferID := transfer["id"].(string)
+		if call("POST", "/transfers", request, owner, 201)["id"] != transferID {
+			t.Fatal("duplicate dispatch")
+		}
+		if call("GET", "/inventory?warehouse_id="+dest["id"].(string), nil, owner, 200)["total"] != float64(0) {
+			t.Fatal("stock available before arrival")
+		}
+		get := func() map[string]any { return call("GET", "/shipments/"+transferID, nil, owner, 200) }
+		call("PUT", "/shipments/"+transferID+"/status", map[string]any{"version": get()["version"], "status": "CANCELLED"}, owner, 400)
+		call("POST", "/shipments/"+transferID+"/stages", map[string]any{"version": get()["version"], "request_id": "75000000-0000-0000-0000-000000000001", "start_location": "Main", "destination": "Destination", "provider_name": "Cargo", "fee_basis": "PER_PACKAGE", "package_type": "CARTON", "package_quantity": "1", "fee_per_package_mmk": "100", "transportation_fee_mmk": "0", "loading_fee_mmk": "0", "unloading_fee_mmk": "0", "other_fee_mmk": "0"}, owner, 204)
+		data := call("GET", "/transfers/"+transferID, nil, owner, 200)
+		item := data["items"].([]any)[0].(map[string]any)
+		receipt := map[string]any{"version": get()["version"], "items": []map[string]any{{"id": item["id"], "received_quantity": "2", "damaged_quantity": "0", "notes": ""}}}
+		call("POST", "/transfers/"+transferID+"/receive", receipt, staff, 403)
+		// Receipt, destination stock and costing must roll back when the audit fails.
+		if _, err := conn.Exec(ctx, `CREATE FUNCTION app.fail_transfer_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action='transfers.receive' THEN RAISE EXCEPTION 'test'; END IF; RETURN NEW; END $$;CREATE TRIGGER fail_transfer_audit BEFORE INSERT ON app.audit_logs FOR EACH ROW EXECUTE FUNCTION app.fail_transfer_audit()`); err != nil {
+			t.Fatal(err)
+		}
+		call("POST", "/transfers/"+transferID+"/receive", receipt, owner, 503)
+		if call("GET", "/inventory?warehouse_id="+dest["id"].(string), nil, owner, 200)["total"] != float64(0) {
+			t.Fatal("receipt leaked on audit failure")
+		}
+		if _, err := conn.Exec(ctx, `DROP TRIGGER fail_transfer_audit ON app.audit_logs`); err != nil {
+			t.Fatal(err)
+		}
+		call("POST", "/transfers/"+transferID+"/receive", receipt, owner, 200)
+		call("POST", "/transfers/"+transferID+"/receive", receipt, owner, 200)
+		arrived := call("GET", "/inventory?warehouse_id="+dest["id"].(string), nil, owner, 200)["stock"].([]any)[0].(map[string]any)
+		if arrived["unit_cost_mmk"] != "200.00000000" || arrived["available_quantity"] != "2.000000" {
+			t.Fatal("destination landed cost", arrived)
+		}
+		var original string
+		if err := conn.QueryRow(ctx, `SELECT actual_unit_cost_mmk::text FROM app.batches WHERE id=$1`, batchID).Scan(&original); err != nil || original != "150.00000000" {
+			t.Fatal("source cost changed", original, err)
+		}
+		call("POST", "/transfers/"+transferID+"/cancel", map[string]any{"version": get()["version"], "reason": "Must reject received transfer"}, owner, 409)
+		// Competing dispatches cannot both spend the same destination stock.
+		requests := make([]map[string]any, 2)
+		for n := range requests {
+			requests[n] = map[string]any{"request_id": fmt.Sprintf("76000000-0000-0000-0000-%012d", n+1), "from_warehouse_id": dest["id"], "to_warehouse_id": warehouse["id"], "items": []map[string]any{{"batch_id": arrived["batch_id"], "version": arrived["version"], "quantity": "2"}}}
+		}
+		results := make(chan *httptest.ResponseRecorder, 2)
+		var dispatches sync.WaitGroup
+		for _, input := range requests {
+			dispatches.Add(1)
+			go func(input map[string]any) {
+				defer dispatches.Done()
+				results <- raw("POST", "/transfers", input, owner)
+			}(input)
+		}
+		dispatches.Wait()
+		close(results)
+		successes := 0
+		var returnID string
+		for result := range results {
+			if result.Code == 201 {
+				successes++
+				var body map[string]any
+				if err := json.Unmarshal(result.Body.Bytes(), &body); err != nil {
+					t.Fatal(err)
+				}
+				returnID = body["id"].(string)
+			} else if result.Code != 409 {
+				t.Fatal("concurrent dispatch", result.Code, result.Body.String())
+			}
+		}
+		if successes != 1 {
+			t.Fatal("concurrent stock overspend", successes)
+		}
+		returning := call("GET", "/shipments/"+returnID, nil, owner, 200)
+		cancellation := map[string]any{"version": returning["version"], "reason": "All goods returned physically to destination warehouse"}
+		call("POST", "/transfers/"+returnID+"/cancel", cancellation, owner, 204)
+		call("POST", "/transfers/"+returnID+"/cancel", cancellation, owner, 409)
+		restored := call("GET", "/inventory?warehouse_id="+dest["id"].(string), nil, owner, 200)["stock"].([]any)[0].(map[string]any)
+		if restored["available_quantity"] != "2.000000" {
+			t.Fatal("cancellation did not restore stock exactly once", restored)
+		}
+		var lineage bool
+		if err := conn.QueryRow(ctx, `SELECT app.batch_receiving_item($1)=app.batch_receiving_item($2)`, arrived["batch_id"], batchID).Scan(&lineage); err != nil || !lineage {
+			t.Fatal("lost supplier lineage", err)
+		}
+		// Closed item and batch costs cannot be altered directly.
+		if _, err := conn.Exec(ctx, `UPDATE app.stock_transfer_items SET quantity=3 WHERE id=$1`, item["id"]); err == nil {
+			t.Fatal("closed transfer item changed")
+		}
+		if _, err := conn.Exec(ctx, `UPDATE app.batches SET transport_cost_mmk=0 WHERE id=$1`, arrived["batch_id"]); err == nil {
+			t.Fatal("destination batch costs changed")
+		}
+
+	})
+
 }

@@ -2,7 +2,7 @@
 WITH bounds AS (SELECT sqlc.arg(start_on)::text::date AS start_on,sqlc.arg(end_on)::text::date AS end_on), dates AS (SELECT *,start_on::timestamp AT TIME ZONE 'Asia/Yangon' AS start_at,(end_on+1)::timestamp AT TIME ZONE 'Asia/Yangon' AS end_at FROM bounds),
 filtered AS (
 SELECT s.id,s.created_at AS occurred_at,s.shipment_number,s.start_location,w.name AS destination,s.status,s.shipped_at,s.arrived_at,
- (SELECT count(*) FROM app.shipment_items i WHERE i.shipment_id=s.id) AS product_lines,
+ ((SELECT count(*) FROM app.shipment_items i WHERE i.shipment_id=s.id)+(SELECT count(*) FROM app.stock_transfer_items i JOIN app.stock_transfers tr ON tr.id=i.transfer_id WHERE tr.shipment_id=s.id)) AS product_lines,
  (SELECT count(*) FROM app.transportation_stages t WHERE t.shipment_id=s.id) AS stages,
  CASE WHEN s.costs_finalized_at IS NULL THEN 'PROVISIONAL' ELSE 'FINALIZED' END AS cost_status
  FROM app.shipments s JOIN app.warehouses w ON w.id=s.destination_warehouse_id CROSS JOIN dates WHERE s.created_at>=start_at AND s.created_at<end_at

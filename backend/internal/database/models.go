@@ -93,6 +93,9 @@ type AppBatch struct {
 	FinalizedAt       pgtype.Timestamptz
 	CreatedAt         pgtype.Timestamptz
 	UpdatedAt         pgtype.Timestamptz
+	TransferItemID    pgtype.UUID
+	SourceBatchID     pgtype.UUID
+	CartonSize        pgtype.Numeric
 }
 
 type AppBrand struct {
@@ -818,16 +821,24 @@ type AppStockTransfer struct {
 	Notes           pgtype.Text
 	CreatedAt       pgtype.Timestamptz
 	UpdatedAt       pgtype.Timestamptz
+	ShipmentID      pgtype.UUID
+	RequestID       pgtype.UUID
+	RequestPayload  []byte
+	ReceiptPayload  []byte
+	CostDocument    []byte
 }
 
 type AppStockTransferItem struct {
-	ID               pgtype.UUID
-	TransferID       pgtype.UUID
-	BatchID          pgtype.UUID
-	Quantity         pgtype.Numeric
-	ReceivedQuantity pgtype.Numeric
-	CreatedAt        pgtype.Timestamptz
-	UpdatedAt        pgtype.Timestamptz
+	ID                pgtype.UUID
+	TransferID        pgtype.UUID
+	BatchID           pgtype.UUID
+	Quantity          pgtype.Numeric
+	ReceivedQuantity  pgtype.Numeric
+	CreatedAt         pgtype.Timestamptz
+	UpdatedAt         pgtype.Timestamptz
+	SourceUnitCostMmk pgtype.Numeric
+	DamagedQuantity   pgtype.Numeric
+	Notes             pgtype.Text
 }
 
 type AppSupplier struct {

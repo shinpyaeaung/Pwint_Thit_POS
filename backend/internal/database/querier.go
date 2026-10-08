@@ -16,6 +16,7 @@ type Querier interface {
 	ArchiveProduct(ctx context.Context, id pgtype.UUID) error
 	ArchiveSupplier(ctx context.Context, id pgtype.UUID) error
 	AuthenticateSession(ctx context.Context, tokenHash []byte) (AuthenticateSessionRow, error)
+	CancelTransfer(ctx context.Context, arg CancelTransferParams) error
 	CatalogMetadata(ctx context.Context) ([]byte, error)
 	CheckDatabase(ctx context.Context) (int32, error)
 	ClearUserPermissions(ctx context.Context, userID pgtype.UUID) error
@@ -41,6 +42,7 @@ type Querier interface {
 	CustomersList(ctx context.Context, arg CustomersListParams) ([]byte, error)
 	Dashboard(ctx context.Context, access []byte) ([]byte, error)
 	DeleteUnpaidShipmentStage(ctx context.Context, arg DeleteUnpaidShipmentStageParams) (int64, error)
+	DispatchTransfer(ctx context.Context, arg DispatchTransferParams) (pgtype.UUID, error)
 	EffectivePermissions(ctx context.Context, id pgtype.UUID) ([]string, error)
 	ExpenseCategories(ctx context.Context) ([]byte, error)
 	ExpensePost(ctx context.Context, arg ExpensePostParams) (pgtype.UUID, error)
@@ -60,6 +62,7 @@ type Querier interface {
 	GetShipmentExpense(ctx context.Context, arg GetShipmentExpenseParams) ([]byte, error)
 	GetShipmentStage(ctx context.Context, arg GetShipmentStageParams) ([]byte, error)
 	GetSupplier(ctx context.Context, id pgtype.UUID) ([]byte, error)
+	GetTransfer(ctx context.Context, arg GetTransferParams) ([]byte, error)
 	GrantPermission(ctx context.Context, arg GrantPermissionParams) error
 	HasPermission(ctx context.Context, arg HasPermissionParams) (bool, error)
 	InsertProduct(ctx context.Context, data []byte) (pgtype.UUID, error)
@@ -117,6 +120,7 @@ type Querier interface {
 	PurchaseReturnPost(ctx context.Context, arg PurchaseReturnPostParams) ([]byte, error)
 	PurchaseSupplierOptions(ctx context.Context, search string) ([]byte, error)
 	PurchaseWorkflow(ctx context.Context, arg PurchaseWorkflowParams) ([]byte, error)
+	ReceiveTransfer(ctx context.Context, arg ReceiveTransferParams) (pgtype.UUID, error)
 	ReceivingOptions(ctx context.Context, search string) ([]byte, error)
 	ReceivingShipment(ctx context.Context, id pgtype.UUID) ([]byte, error)
 	RecordAuthAudit(ctx context.Context, arg RecordAuthAuditParams) error
@@ -130,6 +134,7 @@ type Querier interface {
 	ReportInventory(ctx context.Context, arg ReportInventoryParams) ([]byte, error)
 	ReportMissing(ctx context.Context, arg ReportMissingParams) ([]byte, error)
 	ReportMovements(ctx context.Context, arg ReportMovementsParams) ([]byte, error)
+	ReportPayments(ctx context.Context, arg ReportPaymentsParams) ([]byte, error)
 	ReportProducts(ctx context.Context, arg ReportProductsParams) ([]byte, error)
 	ReportProfit(ctx context.Context, arg ReportProfitParams) ([]byte, error)
 	ReportPurchases(ctx context.Context, arg ReportPurchasesParams) ([]byte, error)

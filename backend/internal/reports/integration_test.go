@@ -87,6 +87,11 @@ func TestReportsIntegration(t *testing.T) {
 	call("", "", 401)
 	call("", staff, 403)
 	for _, d := range definitions {
+		if d.ID == "payments" {
+			metric(read(d.ID, feb), "incoming_mmk", "0")
+			call("/"+d.ID+feb, staff, 403)
+			continue
+		}
 		r := read(d.ID, feb)
 		if r.Total < 1 || len(r.Rows) == 0 {
 			t.Fatalf("missing fixture rows for %s: %+v", d.ID, r)
@@ -122,6 +127,8 @@ func TestReportsIntegration(t *testing.T) {
 	exec(`INSERT INTO app.payments(id,payment_number,direction,method,currency_code,amount_original,mmk_per_unit,customer_id,paid_at,recorded_by) VALUES('10000000-0000-0000-0000-000000000004','REPORT-PAY','IN','CASH','MMK',10000,1,'00000000-0000-0000-0000-000000000011','2020-02-29 17:30:00+00','00000000-0000-0000-0000-000000000001');
  INSERT INTO app.payment_allocations(payment_id,sale_id,settlement_mmk,applied_mmk,applied_original) VALUES('10000000-0000-0000-0000-000000000004','00000000-0000-0000-0000-000000000080',10000,10000,10000);
  UPDATE app.payments SET status='POSTED',posted_at=now() WHERE payment_number='REPORT-PAY';`)
+	metric(read("payments", march), "incoming_mmk", "10000.0000")
+	metric(read("payments", feb), "incoming_mmk", "0")
 	metric(read("customer-debt", feb), "outstanding_mmk", "80000.0000")
 	metric(read("customer-debt", march), "outstanding_mmk", "70000.0000")
 	metric(read("sales", march), "revenue_mmk", "0.0000")

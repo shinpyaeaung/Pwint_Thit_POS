@@ -135,3 +135,21 @@ In the shipment Landed cost section, received/damaged inputs are available only 
 ### Shipment quantity display
 
 Shipment creation and **Expected Base Quantity** show packages plus equivalent individual stock units, e.g. **5 cartons + 1 bottle (61 bottles)** for 12 bottles per carton, or **5 packs (10 pieces)** for 2 pieces per pack. Historical purchase-package conversions take precedence; otherwise the largest configured package is shown. Products with only a base stock unit show that unit's count.
+
+### Warehouse-to-warehouse shipments
+
+Open **Purchasing → Ship between warehouses**, or use **Create shipment → Ship between warehouses**. Choose the source and destination, add available batches, and enter the quantity to dispatch. You may send all or part of a batch. Dispatch removes those units from source availability immediately; they remain in transit until the destination confirms receipt.
+
+Open the shipment to record transportation stages and additional costs. Package-based cargo entry and the Payment centre work as before. At the destination, choose **Receive warehouse shipment**, enter received/damaged quantities, and explain any missing or damaged goods. Sellable quantity is received minus damaged. Shared cargo/additional costs are allocated by dispatched base quantity using exact cumulative rounding. The destination batch carries the source batch's landed cost plus these costs, divided by confirmed sellable quantity. Original batch costs and expiry dates are preserved. A fully damaged/missing batch retains its cost history without inventing a sellable unit cost.
+
+The destination can sell the received stock, set warehouse prices from its new landed-cost reference, or dispatch all/part of it onward in another shipment. This makes A → B → C two separate warehouse legs. **Return all goods to source** is only for a shipment whose entire dispatched stock has physically returned before receipt; it restores stock through reversal movements and retains cargo debts/payment history. Received shipments and their costs cannot be rewritten.
+
+Dispatch requires stock transfer and inventory permissions. Viewing requires shipment-view permission. Receipt additionally requires receiving, cost-finalization, landed-cost and shipment-cost permissions. Costs remain hidden from users without cost access.
+
+### Business data tables
+
+Open **Finance → Business data**. Select Sales Report, Inventory Report, Stock Movement History, Payment Ledger, Customer Debt or Supplier Payables, depending on your permissions. Date filters use Myanmar time; pagination affects displayed rows, not totals. Inventory shows opening/closing levels and separate inbound/outbound sellable quantities, with reserved/damaged stock shown separately. The payment ledger displays posted incoming/outgoing money and its related transactions. Payments settle invoices; they are not added to sales revenue again. The full payment ledger requires payment, purchase-cost, shipment-cost, customer-management and expense-management access in addition to reports access.
+
+### AI assistant demo
+
+Open **Finance → AI assistant demo** and try the example questions or type a question about sales, stock, payments or warehouse transfers. This version intentionally uses labelled sample responses and illustrative figures. It does not query real business data or call any external AI API. Conversations remain only in page memory. API-provider integration, server-side secret configuration and permission-filtered real-data answers are a future step after the provider is supplied.

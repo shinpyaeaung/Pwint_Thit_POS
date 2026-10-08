@@ -20,6 +20,8 @@ SELECT d.id,'STOCK_ISSUE' AS source,d.occurred_at,p.name AS product,p.base_unit_
  FROM app.goods_receiving_items i JOIN app.goods_receiving r ON r.id=i.goods_receiving_id JOIN app.products p ON p.id=i.product_id
  LEFT JOIN app.batches b ON b.receiving_item_id=i.id JOIN app.warehouses w ON w.id=r.warehouse_id CROSS JOIN dates
  WHERE r.status='POSTED' AND i.missing_quantity>0 AND r.received_at>=start_at AND r.received_at<end_at
+
+ UNION ALL SELECT i.id,'WAREHOUSE_TRANSFER',t.received_at,p.name,p.base_unit_code,b.batch_number,w.name,(i.quantity-i.received_quantity),round((i.quantity-i.received_quantity)*b.actual_unit_cost_mmk,4),coalesce(i.notes,'Transfer discrepancy') FROM app.stock_transfer_items i JOIN app.stock_transfers t ON t.id=i.transfer_id JOIN app.batches b ON b.transfer_item_id=i.id JOIN app.products p ON p.id=b.product_id JOIN app.warehouses w ON w.id=t.to_warehouse_id CROSS JOIN dates WHERE t.status='RECEIVED' AND (i.quantity-i.received_quantity)>0 AND t.received_at>=start_at AND t.received_at<end_at
 ), page AS (SELECT id, source, occurred_at, product, unit, batch_number, warehouse, quantity, estimated_loss_mmk, reason FROM filtered ORDER BY occurred_at DESC,id LIMIT $4::int OFFSET $3::int)
 SELECT jsonb_build_object('total',(SELECT count(*) FROM filtered),'summary',(SELECT jsonb_build_object('estimated_loss_mmk',CASE WHEN count(*) FILTER(WHERE estimated_loss_mmk IS NULL)=0 THEN round(coalesce(sum(estimated_loss_mmk),0),4)::text END) FROM filtered),'rows',coalesce((SELECT jsonb_agg(app.report_decimal_row(to_jsonb(page)) ORDER BY occurred_at DESC,id) FROM page),'[]'))::jsonb
 `

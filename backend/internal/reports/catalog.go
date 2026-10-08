@@ -1,6 +1,8 @@
 package reports
 
 var definitions = []Definition{
+	{ID: "payments", Title: "Payment Ledger", Description: "Posted money received and paid, including reversal entries, at historical transaction rates. Collections are payments, not additional sales.", Columns: []Column{
+		{Key: "paid_at", Label: "Date", Kind: "datetime"}, {Key: "payment_number", Label: "Payment", Kind: "text"}, {Key: "direction", Label: "Direction", Kind: "text"}, {Key: "transactions", Label: "Related transactions", Kind: "text"}, {Key: "method", Label: "Method", Kind: "text"}, {Key: "currency_code", Label: "Currency", Kind: "text"}, {Key: "amount_original", Label: "Original amount", Kind: "decimal"}, {Key: "amount_mmk", Label: "Amount", Kind: "money"}, {Key: "status", Label: "Status", Kind: "text"}, {Key: "reference_number", Label: "Reference", Kind: "text"}}, Metrics: []Column{{Key: "incoming_mmk", Label: "Money received", Kind: "money"}, {Key: "outgoing_mmk", Label: "Money paid", Kind: "money"}}},
 	{
 		ID:          "sales",
 		Title:       "Sales Report",
@@ -136,6 +138,8 @@ var definitions = []Definition{
 			{Key: "warehouse", Label: "Warehouse", Kind: "text"},
 			{Key: "expires_on", Label: "Expiry", Kind: "date"},
 			{Key: "opening_sellable", Label: "Opening sellable", Kind: "decimal"},
+			{Key: "inbound", Label: "Inbound sellable", Kind: "decimal"},
+			{Key: "outbound", Label: "Outbound sellable", Kind: "decimal"},
 			{Key: "period_change", Label: "Period change", Kind: "decimal"},
 			{Key: "closing_sellable", Label: "Closing sellable", Kind: "decimal"},
 			{Key: "closing_reserved", Label: "Reserved", Kind: "decimal"},

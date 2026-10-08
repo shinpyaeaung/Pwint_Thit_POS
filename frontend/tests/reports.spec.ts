@@ -17,7 +17,7 @@ test('reports expose all views, server date presets, exact purchases and restric
   await page.goto('/reports')
   await expect(page.getByRole('heading', { name: 'Business reports', exact: true })).toBeVisible()
   const catalog = await (await page.request.get('/api/v1/reports')).json()
-  expect(catalog.reports).toHaveLength(14)
+  expect(catalog.reports).toHaveLength(15)
   for (const definition of catalog.reports) {
     await page.getByRole('combobox', { name: 'Report', exact: true }).click()
     await page.getByRole('option', { name: definition.title, exact: true }).click()
