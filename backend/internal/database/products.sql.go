@@ -54,6 +54,43 @@ func (q *Queries) InsertProduct(ctx context.Context, data []byte) (pgtype.UUID, 
 	return id, err
 }
 
+const listProductGroups = `-- name: ListProductGroups :one
+WITH filtered AS (
+ SELECT p.id, p.sku, p.name, p.barcode, p.category_id, p.brand_id, p.country_code, p.description, p.base_unit_code, p.minimum_stock, p.tracks_expiry, p.is_active, p.created_at, p.updated_at, p.archived_at, p.version FROM app.products p WHERE
+ (CASE $1::text WHEN 'archived' THEN p.archived_at IS NOT NULL WHEN 'active' THEN p.archived_at IS NULL AND p.is_active WHEN 'inactive' THEN p.archived_at IS NULL AND NOT p.is_active ELSE p.archived_at IS NULL END)
+ AND ($2::uuid IS NULL OR p.category_id=$2)
+ AND ($3::uuid IS NULL OR p.brand_id=$3)
+ AND ($4::text='' OR strpos(lower(p.name),lower($4))>0 OR strpos(lower(p.sku),lower($4))>0 OR strpos(COALESCE(p.barcode,''),$4)>0 OR EXISTS(SELECT 1 FROM app.product_units pu WHERE pu.product_id=p.id AND strpos(COALESCE(pu.barcode,''),$4)>0))
+), grouped AS (
+ SELECT coalesce(p.brand_id,p.id) AS id,coalesce(b.name,p.name) AS name,jsonb_agg(app.product_document(p) ORDER BY p.name,p.id) AS products
+ FROM app.products p JOIN filtered f ON f.id=p.id LEFT JOIN app.brands b ON b.id=p.brand_id GROUP BY coalesce(p.brand_id,p.id),coalesce(b.name,p.name)
+), page AS (SELECT id, name, products FROM grouped ORDER BY name,id LIMIT $6::int OFFSET $5::int)
+SELECT jsonb_build_object('total',(SELECT count(*) FROM grouped),'groups',coalesce((SELECT jsonb_agg(to_jsonb(page) ORDER BY name,id) FROM page),'[]'::jsonb))::jsonb
+`
+
+type ListProductGroupsParams struct {
+	Status     string
+	CategoryID pgtype.UUID
+	BrandID    pgtype.UUID
+	Search     string
+	PageOffset int32
+	PageSize   int32
+}
+
+func (q *Queries) ListProductGroups(ctx context.Context, arg ListProductGroupsParams) ([]byte, error) {
+	row := q.db.QueryRow(ctx, listProductGroups,
+		arg.Status,
+		arg.CategoryID,
+		arg.BrandID,
+		arg.Search,
+		arg.PageOffset,
+		arg.PageSize,
+	)
+	var column_1 []byte
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const listProducts = `-- name: ListProducts :one
 WITH filtered AS (
  SELECT p.id, p.sku, p.name, p.barcode, p.category_id, p.brand_id, p.country_code, p.description, p.base_unit_code, p.minimum_stock, p.tracks_expiry, p.is_active, p.created_at, p.updated_at, p.archived_at, p.version FROM app.products p WHERE

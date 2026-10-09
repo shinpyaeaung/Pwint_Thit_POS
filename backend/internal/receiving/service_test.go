@@ -338,5 +338,85 @@ func TestReceivingIntegration(t *testing.T) {
 		}
 
 	})
+	t.Run("atomic receiving finalizes counts and costs", func(t *testing.T) {
+		target := call("POST", "/warehouses", map[string]any{"code": "ATOMIC", "name": "Atomic receiving"}, owner, 201)
+		var purchaseItem string
+		e := conn.QueryRow(ctx, `WITH p AS (INSERT INTO app.purchases(purchase_number,supplier_id,purchased_at,currency_code,mmk_per_unit,created_by) SELECT 'ATOMIC-PO','00000000-0000-0000-0000-000000000001','2026-09-01','MMK',1,id FROM app.users WHERE username='owner' RETURNING id) INSERT INTO app.purchase_items(purchase_id,line_number,product_id,unit_code,quantity,units_per_pack,unit_price_original) SELECT id,1,'00000000-0000-0000-0000-000000000002','BOTTLE',48,1,100 FROM p RETURNING id::text`).Scan(&purchaseItem)
+		if e != nil {
+			t.Fatal(e)
+		}
+		if _, e = conn.Exec(ctx, `UPDATE app.purchases SET status='POSTED',posted_at=now() WHERE purchase_number='ATOMIC-PO'`); e != nil {
+			t.Fatal(e)
+		}
+		for n := 0; n < 2; n++ {
+			shipment := call("POST", "/shipments", map[string]any{"request_id": fmt.Sprintf("81000000-0000-0000-0000-%012d", n+1), "start_location": "Supplier", "destination_warehouse_id": target["id"], "items": []map[string]any{{"purchase_item_id": purchaseItem, "expected_quantity": "24"}}}, owner, 201)
+			sid := shipment["id"].(string)
+			for _, status := range []string{"IN_TRANSIT", "ARRIVED"} {
+				sh := call("GET", "/shipments/"+sid, nil, owner, 200)
+				call("PUT", "/shipments/"+sid+"/status", map[string]any{"version": sh["version"], "status": status, "shipped_at": "2026-09-01T00:00:00Z", "arrived_at": "2026-09-02T00:00:00Z"}, owner, 204)
+			}
+			info := call("GET", "/receiving/shipments/"+sid, nil, owner, 200)
+			item := info["items"].([]any)[0].(map[string]any)
+			line := map[string]any{"shipment_item_id": item["id"], "carton_size": "12", "received_cartons": "1", "received_units": "8", "damaged_quantity": "2", "notes": "Four missing and two damaged", "batch_number": fmt.Sprintf("ATOMIC-%d", n)}
+			body := map[string]any{"request_id": fmt.Sprintf("82000000-0000-0000-0000-%012d", n+1), "shipment_id": sid, "version": info["version"], "received_at": "2026-09-03T00:00:00Z", "items": []map[string]any{line}, "finalize_costs": true}
+			call("POST", "/receiving/preview", body, staff, 403)
+			preview := call("POST", "/receiving/preview", body, owner, 200)
+			body["preview_token"] = preview["preview_token"]
+			if preview["items"].([]any)[0].(map[string]any)["actual_unit_cost_mmk"] != "133.33333333" {
+				t.Fatal(preview)
+			}
+			line["received_units"] = "7"
+			call("POST", "/receiving", body, owner, 409)
+			line["received_units"] = "8"
+			if _, e = conn.Exec(ctx, `CREATE OR REPLACE FUNCTION app.fail_receipt_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action='costs.finalize' THEN RAISE EXCEPTION 'test'; END IF; RETURN NEW; END $$;CREATE TRIGGER fail_receipt_audit BEFORE INSERT ON app.audit_logs FOR EACH ROW EXECUTE FUNCTION app.fail_receipt_audit()`); e != nil {
+				t.Fatal(e)
+			}
+			call("POST", "/receiving", body, owner, 503)
+			if call("GET", "/receiving/shipments/"+sid, nil, owner, 200)["costs_finalized"] != false {
+				t.Fatal("costing survived failed receipt")
+			}
+			if _, e = conn.Exec(ctx, `DROP TRIGGER fail_receipt_audit ON app.audit_logs`); e != nil {
+				t.Fatal(e)
+			}
+			// Invalid batch data must roll back costing too.
+			line["manufactured_on"] = "2026-10-01"
+			line["expires_on"] = "2026-09-01"
+			body["preview_token"] = call("POST", "/receiving/preview", body, owner, 200)["preview_token"]
+			call("POST", "/receiving", body, owner, 400)
+			if call("GET", "/receiving/shipments/"+sid, nil, owner, 200)["costs_finalized"] != false {
+				t.Fatal("costing survived invalid batch")
+			}
+			delete(line, "manufactured_on")
+			delete(line, "expires_on")
+			body["preview_token"] = call("POST", "/receiving/preview", body, owner, 200)["preview_token"]
+			codes := make(chan int, 2)
+			var wg sync.WaitGroup
+			for i := 0; i < 2; i++ {
+				wg.Add(1)
+				go func() { defer wg.Done(); codes <- raw("POST", "/receiving", body, owner).Code }()
+			}
+			wg.Wait()
+			close(codes)
+			for code := range codes {
+				if code != 201 {
+					t.Fatal("retry failed", code)
+				}
+			}
+			receipt := call("POST", "/receiving", body, owner, 201)
+			record := call("GET", "/receiving/"+receipt["id"].(string), nil, owner, 200)
+			actual := record["items"].([]any)[0].(map[string]any)
+			if actual["missing_quantity"] != "4.000000" || actual["sellable_quantity"] != "18.000000" {
+				t.Fatal(actual)
+			}
+		}
+		groups := call("GET", "/inventory/groups?group_by=product&warehouse_id="+target["id"].(string)+"&page_size=1", nil, owner, 200)
+		if groups["total"] != float64(1) || len(groups["groups"].([]any)[0].(map[string]any)["stock"].([]any)) != 2 {
+			t.Fatal("grouping truncated batches", groups)
+		}
+		empty := call("POST", "/warehouses", map[string]any{"code": "EMPTY-GROUP", "name": "No inventory"}, owner, 201)
+		if call("GET", "/inventory/groups?group_by=brand&warehouse_id="+empty["id"].(string), nil, owner, 200)["total"] != float64(0) {
+			t.Fatal("warehouse leaked stock")
+		}
+	})
 
 }

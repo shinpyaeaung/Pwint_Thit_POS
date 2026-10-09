@@ -10,16 +10,17 @@ import (
 )
 
 type SourceItem struct {
-	ID               string `json:"id"`
-	ProductName      string `json:"product_name"`
-	SKU              string `json:"sku"`
-	BaseUnit         string `json:"base_unit_code"`
-	Expected         string `json:"expected_quantity"`
-	PurchaseQuantity string `json:"purchase_quantity"`
-	PurchaseTotal    string `json:"purchase_total_mmk"`
-	UsedQuantity     string `json:"used_quantity"`
-	UsedPurchase     string `json:"used_purchase_mmk"`
-	PurchaseStatus   string `json:"purchase_status"`
+	CartonSize       *string `json:"carton_size,omitempty"`
+	ID               string  `json:"id"`
+	ProductName      string  `json:"product_name"`
+	SKU              string  `json:"sku"`
+	BaseUnit         string  `json:"base_unit_code"`
+	Expected         string  `json:"expected_quantity"`
+	PurchaseQuantity string  `json:"purchase_quantity"`
+	PurchaseTotal    string  `json:"purchase_total_mmk"`
+	UsedQuantity     string  `json:"used_quantity"`
+	UsedPurchase     string  `json:"used_purchase_mmk"`
+	PurchaseStatus   string  `json:"purchase_status"`
 }
 type Source struct {
 	Version   string       `json:"version"`
@@ -47,6 +48,7 @@ type Input struct {
 	PreviewToken string      `json:"preview_token"`
 }
 type Item struct {
+	CartonSize  *string `json:"carton_size,omitempty"`
 	Received    string  `json:"received_quantity,omitempty"`
 	Damaged     string  `json:"damaged_quantity,omitempty"`
 	ID          string  `json:"id"`
@@ -244,7 +246,7 @@ func Calculate(src Source, in Input) (Result, error) {
 			es = append(es, units(x))
 		}
 		weights = append(weights, w)
-		r.Items = append(r.Items, Item{Received: v.Received, Damaged: v.Damaged, ID: row.ID, ProductName: row.ProductName, SKU: row.SKU, BaseUnit: row.BaseUnit, Expected: row.Expected, Sellable: v.Sellable, Weight: v.Weight, Cartons: v.Cartons, Purchase: money(pc)})
+		r.Items = append(r.Items, Item{CartonSize: row.CartonSize, Received: v.Received, Damaged: v.Damaged, ID: row.ID, ProductName: row.ProductName, SKU: row.SKU, BaseUnit: row.BaseUnit, Expected: row.Expected, Sellable: v.Sellable, Weight: v.Weight, Cartons: v.Cartons, Purchase: money(pc)})
 	}
 	if in.Method == "MANUAL" {
 		sumT, sumE := new(big.Int), new(big.Int)

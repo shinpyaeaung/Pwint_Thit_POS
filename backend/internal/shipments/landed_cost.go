@@ -94,7 +94,17 @@ func (s *Service) calculateCost(c *gin.Context, final bool) {
 		dbError(c, e)
 		return
 	}
-	if e = arrivalCounts(source, &in); e != nil {
+	estimated := !final
+	for _, item := range in.Items {
+		if item.Received != "" || item.Damaged != "" {
+			estimated = false
+		}
+	}
+	countSource := source
+	if estimated {
+		countSource.Status = "PREPARING"
+	}
+	if e = arrivalCounts(countSource, &in); e != nil {
 		fail(c, 400, e.Error())
 		return
 	}
@@ -103,7 +113,7 @@ func (s *Service) calculateCost(c *gin.Context, final bool) {
 		fail(c, 400, e.Error())
 		return
 	}
-	result.CountsConfirmed = parent.Status == "ARRIVED"
+	result.CountsConfirmed = parent.Status == "ARRIVED" && !estimated
 	supplied := in.PreviewToken
 	in.PreviewToken = ""
 	input, _ := json.Marshal(in)

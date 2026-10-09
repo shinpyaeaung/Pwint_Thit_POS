@@ -39,6 +39,43 @@ func (q *Queries) GetReceiving(ctx context.Context, id pgtype.UUID) ([]byte, err
 	return column_1, err
 }
 
+const inventoryGroups = `-- name: InventoryGroups :one
+WITH filtered AS (
+ SELECT i.warehouse_id, i.batch_id, i.sellable_quantity, i.reserved_quantity, i.damaged_quantity, i.available_quantity, i.created_at, i.updated_at, i.version,b.batch_number,b.expires_on,b.actual_unit_cost_mmk,p.brand_id,br.name AS brand_name,p.id AS product_id,p.name AS product_name,p.sku,p.base_unit_code,w.name AS warehouse_name,coalesce(b.carton_size,r.carton_size) AS carton_size
+ FROM app.inventory i JOIN app.batches b ON b.id=i.batch_id JOIN app.products p ON p.id=b.product_id LEFT JOIN app.brands br ON br.id=p.brand_id JOIN app.warehouses w ON w.id=i.warehouse_id LEFT JOIN app.goods_receiving_items r ON r.id=b.receiving_item_id
+ WHERE ($1::uuid IS NULL OR i.warehouse_id=$1) AND ($2::text='' OR strpos(lower(p.name||' '||p.sku||' '||b.batch_number),lower($2))>0)
+), documented AS (SELECT warehouse_id, batch_id, sellable_quantity, reserved_quantity, damaged_quantity, available_quantity, created_at, updated_at, version, batch_number, expires_on, actual_unit_cost_mmk, brand_id, brand_name, product_id, product_name, sku, base_unit_code, warehouse_name, carton_size, CASE WHEN $3::text='brand' THEN coalesce(brand_id,product_id) ELSE product_id END AS group_id,
+ CASE WHEN $3::text='brand' THEN coalesce(brand_name,product_name) ELSE product_name END AS group_name,
+jsonb_build_object('batch_id',batch_id,'warehouse_id',warehouse_id,'warehouse_name',warehouse_name,'brand_name',brand_name,'product_id',product_id,'product_name',product_name,'sku',sku,'base_unit',base_unit_code,'batch_number',batch_number,'expires_on',expires_on,'version',version::text,'sellable_quantity',sellable_quantity::text,'available_quantity',available_quantity::text,'damaged_quantity',damaged_quantity::text,'reserved_quantity',reserved_quantity::text,'carton_size',carton_size::text,'available_cartons',floor(available_quantity/carton_size)::text,'available_units',(CASE WHEN carton_size IS NULL THEN available_quantity ELSE mod(available_quantity,carton_size) END)::text)||CASE WHEN $4::boolean THEN jsonb_build_object('unit_cost_mmk',actual_unit_cost_mmk::text) ELSE '{}'::jsonb END AS stock FROM filtered), grouped AS (
+ SELECT group_id,group_name,warehouse_id,warehouse_name,jsonb_agg(stock ORDER BY product_name,batch_number,batch_id) AS stock
+ FROM documented GROUP BY group_id,group_name,warehouse_id,warehouse_name
+), page AS (SELECT group_id, group_name, warehouse_id, warehouse_name, stock FROM grouped ORDER BY group_name,group_id,warehouse_id LIMIT $6::int OFFSET $5::int)
+SELECT jsonb_build_object('total',(SELECT count(*) FROM grouped),'groups',coalesce((SELECT jsonb_agg(to_jsonb(page) ORDER BY group_name,group_id,warehouse_id) FROM page),'[]'::jsonb))::jsonb
+`
+
+type InventoryGroupsParams struct {
+	WarehouseID pgtype.UUID
+	Search      string
+	GroupBy     string
+	Costs       bool
+	PageOffset  int32
+	PageSize    int32
+}
+
+func (q *Queries) InventoryGroups(ctx context.Context, arg InventoryGroupsParams) ([]byte, error) {
+	row := q.db.QueryRow(ctx, inventoryGroups,
+		arg.WarehouseID,
+		arg.Search,
+		arg.GroupBy,
+		arg.Costs,
+		arg.PageOffset,
+		arg.PageSize,
+	)
+	var column_1 []byte
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const inventoryMovements = `-- name: InventoryMovements :one
 WITH filtered AS (
  SELECT m.id, m.warehouse_id, m.batch_id, m.movement_type, m.sellable_delta, m.reserved_delta, m.damaged_delta, m.unit_cost_mmk, m.receiving_item_id, m.sale_item_batch_id, m.sales_return_item_id, m.purchase_return_item_id, m.stock_adjustment_item_id, m.stock_transfer_item_id, m.damaged_product_id, m.missing_product_id, m.reservation_sale_id, m.reverses_movement_id, m.idempotency_key, m.occurred_at, m.recorded_by, m.reason, m.created_at,b.batch_number,p.name AS product_name,w.name AS warehouse_name,u.display_name AS recorded_by_name
@@ -145,7 +182,7 @@ func (q *Queries) PostReceiving(ctx context.Context, arg PostReceivingParams) (p
 }
 
 const receivingOptions = `-- name: ReceivingOptions :one
-SELECT coalesce(jsonb_agg(to_jsonb(x)),'[]'::jsonb)::jsonb FROM (SELECT s.id,s.shipment_number,w.name AS warehouse_name FROM app.shipments s JOIN app.warehouses w ON w.id=s.destination_warehouse_id JOIN app.shipment_costings sc ON sc.shipment_id=s.id WHERE s.status='ARRIVED' AND NOT EXISTS(SELECT 1 FROM app.goods_receiving r WHERE r.shipment_id=s.id AND r.status NOT IN ('CANCELLED','REVERSED')) AND ($1::text='' OR strpos(lower(s.shipment_number),lower($1))>0) ORDER BY s.arrived_at,s.id LIMIT 50) x
+SELECT coalesce(jsonb_agg(to_jsonb(x)),'[]'::jsonb)::jsonb FROM (SELECT s.id,s.shipment_number,w.name AS warehouse_name FROM app.shipments s JOIN app.warehouses w ON w.id=s.destination_warehouse_id WHERE s.status='ARRIVED' AND NOT EXISTS(SELECT 1 FROM app.stock_transfers t WHERE t.shipment_id=s.id) AND NOT EXISTS(SELECT 1 FROM app.goods_receiving r WHERE r.shipment_id=s.id AND r.status NOT IN ('CANCELLED','REVERSED')) AND ($1::text='' OR strpos(lower(s.shipment_number),lower($1))>0) ORDER BY s.arrived_at,s.id LIMIT 50) x
 `
 
 func (q *Queries) ReceivingOptions(ctx context.Context, search string) ([]byte, error) {

@@ -38,3 +38,16 @@ INSERT INTO app.audit_logs(actor_id,action,entity_type,entity_id,old_value,new_v
 
 -- name: SetProductUnitPrices :exec
 UPDATE app.product_units SET purchase_price_mmk=COALESCE(sqlc.narg(purchase_price)::numeric,purchase_price_mmk),retail_price_mmk=COALESCE(sqlc.narg(retail)::numeric,retail_price_mmk),wholesale_price_mmk=COALESCE(sqlc.narg(wholesale)::numeric,wholesale_price_mmk) WHERE product_id=sqlc.arg(product_id) AND unit_code=sqlc.arg(unit_code);
+
+-- name: ListProductGroups :one
+WITH filtered AS (
+ SELECT p.* FROM app.products p WHERE
+ (CASE sqlc.arg(status)::text WHEN 'archived' THEN p.archived_at IS NOT NULL WHEN 'active' THEN p.archived_at IS NULL AND p.is_active WHEN 'inactive' THEN p.archived_at IS NULL AND NOT p.is_active ELSE p.archived_at IS NULL END)
+ AND (sqlc.narg(category_id)::uuid IS NULL OR p.category_id=sqlc.narg(category_id))
+ AND (sqlc.narg(brand_id)::uuid IS NULL OR p.brand_id=sqlc.narg(brand_id))
+ AND (sqlc.arg(search)::text='' OR strpos(lower(p.name),lower(sqlc.arg(search)))>0 OR strpos(lower(p.sku),lower(sqlc.arg(search)))>0 OR strpos(COALESCE(p.barcode,''),sqlc.arg(search))>0 OR EXISTS(SELECT 1 FROM app.product_units pu WHERE pu.product_id=p.id AND strpos(COALESCE(pu.barcode,''),sqlc.arg(search))>0))
+), grouped AS (
+ SELECT coalesce(p.brand_id,p.id) AS id,coalesce(b.name,p.name) AS name,jsonb_agg(app.product_document(p) ORDER BY p.name,p.id) AS products
+ FROM app.products p JOIN filtered f ON f.id=p.id LEFT JOIN app.brands b ON b.id=p.brand_id GROUP BY coalesce(p.brand_id,p.id),coalesce(b.name,p.name)
+), page AS (SELECT * FROM grouped ORDER BY name,id LIMIT sqlc.arg(page_size)::int OFFSET sqlc.arg(page_offset)::int)
+SELECT jsonb_build_object('total',(SELECT count(*) FROM grouped),'groups',coalesce((SELECT jsonb_agg(to_jsonb(page) ORDER BY name,id) FROM page),'[]'::jsonb))::jsonb;

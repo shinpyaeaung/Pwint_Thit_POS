@@ -1,8 +1,10 @@
 package receiving
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/authz"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/database"
@@ -11,12 +13,17 @@ import (
 	"time"
 )
 
+type DB interface {
+	database.DBTX
+	Begin(context.Context) (pgx.Tx, error)
+}
 type Service struct {
-	q *database.Queries
-	a *authz.Service
+	db DB
+	q  *database.Queries
+	a  *authz.Service
 }
 
-func New(db database.DBTX) *Service { return &Service{q: database.New(db)} }
+func New(db DB) *Service { return &Service{db: db, q: database.New(db)} }
 func (s *Service) Register(r *gin.Engine, a *authz.Service) {
 	s.a = a
 	s.registerTransfers(r, a)
@@ -25,7 +32,9 @@ func (s *Service) Register(r *gin.Engine, a *authz.Service) {
 	r.GET("/api/v1/receiving/options", a.Require(permissions.ReceivingManage), s.Options)
 	r.GET("/api/v1/receiving/shipments/:id", a.Require(permissions.ReceivingManage), s.Shipment)
 	r.GET("/api/v1/receiving/:id", a.Require(permissions.ReceivingManage), s.Get)
+	r.POST("/api/v1/receiving/preview", a.Require(permissions.ReceivingManage), s.Post)
 	r.POST("/api/v1/receiving", a.Require(permissions.ReceivingManage), s.Post)
+	r.GET("/api/v1/inventory/groups", a.Require(permissions.InventoryView), s.Inventory)
 	r.GET("/api/v1/inventory", a.Require(permissions.InventoryView), s.Inventory)
 	r.GET("/api/v1/inventory/warehouses", a.Require(permissions.InventoryView), s.Warehouses)
 	r.GET("/api/v1/inventory/movements", a.Require(permissions.InventoryView), s.Movements)
@@ -107,6 +116,16 @@ func (s *Service) Inventory(c *gin.Context) {
 		fail(c, 503, "Authorization unavailable.")
 		return
 	}
+	if strings.HasSuffix(c.FullPath(), "/groups") {
+		group := c.DefaultQuery("group_by", "product")
+		if group != "product" && group != "brand" {
+			fail(c, 400, "Choose product or brand grouping.")
+			return
+		}
+		b, e := s.q.InventoryGroups(c.Request.Context(), database.InventoryGroupsParams{Search: q, WarehouseID: id, PageSize: size, PageOffset: offset, Costs: costs, GroupBy: group})
+		response(c, b, e)
+		return
+	}
 	b, e := s.q.ListInventory(c.Request.Context(), database.ListInventoryParams{Search: q, WarehouseID: id, PageSize: size, PageOffset: offset, Costs: costs})
 	response(c, b, e)
 }
@@ -171,18 +190,26 @@ type receiptItem struct {
 }
 
 func (s *Service) Post(c *gin.Context) {
-	var in struct {
-		RequestID  string        `json:"request_id"`
-		ShipmentID string        `json:"shipment_id"`
-		Version    string        `json:"version"`
-		Number     string        `json:"receipt_number"`
-		Received   string        `json:"received_at"`
-		Notes      string        `json:"notes"`
-		Items      []receiptItem `json:"items"`
-	}
+	var in receiptInput
 	if !decode(c, &in) {
 		return
 	}
+	s.postReceipt(c, in)
+}
+
+type receiptInput struct {
+	Finalize     bool          `json:"finalize_costs,omitempty"`
+	PreviewToken string        `json:"preview_token,omitempty"`
+	RequestID    string        `json:"request_id"`
+	ShipmentID   string        `json:"shipment_id"`
+	Version      string        `json:"version"`
+	Number       string        `json:"receipt_number"`
+	Received     string        `json:"received_at"`
+	Notes        string        `json:"notes"`
+	Items        []receiptItem `json:"items"`
+}
+
+func (s *Service) postReceipt(c *gin.Context, in receiptInput) {
 	in.Number = strings.TrimSpace(in.Number)
 	_, e := time.Parse(time.RFC3339, in.Received)
 	if !validID(in.RequestID) || !validID(in.ShipmentID) || (in.Number != "" && !text(in.Number, 100)) || !text(in.Version, 20) || e != nil || len(in.Notes) > 4000 || len(in.Items) < 1 || len(in.Items) > 100 {
@@ -195,14 +222,7 @@ func (s *Service) Post(c *gin.Context) {
 			return
 		}
 	}
-	data, _ := json.Marshal(in)
-	actor, _ := authz.Principal(c)
-	id, e := s.q.PostReceiving(c.Request.Context(), database.PostReceivingParams{Data: data, Actor: actor.ID})
-	if e != nil {
-		dbError(c, e)
-		return
-	}
-	c.JSON(201, gin.H{"id": id})
+	s.saveReceipt(c, in)
 }
 func (s *Service) Adjust(c *gin.Context) {
 	var in struct {

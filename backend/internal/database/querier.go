@@ -73,6 +73,7 @@ type Querier interface {
 	InsertShipmentItem(ctx context.Context, arg InsertShipmentItemParams) error
 	InsertShipmentStage(ctx context.Context, arg InsertShipmentStageParams) (pgtype.UUID, error)
 	InsertSupplier(ctx context.Context, data []byte) (pgtype.UUID, error)
+	InventoryGroups(ctx context.Context, arg InventoryGroupsParams) ([]byte, error)
 	InventoryMovements(ctx context.Context, arg InventoryMovementsParams) ([]byte, error)
 	InventoryWarehouses(ctx context.Context) ([]byte, error)
 	LandedCostSources(ctx context.Context, id pgtype.UUID) ([]byte, error)
@@ -80,6 +81,7 @@ type Querier interface {
 	ListBatches(ctx context.Context, arg ListBatchesParams) ([]byte, error)
 	ListInventory(ctx context.Context, arg ListInventoryParams) ([]byte, error)
 	ListPermissions(ctx context.Context) ([]ListPermissionsRow, error)
+	ListProductGroups(ctx context.Context, arg ListProductGroupsParams) ([]byte, error)
 	ListProducts(ctx context.Context, arg ListProductsParams) ([]byte, error)
 	ListPurchaseDocuments(ctx context.Context, arg ListPurchaseDocumentsParams) ([]byte, error)
 	ListReceiving(ctx context.Context, arg ListReceivingParams) ([]byte, error)

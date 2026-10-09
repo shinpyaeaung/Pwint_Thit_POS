@@ -255,6 +255,15 @@ func (s *Service) List(c *gin.Context) {
 	}
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
+	if c.Query("group_by") == "brand" {
+		v, err := s.q.ListProductGroups(ctx, database.ListProductGroupsParams{Status: status, CategoryID: category, BrandID: brand, Search: search, PageSize: int32(size), PageOffset: int32((page - 1) * size)})
+		if err != nil {
+			dbError(c, err)
+			return
+		}
+		c.Data(200, "application/json", v)
+		return
+	}
 	v, err := s.q.ListProducts(ctx, database.ListProductsParams{Status: status, CategoryID: category, BrandID: brand, Search: search, PageSize: int32(size), PageOffset: int32((page - 1) * size)})
 	if err != nil {
 		dbError(c, err)
