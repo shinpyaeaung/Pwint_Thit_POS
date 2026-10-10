@@ -27,6 +27,7 @@ export function pagePermission(path: string): string | null | undefined {
   if (/^\/products\/[a-f0-9-]{36}$/.test(path)) return permissions.productsView
   if (/^\/suppliers\/[a-f0-9-]{36}\/edit$/.test(path)) return permissions.suppliersUpdate
   if (/^\/suppliers\/[a-f0-9-]{36}$/.test(path)) return permissions.suppliersView
+  if (/^\/purchases\/[a-f0-9-]{36}\/edit$/.test(path)) return permissions.purchasesView
   if (/^\/purchases\/[a-f0-9-]{36}$/.test(path)) return permissions.purchasesView
   if (/^\/shipments\/[a-f0-9-]{36}$/.test(path)) return permissions.shipmentsView
   return undefined

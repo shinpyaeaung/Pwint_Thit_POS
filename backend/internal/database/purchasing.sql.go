@@ -11,6 +11,23 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const correctPurchase = `-- name: CorrectPurchase :one
+SELECT app.correct_purchase($1::uuid,$2::uuid,$3::jsonb)::uuid
+`
+
+type CorrectPurchaseParams struct {
+	PurchaseID pgtype.UUID
+	Actor      pgtype.UUID
+	Data       []byte
+}
+
+func (q *Queries) CorrectPurchase(ctx context.Context, arg CorrectPurchaseParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, correctPurchase, arg.PurchaseID, arg.Actor, arg.Data)
+	var column_1 pgtype.UUID
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const createPurchaseCurrency = `-- name: CreatePurchaseCurrency :exec
 INSERT INTO app.currencies(code,name,minor_units) VALUES($1,$2,$3)
 `
@@ -145,9 +162,9 @@ func (q *Queries) InsertPurchaseItem(ctx context.Context, arg InsertPurchaseItem
 }
 
 const listPurchaseDocuments = `-- name: ListPurchaseDocuments :one
-WITH filtered AS (SELECT p.id, p.purchase_number, p.supplier_id, p.supplier_invoice_number, p.purchased_at, p.due_date, p.currency_code, p.exchange_rate_id, p.mmk_per_unit, p.status, p.posted_at, p.created_by, p.notes, p.created_at, p.updated_at, p.request_id, p.request_hash FROM app.purchases p WHERE ($2::text='' OR strpos(lower(p.purchase_number||' '||COALESCE(p.supplier_invoice_number,'')),lower($2))>0 OR EXISTS(SELECT 1 FROM app.suppliers s WHERE s.id=p.supplier_id AND strpos(lower(s.name),lower($2))>0)) AND ($3::text='' OR p.currency_code=$3) AND ($4::text='' OR p.status=$4)),
-page AS (SELECT id FROM filtered ORDER BY purchased_at DESC,id LIMIT $6::int OFFSET $5::int)
-SELECT jsonb_build_object('total',(SELECT count(*) FROM filtered),'purchases',COALESCE((SELECT jsonb_agg(app.purchase_document(p,$1::boolean,false) ORDER BY p.purchased_at DESC,p.id) FROM app.purchases p JOIN page f USING(id)),'[]'::jsonb))::jsonb
+WITH filtered AS (SELECT p.id,(d->>'purchased_at')::timestamptz AS purchased_at FROM app.purchases p CROSS JOIN LATERAL (SELECT app.purchase_record(p.id) d) current WHERE ($2::text='' OR strpos(lower(p.purchase_number||' '||COALESCE(d->>'supplier_invoice_number','')),lower($2))>0 OR EXISTS(SELECT 1 FROM app.suppliers s WHERE s.id=(d->>'supplier_id')::uuid AND strpos(lower(s.name),lower($2))>0)) AND ($3::text='' OR d->>'currency_code'=$3) AND ($4::text='' OR p.status=$4)),
+page AS (SELECT id, purchased_at FROM filtered ORDER BY purchased_at DESC,id LIMIT $6::int OFFSET $5::int)
+SELECT jsonb_build_object('total',(SELECT count(*) FROM filtered),'purchases',COALESCE((SELECT jsonb_agg(app.purchase_document(p,$1::boolean,false) ORDER BY f.purchased_at DESC,p.id) FROM app.purchases p JOIN page f USING(id)),'[]'::jsonb))::jsonb
 `
 
 type ListPurchaseDocumentsParams struct {
@@ -239,6 +256,17 @@ UPDATE app.purchases SET status='POSTED',posted_at=clock_timestamp() WHERE id=$1
 func (q *Queries) PostPurchase(ctx context.Context, id pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, postPurchase, id)
 	return err
+}
+
+const purchaseCorrectionHistory = `-- name: PurchaseCorrectionHistory :one
+SELECT coalesce(jsonb_agg(jsonb_build_object('id',r.id,'revision',r.revision::text,'reason',r.reason,'recorded_at',r.recorded_at,'recorded_by',u.display_name,'before',r.before_document,'after',r.after_document) ORDER BY r.revision DESC),'[]'::jsonb)::jsonb FROM app.purchase_corrections r JOIN app.users u ON u.id=r.recorded_by WHERE r.purchase_id=$1
+`
+
+func (q *Queries) PurchaseCorrectionHistory(ctx context.Context, purchaseID pgtype.UUID) ([]byte, error) {
+	row := q.db.QueryRow(ctx, purchaseCorrectionHistory, purchaseID)
+	var column_1 []byte
+	err := row.Scan(&column_1)
+	return column_1, err
 }
 
 const purchaseCurrencies = `-- name: PurchaseCurrencies :one

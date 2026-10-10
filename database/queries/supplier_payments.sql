@@ -9,7 +9,7 @@ SELECT jsonb_build_object('payments',COALESCE(jsonb_agg(jsonb_build_object('id',
 FROM app.payments p JOIN app.payment_allocations a ON a.payment_id=p.id JOIN app.users u ON u.id=p.recorded_by WHERE a.purchase_id=$1;
 -- name: SupplierPaymentPurchases :one
 WITH filtered AS (
- SELECT p.* FROM app.purchases p JOIN app.supplier_payables b ON b.purchase_id=p.id JOIN app.suppliers s ON s.id=p.supplier_id
+ SELECT p.* FROM app.purchases p JOIN app.supplier_payables b ON b.purchase_id=p.id JOIN app.suppliers s ON s.id=b.supplier_id
  WHERE (sqlc.arg(search)::text='' OR strpos(lower(p.purchase_number||' '||s.name),lower(sqlc.arg(search)))>0)
  AND (sqlc.arg(payment_status)::text='' OR CASE WHEN b.outstanding_original<=0 THEN 'PAID' WHEN b.amount_paid_mmk>0 THEN 'PARTIALLY_PAID' ELSE 'UNPAID' END=sqlc.arg(payment_status))
 ), page AS (SELECT * FROM filtered ORDER BY purchased_at DESC,id LIMIT sqlc.arg(page_size)::int OFFSET sqlc.arg(page_offset)::int)

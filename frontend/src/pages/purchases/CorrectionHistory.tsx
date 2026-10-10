@@ -1,0 +1,10 @@
+import {useQuery} from '@tanstack/react-query'
+import {requestJSON} from '@/services/api'
+import {amount,type Purchase} from './types'
+type Revision={id:string;revision:string;reason:string;recorded_at:string;recorded_by:string;before:Purchase;after:Purchase}
+export function CorrectionHistory({id}:{id:string}){
+ const q=useQuery({queryKey:['purchase-corrections',id],queryFn:({signal})=>requestJSON<Revision[]>(`/purchases/${id}/corrections`,{signal})})
+ if(q.error)return <p role="alert">{q.error.message}</p>
+ if(!q.data?.length)return null
+ return <details className="panel mb-5 p-5"><summary className="cursor-pointer font-semibold">Correction history · {q.data.length} revisions</summary><div className="mt-4 space-y-5">{q.data.map(r=><section key={r.id} className="space-y-3 border-t pt-4"><h3 className="font-semibold">Revision {r.revision} · {r.recorded_by}</h3><p className="text-xs text-muted-foreground">{new Date(r.recorded_at).toLocaleString()}</p><p className="whitespace-pre-wrap text-sm">Reason: {r.reason}</p><div className="grid gap-4 lg:grid-cols-2">{[['Before correction',r.before],['After correction',r.after]].map(([label,doc])=>{const p=doc as Purchase;return <div key={label as string} className="rounded-xl border p-4 text-sm"><h4 className="mb-2 font-semibold">{label as string}</h4><p>{p.supplier_name} · Invoice {p.supplier_invoice_number||'—'}</p><p>Purchase date: {new Date(p.purchased_at).toLocaleString()} · Due: {p.due_date||'—'}</p><p>{amount(p.total_original)} {p.currency_code} · Rate {amount(p.mmk_per_unit)} · {amount(p.total_mmk)} MMK</p><p className="whitespace-pre-wrap">{p.notes}</p><ul className="mt-3 space-y-2">{p.items?.map(i=><li key={i.id} className="border-t pt-2">{i.product_name} · {i.sku}<p>{amount(i.quantity)} {i.unit_code} × {amount(i.units_per_pack)} = {amount(i.base_quantity)} pieces</p><p>Price {amount(i.unit_price_original)} · Discount {amount(i.discount_original)} · Tax {amount(i.tax_original)} · Total {amount(i.total_original)} {p.currency_code}</p></li>)}</ul></div>})}</div></section>)}</div></details>
+}

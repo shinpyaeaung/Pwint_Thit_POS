@@ -14,6 +14,8 @@ WITH bounds AS (SELECT $1::text::date AS start_on,$2::text::date AS end_on), dat
 events AS (
  SELECT p.id,p.purchased_at AS occurred_at,'PURCHASE' AS event_type,p.purchase_number AS reference,p.supplier_id,p.currency_code,p.mmk_per_unit,t.total_original AS amount_original,t.total_mmk AS amount_mmk
  FROM app.purchases p JOIN app.purchase_totals t ON t.purchase_id=p.id WHERE p.status='POSTED' OR EXISTS(SELECT 1 FROM app.purchase_reversals rev WHERE rev.purchase_id=p.id)
+ UNION ALL SELECT c.id,c.recorded_at,'CORRECTION_BEFORE',p.purchase_number,(c.before_document->>'supplier_id')::uuid,c.before_document->>'currency_code',(c.before_document->>'mmk_per_unit')::numeric,-(c.before_document->>'total_original')::numeric,-(c.before_document->>'total_mmk')::numeric FROM app.purchase_corrections c JOIN app.purchases p ON p.id=c.purchase_id
+ UNION ALL SELECT c.id,c.recorded_at,'CORRECTION_AFTER',p.purchase_number,(c.after_document->>'supplier_id')::uuid,c.after_document->>'currency_code',(c.after_document->>'mmk_per_unit')::numeric,(c.after_document->>'total_original')::numeric,(c.after_document->>'total_mmk')::numeric FROM app.purchase_corrections c JOIN app.purchases p ON p.id=c.purchase_id
  UNION ALL SELECT rev.id,rev.reversed_at,'REVERSAL',p.purchase_number,p.supplier_id,p.currency_code,p.mmk_per_unit,-a.amount_original,-a.amount_mmk
  FROM app.purchase_reversals rev JOIN app.purchases p ON p.id=rev.purchase_id JOIN app.purchase_amounts a ON a.purchase_id=p.id
  UNION ALL SELECT r.id,r.returned_at,'RETURN',r.return_number,p.supplier_id,p.currency_code,p.mmk_per_unit,-sum(i.credit_original),-sum(i.credit_mmk)
@@ -21,8 +23,8 @@ events AS (
 ),
 filtered AS (
 SELECT e.id, e.occurred_at, e.event_type, e.reference, e.supplier_id, e.currency_code, e.mmk_per_unit, e.amount_original, e.amount_mmk,s.name AS supplier FROM events e JOIN app.suppliers s ON s.id=e.supplier_id CROSS JOIN dates WHERE occurred_at>=start_at AND occurred_at<end_at
-), page AS (SELECT id, occurred_at, event_type, reference, supplier_id, currency_code, mmk_per_unit, amount_original, amount_mmk, supplier FROM filtered ORDER BY occurred_at DESC,id LIMIT $4::int OFFSET $3::int)
-SELECT jsonb_build_object('total',(SELECT count(*) FROM filtered),'summary',(SELECT jsonb_build_object('amount_mmk',round(coalesce(sum(amount_mmk),0),4)::text) FROM filtered),'rows',coalesce((SELECT jsonb_agg(app.report_decimal_row(to_jsonb(page)) ORDER BY occurred_at DESC,id) FROM page),'[]'))::jsonb
+), page AS (SELECT id, occurred_at, event_type, reference, supplier_id, currency_code, mmk_per_unit, amount_original, amount_mmk, supplier FROM filtered ORDER BY occurred_at DESC,id,event_type LIMIT $4::int OFFSET $3::int)
+SELECT jsonb_build_object('total',(SELECT count(*) FROM filtered),'summary',(SELECT jsonb_build_object('amount_mmk',round(coalesce(sum(amount_mmk),0),4)::text) FROM filtered),'rows',coalesce((SELECT jsonb_agg(app.report_decimal_row(to_jsonb(page)) ORDER BY occurred_at DESC,id,event_type) FROM page),'[]'))::jsonb
 `
 
 type ReportPurchasesParams struct {

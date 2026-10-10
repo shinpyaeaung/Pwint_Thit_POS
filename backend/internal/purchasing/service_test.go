@@ -12,6 +12,8 @@ import (
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/httpapi"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/migrate"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/purchasing"
+	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/receiving"
+	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/shipments"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/testutil"
 	"io"
 	"log/slog"
@@ -21,6 +23,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 func TestPurchasingIntegration(t *testing.T) {
@@ -59,6 +62,8 @@ func TestPurchasingIntegration(t *testing.T) {
 	a := authz.New(q)
 	r := httpapi.New(q, slog.New(slog.NewJSONHandler(io.Discard, nil)), a, authn.New(pool, authn.Options{AllowedOrigins: []string{"http://app.test"}}))
 	purchasing.New(pool).Register(r, a)
+	shipments.New(pool).Register(r, a)
+	receiving.New(pool).Register(r, a)
 	raw := func(method, path string, body any, token string) *httptest.ResponseRecorder {
 		data, _ := json.Marshal(body)
 		req := httptest.NewRequest(method, "/api/v1"+path, strings.NewReader(string(data)))
@@ -396,6 +401,134 @@ func TestPurchasingIntegration(t *testing.T) {
 		call("POST", "/supplier-payment-methods", map[string]any{"code": "TEST_BANK", "name": "Test bank", "category": "BANK_TRANSFER"}, owner, 201)
 		if _, e := conn.Exec(ctx, `UPDATE app.payments SET notes='overwritten' WHERE id=(SELECT payment_id FROM app.supplier_payment_requests WHERE request_id='99999999-0000-0000-0000-000000000002')`); e == nil {
 			t.Fatal("payment history mutable")
+		}
+	})
+	t.Run("completed purchase correction", func(t *testing.T) {
+		if _, e := conn.Exec(ctx, `UPDATE app.product_units SET units_per_pack=12 WHERE product_id='00000000-0000-0000-0000-000000000002' AND unit_code='CARTON'`); e != nil {
+			t.Fatal(e)
+		}
+		original := call("POST", "/purchases", input("c1000000-0000-0000-0000-000000000001", "CORRECTION-PO"), owner, 201)
+		id := original["id"].(string)
+		change := input("c2000000-0000-0000-0000-000000000001", "CORRECTION-PO")
+		body := map[string]any{"version": "0", "reason": "Correct supplier invoice entry", "purchase": change}
+		call("POST", "/purchases/"+id+"/corrections", body, owner, 409) // Not yet received.
+		warehouse := call("POST", "/warehouses", map[string]any{"code": "CORRECTION", "name": "Correction warehouse"}, owner, 201)
+		shipment := call("POST", "/shipments", map[string]any{"request_id": "c3000000-0000-0000-0000-000000000001", "start_location": "Supplier", "destination_warehouse_id": warehouse["id"], "items": []map[string]any{{"purchase_item_id": original["items"].([]any)[0].(map[string]any)["id"], "expected_quantity": "24"}}}, owner, 201)
+		sid := shipment["id"].(string)
+		for _, status := range []string{"IN_TRANSIT", "ARRIVED"} {
+			sh := call("GET", "/shipments/"+sid, nil, owner, 200)
+			call("PUT", "/shipments/"+sid+"/status", map[string]any{"version": sh["version"], "status": status, "shipped_at": "2026-01-16T00:00:00Z", "arrived_at": "2026-01-17T00:00:00Z"}, owner, 204)
+		}
+		info := call("GET", "/receiving/shipments/"+sid, nil, owner, 200)
+		receipt := map[string]any{"request_id": "c4000000-0000-0000-0000-000000000001", "shipment_id": sid, "version": info["version"], "received_at": "2026-01-18T00:00:00Z", "finalize_costs": true, "items": []map[string]any{{"shipment_item_id": info["items"].([]any)[0].(map[string]any)["id"], "carton_size": "12", "received_cartons": "2", "received_units": "0", "damaged_quantity": "0", "batch_number": "CORRECTION-BATCH"}}}
+		receipt["preview_token"] = call("POST", "/receiving/preview", receipt, owner, 200)["preview_token"]
+		call("POST", "/receiving", receipt, owner, 201)
+		payment := map[string]any{"request_id": "c5000000-0000-0000-0000-000000000001", "amount": "1000", "method_code": "CASH", "paid_at": "2026-01-20T00:00:00Z"}
+		call("POST", "/purchases/"+id+"/payments", payment, owner, 200)
+		if _, e := conn.Exec(ctx, `INSERT INTO app.user_permissions(user_id,permission_code,granted_by) SELECT s.id,p.code,o.id FROM app.users s CROSS JOIN app.users o CROSS JOIN app.permissions p WHERE s.username='staff' AND o.username='owner' ON CONFLICT DO NOTHING`); e != nil {
+			t.Fatal(e)
+		}
+		call("POST", "/purchases/"+id+"/corrections", body, staff, 403)
+		body["reason"] = "  "
+		call("POST", "/purchases/"+id+"/corrections", body, owner, 400)
+		body["reason"] = "Correct supplier invoice entry"
+		change["mmk_per_unit"] = "30"
+		change["exchange_rate_id"] = ""
+		change["supplier_invoice_number"] = "CORRECTED-INV"
+		change["notes"] = "Correction note"
+		change["due_date"] = "2026-03-01"
+		item := change["items"].([]map[string]any)[0]
+		item["quantity"] = "3"
+		item["units_per_pack"] = "10"
+		item["unit_price_original"] = "4000"
+		item["discount_original"] = "200"
+		item["tax_original"] = "100"
+		if _, e := conn.Exec(ctx, `CREATE FUNCTION app.fail_correction_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action='purchases.correct' THEN RAISE EXCEPTION 'test'; END IF; RETURN NEW; END $$;CREATE TRIGGER fail_correction_audit BEFORE INSERT ON app.audit_logs FOR EACH ROW EXECUTE FUNCTION app.fail_correction_audit()`); e != nil {
+			t.Fatal(e)
+		}
+		call("POST", "/purchases/"+id+"/corrections", body, owner, 503)
+		if call("GET", "/purchases/"+id, nil, owner, 200)["correction_version"] != "0" {
+			t.Fatal("failed audit left correction")
+		}
+		if _, e := conn.Exec(ctx, `DROP TRIGGER fail_correction_audit ON app.audit_logs`); e != nil {
+			t.Fatal(e)
+		}
+		codes := make(chan int, 2)
+		var wg sync.WaitGroup
+		for n := 0; n < 2; n++ {
+			wg.Add(1)
+			go func() { defer wg.Done(); codes <- raw("POST", "/purchases/"+id+"/corrections", body, owner).Code }()
+		}
+		wg.Wait()
+		close(codes)
+		for code := range codes {
+			if code != 200 {
+				t.Fatal("duplicate correction", code)
+			}
+		}
+		corrected := call("POST", "/purchases/"+id+"/corrections", body, owner, 200)
+		if corrected["correction_version"] != "1" || corrected["total_original"] != "11900.0000" || corrected["total_mmk"] != "357000.0000" || corrected["outstanding_original"] != "10900.0000" || corrected["outstanding_mmk"] != "327000.0000" {
+			t.Fatal(corrected)
+		}
+		var balance string
+		if e := conn.QueryRow(ctx, `SELECT app.purchase_balance($1,'2026-02-01')->>'outstanding_mmk'`, id).Scan(&balance); e != nil || balance != "225000.0000" {
+			t.Fatal("historical balance changed", balance, e)
+		}
+		var cost, quantity string
+		if e := conn.QueryRow(ctx, `SELECT b.actual_unit_cost_mmk::text,i.available_quantity::text FROM app.batches b JOIN app.inventory i ON i.batch_id=b.id WHERE b.batch_number='CORRECTION-BATCH'`).Scan(&cost, &quantity); e != nil || cost != "10416.66666667" || quantity != "24.000000" {
+			t.Fatal("historical stock changed", cost, quantity, e)
+		}
+		payment["request_id"] = "c5000000-0000-0000-0000-000000000002"
+		payment["amount"] = "1"
+		call("POST", "/purchases/"+id+"/payments", payment, owner, 409)
+		payment["correction_version"] = "1"
+		call("POST", "/purchases/"+id+"/payments", payment, owner, 409) // Cannot backdate corrected values.
+		payment["paid_at"] = time.Now().Add(time.Minute).Format(time.RFC3339)
+		call("POST", "/purchases/"+id+"/payments", payment, owner, 200)
+		change["request_id"] = "c2000000-0000-0000-0000-000000000002"
+		call("POST", "/purchases/"+id+"/corrections", body, owner, 409)
+		body["version"] = "1"
+		change["currency_code"] = "MMK"
+		change["mmk_per_unit"] = "1"
+		item["quantity"] = "1"
+		item["unit_price_original"] = "100"
+		item["discount_original"] = "0"
+		item["tax_original"] = "0"
+		credit := call("POST", "/purchases/"+id+"/corrections", body, owner, 200)
+		if credit["outstanding_original"] != "-24930.0000" {
+			t.Fatal("currency correction credit", credit)
+		}
+		today := time.Now().In(time.FixedZone("Yangon", 23400)).Format("2006-01-02")
+		report, e := q.ReportPurchases(ctx, database.ReportPurchasesParams{StartOn: today, EndOn: today, PageSize: 100})
+		if e != nil {
+			t.Fatal(e)
+		}
+		var result map[string]any
+		if e = json.Unmarshal(report, &result); e != nil {
+			t.Fatal(e)
+		}
+		correctionTotal := new(big.Rat)
+		correctionCount := 0
+		for _, value := range result["rows"].([]any) {
+			row := value.(map[string]any)
+			if row["reference"] == "CORRECTION-PO" && strings.HasPrefix(row["event_type"].(string), "CORRECTION_") {
+				amount, ok := new(big.Rat).SetString(row["amount_mmk"].(string))
+				if !ok {
+					t.Fatal("invalid report amount", row)
+				}
+				correctionTotal.Add(correctionTotal, amount)
+				correctionCount++
+			}
+		}
+		if correctionCount != 4 || correctionTotal.Cmp(big.NewRat(-249900, 1)) != 0 {
+			t.Fatal("dated correction events", string(report))
+		}
+		historical := call("GET", "/purchases?q=CORRECTED-INV&currency=MMK", nil, owner, 200)
+		if historical["total"] != float64(1) {
+			t.Fatal("corrected search", historical)
+		}
+		if _, e := conn.Exec(ctx, `UPDATE app.purchase_corrections SET reason='erase' WHERE purchase_id=$1`, id); e == nil {
+			t.Fatal("correction history editable")
 		}
 	})
 

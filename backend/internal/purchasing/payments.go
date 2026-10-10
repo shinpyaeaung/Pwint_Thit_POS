@@ -82,13 +82,14 @@ func (s *Service) RecordPayment(c *gin.Context) {
 		return
 	}
 	var in struct {
-		RequestID  string `json:"request_id"`
-		Amount     string `json:"amount"`
-		MethodCode string `json:"method_code"`
-		PaidAt     string `json:"paid_at"`
-		Reference  string `json:"reference_number"`
-		Bank       string `json:"bank_account"`
-		Notes      string `json:"notes"`
+		CorrectionVersion string `json:"correction_version,omitempty"`
+		RequestID         string `json:"request_id"`
+		Amount            string `json:"amount"`
+		MethodCode        string `json:"method_code"`
+		PaidAt            string `json:"paid_at"`
+		Reference         string `json:"reference_number"`
+		Bank              string `json:"bank_account"`
+		Notes             string `json:"notes"`
 	}
 	if !decode(c, &in) {
 		return

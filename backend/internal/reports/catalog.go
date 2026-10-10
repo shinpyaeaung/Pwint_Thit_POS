@@ -277,6 +277,7 @@ var definitions = []Definition{
 			{Key: "purchases_original", Label: "Purchased original", Kind: "decimal"},
 			{Key: "returns_original", Label: "Returned original", Kind: "decimal"},
 			{Key: "reversals_original", Label: "Reversed original", Kind: "decimal"},
+			{Key: "corrections_original", Label: "Corrections original", Kind: "decimal"},
 			{Key: "net_original", Label: "Net original", Kind: "decimal"},
 			{Key: "amount_mmk", Label: "Net MMK", Kind: "money"},
 		},

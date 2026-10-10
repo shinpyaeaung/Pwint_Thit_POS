@@ -5,6 +5,7 @@ export type Pack = { purchase_price_mmk?:string|null; unit_code: string; unit_na
 export type ProductOption = { id: string; name: string; sku: string; packaging: Pack[] }
 export type LineInput = { product_id: string; unit_code: string; quantity: string; units_per_pack: string; unit_price_original: string; discount_original: string; tax_original: string }
 export type Purchase = {
+ correction_version?:string;can_correct?:boolean;corrected_at?:string;
  id: string; purchase_number: string; supplier_id: string; supplier_name: string; supplier_invoice_number: string | null;
  purchased_at: string; due_date: string | null; status: string; currency_code: string; notes: string | null; can_view_cost: boolean;
  mmk_per_unit?: string; exchange_rate_id?: string | null; total_original?: string; total_mmk?: string;

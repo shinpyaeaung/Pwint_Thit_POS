@@ -45,6 +45,8 @@ func (s *Service) Register(r *gin.Engine, a *authz.Service) {
 	r.GET("/api/v1/purchases", a.Require(permissions.PurchasesView), s.List)
 	r.GET("/api/v1/purchases/:id", a.Require(permissions.PurchasesView), s.Get)
 	r.GET("/api/v1/purchases/:id/workflow", a.Require(permissions.PurchasesView), a.Require(permissions.ShipmentsView), s.Workflow)
+	r.POST("/api/v1/purchases/:id/corrections", a.SuperAdminOnly(), s.Correct)
+	r.GET("/api/v1/purchases/:id/corrections", a.Require(permissions.PurchasesView), a.Require(permissions.PurchasesViewCost), s.CorrectionHistory)
 	r.POST("/api/v1/purchases/:id/reverse", a.Require(permissions.TransactionsReverse), a.Require(permissions.PurchasesView), s.Reverse)
 	r.POST("/api/v1/purchases", a.Require(permissions.PurchasesCreate), a.Require(permissions.PurchasesViewCost), s.Create)
 	r.GET("/api/v1/suppliers/:id/balance", a.Require(permissions.SuppliersView), a.Require(permissions.PurchasesViewCost), s.Balance)

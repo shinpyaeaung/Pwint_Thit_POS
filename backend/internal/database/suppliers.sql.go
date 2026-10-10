@@ -92,11 +92,11 @@ func (q *Queries) LockSupplier(ctx context.Context, id pgtype.UUID) (LockSupplie
 }
 
 const supplierPurchaseHistory = `-- name: SupplierPurchaseHistory :one
-WITH filtered AS (SELECT id, purchase_number, supplier_id, supplier_invoice_number, purchased_at, due_date, currency_code, exchange_rate_id, mmk_per_unit, status, posted_at, created_by, notes, created_at, updated_at, request_id, request_hash FROM app.purchases WHERE supplier_id=$2),
-page AS (SELECT id, purchase_number, supplier_id, supplier_invoice_number, purchased_at, due_date, currency_code, exchange_rate_id, mmk_per_unit, status, posted_at, created_by, notes, created_at, updated_at, request_id, request_hash FROM filtered ORDER BY purchased_at DESC,id LIMIT $4::int OFFSET $3::int)
+WITH filtered AS (SELECT p.id, p.purchase_number, p.supplier_id, p.supplier_invoice_number, p.purchased_at, p.due_date, p.currency_code, p.exchange_rate_id, p.mmk_per_unit, p.status, p.posted_at, p.created_by, p.notes, p.created_at, p.updated_at, p.request_id, p.request_hash,app.purchase_record(p.id) d FROM app.purchases p WHERE (app.purchase_record(p.id)->>'supplier_id')::uuid=$2),
+page AS (SELECT id, purchase_number, supplier_id, supplier_invoice_number, purchased_at, due_date, currency_code, exchange_rate_id, mmk_per_unit, status, posted_at, created_by, notes, created_at, updated_at, request_id, request_hash, d FROM filtered ORDER BY purchased_at DESC,id LIMIT $4::int OFFSET $3::int)
 SELECT jsonb_build_object('total',(SELECT count(*) FROM filtered),'can_view_cost',$1::boolean,'purchases',COALESCE((SELECT jsonb_agg(
- jsonb_build_object('id',p.id,'purchase_number',p.purchase_number,'supplier_invoice_number',p.supplier_invoice_number,'purchased_at',p.purchased_at,'due_date',p.due_date,'status',p.status,'currency_code',p.currency_code,'item_count',(SELECT count(*) FROM app.purchase_items i WHERE i.purchase_id=p.id))
- || CASE WHEN $1::boolean THEN jsonb_build_object('total_original',(SELECT COALESCE(sum(i.total_original),0)::text FROM app.purchase_items i WHERE i.purchase_id=p.id)) ELSE '{}'::jsonb END
+ jsonb_build_object('id',p.id,'purchase_number',p.purchase_number,'supplier_invoice_number',p.d->>'supplier_invoice_number','purchased_at',p.d->>'purchased_at','due_date',p.d->>'due_date','status',p.status,'currency_code',p.d->>'currency_code','item_count',jsonb_array_length(p.d->'items'))
+ || CASE WHEN $1::boolean THEN jsonb_build_object('total_original',p.d->>'total_original') ELSE '{}'::jsonb END
  ORDER BY p.purchased_at DESC,p.id) FROM page p),'[]'::jsonb))::jsonb
 `
 

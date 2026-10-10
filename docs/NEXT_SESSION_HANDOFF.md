@@ -166,3 +166,20 @@ No schema migration was required; queries and regenerated sqlc bindings are incl
 Wait for the next user scope after delivering this work. Preserve the same financial/history controls and light-only appearance.
 
 Deployment: `make up` completed successfully; backend, frontend and PostgreSQL are healthy at http://localhost:8088. The existing database volume and business records were preserved. Final verification passed `make check`, `make test-integration`, and all 32 browser tests, including the added carton/piece loss interactions and wide Arrange shipment assertion.
+
+
+## Completed purchase corrections — October 10
+
+Super Admin can use **Correct purchase** once all original purchased quantities are allocated to received shipments and no active shipment remains unreceived. Staff cannot correct purchases even when granted every configurable permission. Supplier, dates, invoice reference, currency/rate, product lines, packaging conversions, quantities, prices, discounts, tax and notes are editable; the generated business ID is retained. Saving requires a correction reason.
+
+Migration 000038 stores immutable before/after revisions, author, timestamp, request identity and audit writes transactionally. Concurrent retries deduplicate and stale revisions are rejected. Current purchase screens, searches, supplier history and balances use the latest revision. Original purchases, payment amounts/rates, shipments, receipts, stock movements, finalized batch costs and sales remain unchanged. Physical discrepancies require the existing controlled inventory/return workflows.
+
+Purchase and Currency reports record before/after offsets at the correction timestamp; historical supplier balances use the revision effective at the report cutoff. Existing payment allocations remain linked to the purchase, with MMK conversion when the corrected currency differs. Corrected outstanding MMK uses the revised rate; original payment MMK is retained. New payments require the current revision and cannot predate it. Negative debt is displayed as supplier credit, with no additional payment action.
+
+POST /purchases/:id/corrections is backend-enforced Super Admin only. GET /purchases/:id/corrections requires purchase and cost visibility. The UI provides a required reason, review confirmation, current revision banner and expandable full before/after history.
+
+Verification: `make check` passed Go race/vet and frontend lint/build. `make test-integration` passed exact monetary calculations, required reasons, owner enforcement despite staff permissions, transactional audit rollback, concurrent retries, stale revisions/payments, historical balances, immutable receipt/batch costs, dated report offsets and overpayment credit. All 34 real-stack Chromium/WebKit tests passed, including changing supplier, product, quantity/conversion, dates, reference, currency/rate, discount/tax and notes, viewing history and paying the corrected supplier. The correction history screenshot was visually reviewed. Earlier test failures identified fixture assumptions and an original-rate payment validator; these were resolved before the final passing runs.
+
+Wait for the user's next scope after this delivery. Completed purchase revisions intentionally do not rewrite physical inventory or finalized costing; use controlled adjustments/returns for physical discrepancies.
+
+Deployment: `make up` applied migration 000038 successfully. Frontend, backend and PostgreSQL are healthy at http://localhost:8088; API health confirms database connectivity. Existing database records and volumes were preserved.

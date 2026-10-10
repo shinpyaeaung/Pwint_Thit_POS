@@ -68,7 +68,7 @@ func (q *Queries) SupplierPaymentMethods(ctx context.Context) ([]byte, error) {
 
 const supplierPaymentPurchases = `-- name: SupplierPaymentPurchases :one
 WITH filtered AS (
- SELECT p.id, p.purchase_number, p.supplier_id, p.supplier_invoice_number, p.purchased_at, p.due_date, p.currency_code, p.exchange_rate_id, p.mmk_per_unit, p.status, p.posted_at, p.created_by, p.notes, p.created_at, p.updated_at, p.request_id, p.request_hash FROM app.purchases p JOIN app.supplier_payables b ON b.purchase_id=p.id JOIN app.suppliers s ON s.id=p.supplier_id
+ SELECT p.id, p.purchase_number, p.supplier_id, p.supplier_invoice_number, p.purchased_at, p.due_date, p.currency_code, p.exchange_rate_id, p.mmk_per_unit, p.status, p.posted_at, p.created_by, p.notes, p.created_at, p.updated_at, p.request_id, p.request_hash FROM app.purchases p JOIN app.supplier_payables b ON b.purchase_id=p.id JOIN app.suppliers s ON s.id=b.supplier_id
  WHERE ($1::text='' OR strpos(lower(p.purchase_number||' '||s.name),lower($1))>0)
  AND ($2::text='' OR CASE WHEN b.outstanding_original<=0 THEN 'PAID' WHEN b.amount_paid_mmk>0 THEN 'PARTIALLY_PAID' ELSE 'UNPAID' END=$2)
 ), page AS (SELECT id, purchase_number, supplier_id, supplier_invoice_number, purchased_at, due_date, currency_code, exchange_rate_id, mmk_per_unit, status, posted_at, created_by, notes, created_at, updated_at, request_id, request_hash FROM filtered ORDER BY purchased_at DESC,id LIMIT $4::int OFFSET $3::int)

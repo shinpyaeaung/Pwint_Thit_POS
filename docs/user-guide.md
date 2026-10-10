@@ -32,6 +32,10 @@ Product, supplier, purchase, shipment, transportation, goods receipt, sales orde
 
 Super Admin has all backend permissions. Products and suppliers can be edited or archived; warehouses can be created, edited and archived in the workflow. Open shipments can be edited or cancelled; unpaid stages can be removed with an audit reason. Posted financial records, paid stages, finalized costs and inventory movements retain accounting protections. Use reversals, returns, expense voids and controlled stock adjustments. **Reverse purchase** is available only before active shipment, payment or supplier return activity and preserves all original amounts and history.
 
+**Correct completed purchase (Super Admin only):** open a completed purchase and select **Correct purchase**. Edit supplier, business dates, invoice reference, currency/rate, products, packaging conversion, quantities, prices, discounts, tax or notes. Enter a required correction reason, review the total and save. The generated purchase ID stays unchanged. **Correction history** retains the author, time, reason and complete before/after values. Current purchase totals and supplier balances use the revision; earlier reports retain the original dated amounts and show correction entries on the correction date. Existing payments retain their recorded amounts/rates. New payments use the revised values and cannot predate the correction. An overpayment becomes a displayed supplier credit.
+
+Corrections do not rewrite received stock, finalized landed costs or historical sales. If physical stock is incorrect, use the appropriate controlled stock adjustment or return. The completed shipment history remains visible separately from the corrected purchase document.
+
 Purchase details and financial history expand within the purchase. Shipments, Goods receiving, supplier history and reports remain available for reviewing older records.
 
 ## 4. Check inventory and expiry

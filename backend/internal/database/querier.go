@@ -21,6 +21,7 @@ type Querier interface {
 	CheckDatabase(ctx context.Context) (int32, error)
 	ClearUserPermissions(ctx context.Context, userID pgtype.UUID) error
 	ConsumeLoginAttempt(ctx context.Context, keyHash []byte) (int32, error)
+	CorrectPurchase(ctx context.Context, arg CorrectPurchaseParams) (pgtype.UUID, error)
 	CostJourneys(ctx context.Context, arg CostJourneysParams) ([]byte, error)
 	CreateBrand(ctx context.Context, name string) (CreateBrandRow, error)
 	CreateCatalogUnit(ctx context.Context, arg CreateCatalogUnitParams) (CreateCatalogUnitRow, error)
@@ -116,6 +117,7 @@ type Querier interface {
 	ProductReferencesValid(ctx context.Context, arg ProductReferencesValidParams) (bool, error)
 	ProfitReport(ctx context.Context, arg ProfitReportParams) ([]byte, error)
 	PruneLoginAttempts(ctx context.Context) error
+	PurchaseCorrectionHistory(ctx context.Context, purchaseID pgtype.UUID) ([]byte, error)
 	PurchaseCurrencies(ctx context.Context) ([]byte, error)
 	PurchaseProductOptions(ctx context.Context, search string) ([]byte, error)
 	PurchaseRates(ctx context.Context, arg PurchaseRatesParams) ([]byte, error)

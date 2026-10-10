@@ -33,8 +33,13 @@ UPDATE app.purchases SET status='POSTED',posted_at=clock_timestamp() WHERE id=$1
 -- name: GetPurchaseDocument :one
 SELECT app.purchase_document(p,sqlc.arg(costs)::boolean,true)::jsonb FROM app.purchases p WHERE id=sqlc.arg(id);
 -- name: ListPurchaseDocuments :one
-WITH filtered AS (SELECT p.* FROM app.purchases p WHERE (sqlc.arg(search)::text='' OR strpos(lower(p.purchase_number||' '||COALESCE(p.supplier_invoice_number,'')),lower(sqlc.arg(search)))>0 OR EXISTS(SELECT 1 FROM app.suppliers s WHERE s.id=p.supplier_id AND strpos(lower(s.name),lower(sqlc.arg(search)))>0)) AND (sqlc.arg(currency)::text='' OR p.currency_code=sqlc.arg(currency)) AND (sqlc.arg(status)::text='' OR p.status=sqlc.arg(status))),
-page AS (SELECT id FROM filtered ORDER BY purchased_at DESC,id LIMIT sqlc.arg(page_size)::int OFFSET sqlc.arg(page_offset)::int)
-SELECT jsonb_build_object('total',(SELECT count(*) FROM filtered),'purchases',COALESCE((SELECT jsonb_agg(app.purchase_document(p,sqlc.arg(costs)::boolean,false) ORDER BY p.purchased_at DESC,p.id) FROM app.purchases p JOIN page f USING(id)),'[]'::jsonb))::jsonb;
+WITH filtered AS (SELECT p.id,(d->>'purchased_at')::timestamptz AS purchased_at FROM app.purchases p CROSS JOIN LATERAL (SELECT app.purchase_record(p.id) d) current WHERE (sqlc.arg(search)::text='' OR strpos(lower(p.purchase_number||' '||COALESCE(d->>'supplier_invoice_number','')),lower(sqlc.arg(search)))>0 OR EXISTS(SELECT 1 FROM app.suppliers s WHERE s.id=(d->>'supplier_id')::uuid AND strpos(lower(s.name),lower(sqlc.arg(search)))>0)) AND (sqlc.arg(currency)::text='' OR d->>'currency_code'=sqlc.arg(currency)) AND (sqlc.arg(status)::text='' OR p.status=sqlc.arg(status))),
+page AS (SELECT * FROM filtered ORDER BY purchased_at DESC,id LIMIT sqlc.arg(page_size)::int OFFSET sqlc.arg(page_offset)::int)
+SELECT jsonb_build_object('total',(SELECT count(*) FROM filtered),'purchases',COALESCE((SELECT jsonb_agg(app.purchase_document(p,sqlc.arg(costs)::boolean,false) ORDER BY f.purchased_at DESC,p.id) FROM app.purchases p JOIN page f USING(id)),'[]'::jsonb))::jsonb;
 -- name: SupplierPurchaseBalance :one
 SELECT jsonb_build_object('supplier_id',s.id,'total_outstanding_mmk',COALESCE((SELECT sum(outstanding_mmk)::text FROM app.supplier_payables WHERE supplier_id=s.id),'0'),'currencies',COALESCE((SELECT jsonb_agg(to_jsonb(b) ORDER BY currency_code) FROM (SELECT currency_code,sum(outstanding_original)::text AS outstanding_original,sum(outstanding_mmk)::text AS outstanding_mmk,sum(amount_paid_mmk)::text AS amount_paid_mmk,count(*) AS purchase_count FROM app.supplier_payables WHERE supplier_id=s.id GROUP BY currency_code) b),'[]'::jsonb))::jsonb FROM app.suppliers s WHERE s.id=$1;
+
+-- name: CorrectPurchase :one
+SELECT app.correct_purchase(sqlc.arg(purchase_id)::uuid,sqlc.arg(actor)::uuid,sqlc.arg(data)::jsonb)::uuid;
+-- name: PurchaseCorrectionHistory :one
+SELECT coalesce(jsonb_agg(jsonb_build_object('id',r.id,'revision',r.revision::text,'reason',r.reason,'recorded_at',r.recorded_at,'recorded_by',u.display_name,'before',r.before_document,'after',r.after_document) ORDER BY r.revision DESC),'[]'::jsonb)::jsonb FROM app.purchase_corrections r JOIN app.users u ON u.id=r.recorded_by WHERE r.purchase_id=$1;

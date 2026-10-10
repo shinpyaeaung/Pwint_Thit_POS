@@ -18,9 +18,9 @@ SELECT d->>'code',d->>'name',NULLIF(d->>'contact_person',''),NULLIF(d->>'phone',
 -- name: UpdateSupplier :exec
 UPDATE app.suppliers SET code=d->>'code',name=d->>'name',contact_person=NULLIF(d->>'contact_person',''),phone=NULLIF(d->>'phone',''),address=NULLIF(d->>'address',''),country_code=NULLIF(d->>'country_code',''),supplier_type=NULLIF(d->>'supplier_type',''),payment_terms=NULLIF(d->>'payment_terms',''),notes=NULLIF(d->>'notes',''),is_active=(d->>'is_active')::boolean FROM (SELECT sqlc.arg(data)::jsonb d) t WHERE id=sqlc.arg(id);
 -- name: SupplierPurchaseHistory :one
-WITH filtered AS (SELECT * FROM app.purchases WHERE supplier_id=sqlc.arg(supplier_id)),
+WITH filtered AS (SELECT p.*,app.purchase_record(p.id) d FROM app.purchases p WHERE (app.purchase_record(p.id)->>'supplier_id')::uuid=sqlc.arg(supplier_id)),
 page AS (SELECT * FROM filtered ORDER BY purchased_at DESC,id LIMIT sqlc.arg(page_size)::int OFFSET sqlc.arg(page_offset)::int)
 SELECT jsonb_build_object('total',(SELECT count(*) FROM filtered),'can_view_cost',sqlc.arg(view_cost)::boolean,'purchases',COALESCE((SELECT jsonb_agg(
- jsonb_build_object('id',p.id,'purchase_number',p.purchase_number,'supplier_invoice_number',p.supplier_invoice_number,'purchased_at',p.purchased_at,'due_date',p.due_date,'status',p.status,'currency_code',p.currency_code,'item_count',(SELECT count(*) FROM app.purchase_items i WHERE i.purchase_id=p.id))
- || CASE WHEN sqlc.arg(view_cost)::boolean THEN jsonb_build_object('total_original',(SELECT COALESCE(sum(i.total_original),0)::text FROM app.purchase_items i WHERE i.purchase_id=p.id)) ELSE '{}'::jsonb END
+ jsonb_build_object('id',p.id,'purchase_number',p.purchase_number,'supplier_invoice_number',p.d->>'supplier_invoice_number','purchased_at',p.d->>'purchased_at','due_date',p.d->>'due_date','status',p.status,'currency_code',p.d->>'currency_code','item_count',jsonb_array_length(p.d->'items'))
+ || CASE WHEN sqlc.arg(view_cost)::boolean THEN jsonb_build_object('total_original',p.d->>'total_original') ELSE '{}'::jsonb END
  ORDER BY p.purchased_at DESC,p.id) FROM page p),'[]'::jsonb))::jsonb;

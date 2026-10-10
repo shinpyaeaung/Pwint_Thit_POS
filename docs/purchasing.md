@@ -49,3 +49,14 @@ Cost permission is evaluated by the centralized authorization service. Purchase 
 Purchase list supports `q` (purchase/invoice/supplier), `currency`, `status`, `page`, `page_size` (1–100, default 20). Counts and rows use one SQL snapshot. Supplier/product pickers return up to 50 matches and support search. Historical quote selection returns the latest 100 quotes at or before the selected date; selecting an earlier purchase date exposes older history. Currency setup creates codes; it does not mutate currencies or historical quotes.
 
 Payments, receiving, landed costs, returns and reversal entry screens remain separate future vertical slices. This phase reads existing ledger records for balances rather than introducing alternate balance fields.
+
+
+## Completed purchase corrections — October 10
+
+Super Admin can use **Correct purchase** once all original purchased quantities are allocated to received shipments and no active shipment remains unreceived. Staff cannot correct purchases even when granted every configurable permission. Supplier, dates, invoice reference, currency/rate, product lines, packaging conversions, quantities, prices, discounts, tax and notes are editable; the generated business ID is retained. Saving requires a correction reason.
+
+Migration 000038 stores immutable before/after revisions, author, timestamp, request identity and audit writes transactionally. Concurrent retries deduplicate and stale revisions are rejected. Current purchase screens, searches, supplier history and balances use the latest revision. Original purchases, payment amounts/rates, shipments, receipts, stock movements, finalized batch costs and sales remain unchanged. Physical discrepancies require the existing controlled inventory/return workflows.
+
+Purchase and Currency reports record before/after offsets at the correction timestamp; historical supplier balances use the revision effective at the report cutoff. Existing payment allocations remain linked to the purchase, with MMK conversion when the corrected currency differs. Corrected outstanding MMK uses the revised rate; original payment MMK is retained. New payments require the current revision and cannot predate it. Negative debt is displayed as supplier credit, with no additional payment action.
+
+POST /purchases/:id/corrections is backend-enforced Super Admin only. GET /purchases/:id/corrections requires purchase and cost visibility. The UI provides a required reason, review confirmation, current revision banner and expandable full before/after history.

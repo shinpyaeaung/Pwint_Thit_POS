@@ -509,6 +509,19 @@ type AppPurchaseAmount struct {
 	CreatedAt      pgtype.Timestamptz
 }
 
+type AppPurchaseCorrection struct {
+	ID             pgtype.UUID
+	PurchaseID     pgtype.UUID
+	Revision       int64
+	RequestID      pgtype.UUID
+	RequestPayload []byte
+	BeforeDocument []byte
+	AfterDocument  []byte
+	Reason         string
+	RecordedBy     pgtype.UUID
+	RecordedAt     pgtype.Timestamptz
+}
+
 type AppPurchaseItem struct {
 	ID                  pgtype.UUID
 	PurchaseID          pgtype.UUID
@@ -863,7 +876,7 @@ type AppSupplierPayable struct {
 	PurchaseID          pgtype.UUID
 	SupplierID          pgtype.UUID
 	DueDate             pgtype.Date
-	CurrencyCode        string
+	CurrencyCode        interface{}
 	TotalOriginal       pgtype.Numeric
 	TotalMmk            pgtype.Numeric
 	AmountPaidMmk       pgtype.Numeric
