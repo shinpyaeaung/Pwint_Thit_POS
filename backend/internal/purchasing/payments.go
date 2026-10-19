@@ -82,6 +82,7 @@ func (s *Service) RecordPayment(c *gin.Context) {
 		return
 	}
 	var in struct {
+		AccountID         string `json:"account_id,omitempty"`
 		CorrectionVersion string `json:"correction_version,omitempty"`
 		RequestID         string `json:"request_id"`
 		Amount            string `json:"amount"`

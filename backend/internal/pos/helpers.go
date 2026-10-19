@@ -45,6 +45,10 @@ func dbError(c *gin.Context, err error) {
 	}
 	var pe *pgconn.PgError
 	if errors.As(err, &pe) {
+		if pe.Code == "23514" && strings.HasPrefix(pe.Message, "finance: ") {
+			fail(c, 409, strings.TrimPrefix(pe.Message, "finance: "))
+			return
+		}
 		if pe.Code == "23514" && strings.HasPrefix(pe.Message, "pos: ") {
 			fail(c, 409, strings.TrimPrefix(pe.Message, "pos: "))
 			return

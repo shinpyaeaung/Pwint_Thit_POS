@@ -165,6 +165,33 @@ func (q *Queries) ListReceiving(ctx context.Context, arg ListReceivingParams) ([
 	return column_1, err
 }
 
+const manualStockPost = `-- name: ManualStockPost :one
+SELECT app.manual_stock_post($1::jsonb,$2::uuid)::uuid
+`
+
+type ManualStockPostParams struct {
+	Data  []byte
+	Actor pgtype.UUID
+}
+
+func (q *Queries) ManualStockPost(ctx context.Context, arg ManualStockPostParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, manualStockPost, arg.Data, arg.Actor)
+	var column_1 pgtype.UUID
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const manualStockProducts = `-- name: ManualStockProducts :one
+SELECT coalesce(jsonb_agg(to_jsonb(x)),'[]')::jsonb FROM (SELECT p.id,p.name,p.sku,p.version::text,p.base_unit_code,p.tracks_expiry,(SELECT jsonb_agg(jsonb_build_object('unit_code',u.unit_code,'units_per_pack',u.units_per_pack::text) ORDER BY u.units_per_pack) FROM app.product_units u WHERE u.product_id=p.id) AS packaging FROM app.products p WHERE p.is_active AND p.archived_at IS NULL AND ($1::text='' OR strpos(lower(p.name||' '||p.sku),lower($1))>0) ORDER BY p.name,p.id LIMIT 50) x
+`
+
+func (q *Queries) ManualStockProducts(ctx context.Context, search string) ([]byte, error) {
+	row := q.db.QueryRow(ctx, manualStockProducts, search)
+	var column_1 []byte
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const postReceiving = `-- name: PostReceiving :one
 SELECT app.post_receiving($1::jsonb,$2::uuid)::uuid
 `

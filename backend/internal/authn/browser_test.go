@@ -35,6 +35,10 @@ import (
 )
 
 func TestBrowserIntegration(t *testing.T) {
+	t.Run("existing", func(t *testing.T) { runBrowserIntegration(t, false) })
+	t.Run("accounts", func(t *testing.T) { runBrowserIntegration(t, true) })
+}
+func runBrowserIntegration(t *testing.T, accountSuite bool) {
 	if os.Getenv("RUN_BROWSER_TESTS") != "1" {
 		t.Skip("run make test-e2e for isolated browser integration")
 	}
@@ -117,7 +121,13 @@ func TestBrowserIntegration(t *testing.T) {
 	if !ready {
 		t.Fatal("test frontend did not start")
 	}
-	tests := exec.CommandContext(ctx, "pnpm", "--dir", "../../../frontend", "run", "test:e2e")
+	args := []string{"--dir", "../../../frontend", "run", "test:e2e"}
+	if accountSuite {
+		args = append(args, "--grep", "manual stock and accounts", "--output", "test-results/accounts")
+	} else {
+		args = append(args, "--grep-invert", "manual stock and accounts", "--output", "test-results/existing")
+	}
+	tests := exec.CommandContext(ctx, "pnpm", args...)
 	tests.Env = append(os.Environ(), "E2E_BASE_URL="+origin, "E2E_USERNAME=browser-owner", "E2E_STAFF_USERNAME=browser-staff", "E2E_PASSWORD="+secret)
 	tests.Stdout = os.Stdout
 	tests.Stderr = os.Stderr

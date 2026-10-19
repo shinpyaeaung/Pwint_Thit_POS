@@ -11,6 +11,8 @@ import (
 )
 
 type Querier interface {
+	AccountEntryPost(ctx context.Context, arg AccountEntryPostParams) (pgtype.UUID, error)
+	AccountHistory(ctx context.Context, arg AccountHistoryParams) ([]byte, error)
 	AddSupplierPaymentMethod(ctx context.Context, arg AddSupplierPaymentMethodParams) error
 	AdjustInventory(ctx context.Context, arg AdjustInventoryParams) (pgtype.UUID, error)
 	ArchiveProduct(ctx context.Context, id pgtype.UUID) error
@@ -102,7 +104,12 @@ type Querier interface {
 	LockShipmentPurchaseItem(ctx context.Context, id pgtype.UUID) (LockShipmentPurchaseItemRow, error)
 	LockShipmentWarehouse(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error)
 	LockSupplier(ctx context.Context, id pgtype.UUID) (LockSupplierRow, error)
+	ManualStockPost(ctx context.Context, arg ManualStockPostParams) (pgtype.UUID, error)
+	ManualStockProducts(ctx context.Context, search string) ([]byte, error)
 	MarkLogin(ctx context.Context, id pgtype.UUID) error
+	MoneyAccountCreate(ctx context.Context, arg MoneyAccountCreateParams) (pgtype.UUID, error)
+	MoneyAccountOptions(ctx context.Context) ([]byte, error)
+	MoneyAccounts(ctx context.Context) ([]byte, error)
 	POSCheckout(ctx context.Context, arg POSCheckoutParams) ([]byte, error)
 	POSCreateCustomer(ctx context.Context, arg POSCreateCustomerParams) (pgtype.UUID, error)
 	POSCustomers(ctx context.Context, search string) ([]byte, error)

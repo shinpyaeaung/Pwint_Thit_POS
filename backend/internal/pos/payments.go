@@ -60,6 +60,7 @@ func (s *Service) TransportHistory(c *gin.Context) {
 }
 func (s *Service) TransportPay(c *gin.Context) {
 	var in struct {
+		AccountID string `json:"account_id,omitempty"`
 		Request   string `json:"request_id"`
 		Target    string `json:"target_id"`
 		Kind      string `json:"kind"`

@@ -44,6 +44,16 @@ export const guideSections = [
     'Use Returns & refunds to select the original sale, return quantities and their disposition: sellable, damaged or discarded. Refunds need the required approval. Exchanges link the original return to a replacement sale.',
     'Supplier returns preserve the original purchase currency and rate. Completed records are corrected with controlled returns, reversals or offsets; they are not permanently deleted.',
   ] },
+  { id: 'manual-stock', title: 'Add existing stock without a purchase', href: '/inventory', link: 'Open Inventory', paragraphs: [
+    'Super Admin can choose Add existing stock, select or create a warehouse, choose a product and packaging, and enter quantity, known actual cost per individual unit, retail/wholesale prices, received date, expiry and a reason. Enter zero explicitly for free stock. Create the product first in Products.',
+    'Posting saves the batch, stock movement, warehouse prices and audit together. Package prices are calculated from the individual-unit prices. No supplier purchase or debt is created. Staff cannot add stock this way or bypass the rule with a positive stock adjustment.',
+  ] },
+  { id: 'accounts', title: 'Track bank/cash balances and personal transactions', href: '/accounts', link: 'Open Accounts & balances', paragraphs: [
+    'Create accounts for KBZ, Yoma, Cash or other banks. All balances are in MMK. Enter the observed opening balance using Update actual balance; old payments are not automatically assigned to new accounts.',
+    'Choose an account when collecting or paying money, including POS, supplier and transport payments, customer collections, refunds and paid operating expenses. The original payment and account entry are saved together. Foreign payments use their recorded historical MMK rate.',
+    'Record external deposits with sender, date, amount and account. Personal expenses are separate from business expenses. Neither external deposits nor personal spending affects business profit; use Operating expenses for business costs.',
+    'Daily actual balance updates record a difference, preserving the transaction history. Enter all transactions through the selected time first. Reconciled periods cannot receive backdated entries; use a later correction. Manual entries can be reversed with a reason. Correct business payments in their source workflow.',
+  ] },
   { id: 'expenses', title: '8. Record expenses and understand profit', href: '/expenses', link: 'Open Operating expenses', paragraphs: [
     'Record rent, salaries, utilities and similar business costs in Operating expenses. Choose the category, date, description, amount and payment details. Shipment-related transport and fees belong with the shipment.',
     'Correct an expense using Reverse with a reason. The original entry remains in history, and the negative offset is recorded on the reversal date.',

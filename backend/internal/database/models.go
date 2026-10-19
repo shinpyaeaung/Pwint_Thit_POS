@@ -8,6 +8,23 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type AppAccountEntry struct {
+	ID             pgtype.UUID
+	Sequence       pgtype.Int8
+	AccountID      pgtype.UUID
+	Kind           string
+	AmountMmk      pgtype.Numeric
+	Sender         string
+	Description    string
+	OccurredAt     pgtype.Timestamptz
+	RecordedBy     pgtype.UUID
+	PaymentID      pgtype.UUID
+	ReversesID     pgtype.UUID
+	RequestID      pgtype.UUID
+	RequestPayload []byte
+	CreatedAt      pgtype.Timestamptz
+}
+
 type AppApproval struct {
 	ID                pgtype.UUID
 	PermissionCode    string
@@ -77,25 +94,26 @@ type AppAuditLog struct {
 }
 
 type AppBatch struct {
-	ID                pgtype.UUID
-	ProductID         pgtype.UUID
-	ReceivingItemID   pgtype.UUID
-	BatchNumber       string
-	ReceivedAt        pgtype.Timestamptz
-	ManufacturedOn    pgtype.Date
-	ExpiresOn         pgtype.Date
-	PurchaseCostMmk   pgtype.Numeric
-	TransportCostMmk  pgtype.Numeric
-	OtherCostMmk      pgtype.Numeric
-	SellableQuantity  pgtype.Numeric
-	TotalCostMmk      pgtype.Numeric
-	ActualUnitCostMmk pgtype.Numeric
-	FinalizedAt       pgtype.Timestamptz
-	CreatedAt         pgtype.Timestamptz
-	UpdatedAt         pgtype.Timestamptz
-	TransferItemID    pgtype.UUID
-	SourceBatchID     pgtype.UUID
-	CartonSize        pgtype.Numeric
+	ID                 pgtype.UUID
+	ProductID          pgtype.UUID
+	ReceivingItemID    pgtype.UUID
+	BatchNumber        string
+	ReceivedAt         pgtype.Timestamptz
+	ManufacturedOn     pgtype.Date
+	ExpiresOn          pgtype.Date
+	PurchaseCostMmk    pgtype.Numeric
+	TransportCostMmk   pgtype.Numeric
+	OtherCostMmk       pgtype.Numeric
+	SellableQuantity   pgtype.Numeric
+	TotalCostMmk       pgtype.Numeric
+	ActualUnitCostMmk  pgtype.Numeric
+	FinalizedAt        pgtype.Timestamptz
+	CreatedAt          pgtype.Timestamptz
+	UpdatedAt          pgtype.Timestamptz
+	TransferItemID     pgtype.UUID
+	SourceBatchID      pgtype.UUID
+	CartonSize         pgtype.Numeric
+	ManualStockEntryID pgtype.UUID
 }
 
 type AppBrand struct {
@@ -331,6 +349,16 @@ type AppLoginThrottle struct {
 	UpdatedAt       pgtype.Timestamptz
 }
 
+type AppManualStockEntry struct {
+	ID          pgtype.UUID
+	RequestID   pgtype.UUID
+	WarehouseID pgtype.UUID
+	ProductID   pgtype.UUID
+	Payload     []byte
+	RecordedBy  pgtype.UUID
+	CreatedAt   pgtype.Timestamptz
+}
+
 type AppMissingProduct struct {
 	ID               pgtype.UUID
 	ProductID        pgtype.UUID
@@ -346,6 +374,17 @@ type AppMissingProduct struct {
 	CreatedAt        pgtype.Timestamptz
 	UpdatedAt        pgtype.Timestamptz
 	RecordNumber     string
+}
+
+type AppMoneyAccount struct {
+	ID             pgtype.UUID
+	Name           string
+	Bank           string
+	Reference      string
+	CreatedBy      pgtype.UUID
+	RequestID      pgtype.UUID
+	RequestPayload []byte
+	CreatedAt      pgtype.Timestamptz
 }
 
 type AppPayment struct {

@@ -131,6 +131,8 @@ type ReturnLine struct {
 	Bucket      string `json:"bucket"`
 }
 type ReturnInput struct {
+	AccountID string `json:"account_id,omitempty"`
+
 	Quote       string       `json:"quote_hash"`
 	Request     string       `json:"request_id"`
 	Sale        string       `json:"sale_id"`

@@ -162,6 +162,8 @@ func (f Fulfillment) valid() bool {
 }
 
 type Checkout struct {
+	AccountID string `json:"account_id,omitempty"`
+
 	SellOnCredit     *bool        `json:"sell_on_credit,omitempty"`
 	Fulfillment      *Fulfillment `json:"fulfillment,omitempty"`
 	ApproveBelowCost bool         `json:"approve_below_cost"`

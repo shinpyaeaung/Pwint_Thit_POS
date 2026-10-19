@@ -135,6 +135,7 @@ func (s *Service) CustomerPrice(c *gin.Context) {
 }
 func (s *Service) CustomerPayment(c *gin.Context) {
 	var in struct {
+		AccountID string `json:"account_id,omitempty"`
 		Customer  string `json:"customer_id"`
 		Request   string `json:"request_id"`
 		Sale      string `json:"sale_id"`

@@ -37,6 +37,7 @@ export const navigationGroups: { title: string; items: ProtectedLink[] }[] = [
  { href:'/payments',label:'Payment centre',icon:Coins,permission:permissions.paymentsManage },
  ] },
  { title: 'Finance', items: [
+ { href: '/accounts', label: 'Accounts & balances', icon: CircleDollarSign, permission: permissions.accountsView },
  {href:'/business-data',label:'Business data',icon:ClipboardList,permission:permissions.reportsView},
  {href:'/assistant',label:'AI assistant demo',icon:ChartNoAxesCombined,permission:permissions.reportsView},
 

@@ -1,0 +1,57 @@
+import {test,expect} from '@playwright/test'
+import {signIn} from './session'
+test('manual stock and accounts: stock, sale, refund, bank balance and personal separation',async({page})=>{
+ test.setTimeout(120000)
+ await signIn(page,'browser-packaging-owner')
+ const suffix=crypto.randomUUID().slice(0,8),headers={Origin:process.env.E2E_BASE_URL!,'X-Pwint-Thit-Request':'1'}
+ const post=async(path:string,data:unknown,status=201)=>{const r=await page.request.post(`/api/v1${path}`,{headers,data});expect(r.status(),await r.text()).toBe(status);return r.json()}
+ const get=async(path:string)=>{const r=await page.request.get(`/api/v1${path}`);expect(r.status(),await r.text()).toBe(200);return r.json()}
+ const choose=async(label:string,name:string)=>{await page.getByRole('combobox',{name:label,exact:true}).click();await page.getByRole('option',{name,exact:true}).click()}
+ const product=await post('/products',{name:`Opening ${suffix}`,base_unit_code:'PIECE',is_active:true,packaging:[{unit_code:'PIECE',units_per_pack:'1',is_default_purchase:true,is_default_sale:true},{unit_code:'CARTON',units_per_pack:'12'}]})
+ const warehouse=await post('/warehouses',{name:`Opening ${suffix}`,code:`OP-${suffix}`})
+ await page.goto('/inventory');await page.getByRole('button',{name:'Add existing stock',exact:true}).click()
+ await choose('Manual stock warehouse',`Opening ${suffix}`)
+ await page.getByLabel('Find stock product',{exact:true}).fill(suffix)
+ await page.getByRole('combobox',{name:'Manual stock product',exact:true}).click();await page.getByRole('option').filter({hasText:`Opening ${suffix}`}).click()
+ await choose('Manual stock unit','CARTON · 12 PIECE')
+ await page.getByLabel('Stock quantity',{exact:true}).fill('2')
+ await page.getByLabel('Actual cost per PIECE (MMK)',{exact:true}).fill('100')
+ await page.getByLabel('Retail price per PIECE (MMK)',{exact:true}).fill('150')
+ await page.getByLabel('Wholesale price per PIECE (MMK)',{exact:true}).fill('140')
+ await page.getByLabel('Stock entry reason',{exact:true}).fill('Verified opening count')
+ await page.getByRole('button',{name:'Post existing stock',exact:true}).click();await expect(page.getByRole('dialog')).toHaveCount(0)
+ await page.getByRole('searchbox').fill(suffix)
+ await expect(page.getByRole('table')).toContainText('24')
+ await page.goto('/accounts');await page.getByRole('button',{name:'Add account',exact:true}).click()
+ await page.getByLabel('Account name',{exact:true}).fill(`KBZ ${suffix}`);await page.getByLabel('Bank name or Cash',{exact:true}).fill('KBZ')
+ await page.getByRole('button',{name:'Save account',exact:true}).click();await expect(page.getByRole('dialog')).toHaveCount(0)
+ const account=(await get('/accounts')).accounts.find((a:{name:string})=>a.name===`KBZ ${suffix}`)
+ await page.getByRole('button',{name:'Record transaction',exact:true}).click();await choose('Entry account',`KBZ ${suffix}`)
+ await page.getByLabel('Transaction amount (MMK)',{exact:true}).fill('1000')
+ await page.getByLabel('Deposit sender',{exact:true}).fill('Family deposit')
+ await page.getByLabel('Description / reason',{exact:true}).fill(`External ${suffix}`)
+ await page.getByRole('button',{name:'Post account entry',exact:true}).click();await expect(page.getByRole('dialog')).toHaveCount(0)
+ await choose('History account',`KBZ ${suffix}`)
+ await expect(page.getByRole('table')).toContainText('Family deposit')
+ const saleBody={account_id:account.id,request_id:crypto.randomUUID(),warehouse_id:warehouse.id,customer_id:'',pricing_mode:'RETAIL',payment_method:'BANK_TRANSFER',payment_reference:'',tender_mmk:'300',due_date:'',reason:'',quote_hash:'',items:[{product_id:product.id,unit_code:'PIECE',units_per_pack:'1',quantity:'2',unit_price_mmk:'150',discount_mmk:'0'}]}
+ const quote=await post('/pos/quote',saleBody,200)
+ const sale=await post('/pos/checkout',{...saleBody,quote_hash:quote.quote_hash,approve_below_cost:false},201)
+ const source=await get(`/returns/sales/${sale.id}`)
+ const body={account_id:account.id,request_id:crypto.randomUUID(),sale_id:sale.id,purchase_id:'',replacement_sale_id:'',warehouse_id:'',resolution:'REFUND',reason:`Return ${suffix}`,method:'BANK_TRANSFER',reference:'',approve_refund:false,quote_hash:'',items:[{sale_item_batch_id:source.items[0].sale_item_batch_id,quantity:'1',disposition:'SELLABLE',bucket:''}]}
+ const preview=await post('/returns/sales/preview',body,200);await post('/returns/sales',{...body,approve_refund:true,quote_hash:preview.quote_hash},200)
+ await page.goto('/returns');await expect(page.getByRole('table')).toContainText(`Opening ${suffix} · 1 PIECE`)
+ await page.goto('/accounts');await choose('History account',`KBZ ${suffix}`)
+ await page.getByRole('button',{name:'Record transaction',exact:true}).click();await choose('Entry type','Personal expense')
+ await page.getByLabel('Transaction amount (MMK)',{exact:true}).fill('50');await page.getByLabel('Description / reason',{exact:true}).fill(`Personal ${suffix}`)
+ await page.getByRole('button',{name:'Post account entry',exact:true}).click();await expect(page.getByRole('dialog')).toHaveCount(0)
+ expect((await get('/accounts')).accounts.find((a:{id:string})=>a.id===account.id).balance_mmk).toBe('1100.0000')
+ // Manual reconciliation is an explicit dated difference, not a replacement of history.
+ await page.locator('section .panel').filter({has:page.getByText(`KBZ ${suffix}`,{exact:true})}).getByRole('button',{name:'Update actual balance',exact:true}).click()
+ await page.getByLabel('Actual account balance (MMK)',{exact:true}).fill('1110')
+ await page.getByLabel('Description / reason',{exact:true}).fill('Bank observed balance')
+ await page.getByRole('button',{name:'Post account entry',exact:true}).click();await expect(page.getByRole('dialog')).toHaveCount(0)
+ await page.reload();await expect(page.getByRole('table')).toContainText('Balance adjustment')
+ expect((await get('/accounts')).accounts.find((a:{id:string})=>a.id===account.id).balance_mmk).toBe('1110.0000')
+ await page.setViewportSize({width:390,height:844});await expect(page.getByRole('heading',{name:'Accounts & balances',exact:true})).toBeVisible()
+ await page.screenshot({path:`/tmp/pwint-accounts-${test.info().project.name}.png`,fullPage:true})
+})

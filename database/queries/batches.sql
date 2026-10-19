@@ -1,6 +1,6 @@
 -- name: ListBatches :one
 WITH filtered AS (
- SELECT b.*,p.name AS product_name,p.sku,p.base_unit_code,coalesce(r.received_quantity,ti.received_quantity) AS received_quantity,coalesce(r.damaged_quantity,ti.damaged_quantity) AS received_damaged_quantity,coalesce(r.missing_quantity,ti.quantity-ti.received_quantity) AS missing_quantity,
+ SELECT b.*,p.name AS product_name,p.sku,p.base_unit_code,coalesce(r.received_quantity,ti.received_quantity,b.sellable_quantity) AS received_quantity,coalesce(r.damaged_quantity,ti.damaged_quantity,0) AS received_damaged_quantity,coalesce(r.missing_quantity,ti.quantity-ti.received_quantity,0) AS missing_quantity,
  app.expiry_status(b.expires_on,app.business_date()) AS expiry_status,
  coalesce((SELECT sum(i.available_quantity) FROM app.inventory i WHERE i.batch_id=b.id),0) AS available_quantity
  FROM app.batches b JOIN app.products p ON p.id=b.product_id LEFT JOIN app.goods_receiving_items r ON r.id=b.receiving_item_id LEFT JOIN app.stock_transfer_items ti ON ti.id=b.transfer_item_id

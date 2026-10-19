@@ -1,0 +1,254 @@
+package finance_test
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/json"
+	"fmt"
+	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/authn"
+	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/authz"
+	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/database"
+	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/finance"
+	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/httpapi"
+	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/migrate"
+	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/pos"
+	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/purchasing"
+	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/receiving"
+	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/testutil"
+	"io"
+	"log/slog"
+	"net/http/httptest"
+	"os"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+)
+
+func TestManualStockAccountsIntegration(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	ctx := context.Background()
+	conn := testutil.Database(t)
+	if err := migrate.Up(ctx, conn, os.DirFS("../../../database/migrations")); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := pgxpool.ParseConfig(conn.Config().ConnString())
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg.ConnConfig.Database = conn.Config().Database
+	pool, err := pgxpool.NewWithConfig(ctx, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	const owner = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+	const staff = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBA"
+	for i, token := range []string{owner, staff} {
+		role := "SUPER_ADMIN"
+		name := "owner"
+		if i == 1 {
+			role = "STAFF_ADMIN"
+			name = "staff"
+		}
+		h := sha256.Sum256([]byte(token))
+		_, err = conn.Exec(ctx, `WITH u AS (INSERT INTO app.users(id,username,display_name,password_hash,role_code) VALUES(('00000000-0000-0000-0000-'||lpad(($4::int+1)::text,12,'0'))::uuid,$1,$1,'test-only-placeholder-hash',$2) RETURNING id) INSERT INTO app.user_sessions(user_id,token_hash,expires_at) SELECT id,$3,now()+interval '1 hour' FROM u`, name, role, h[:], i)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	q := database.New(pool)
+	a := authz.New(q)
+	r := httpapi.New(q, slog.New(slog.NewJSONHandler(io.Discard, nil)), a, authn.New(pool, authn.Options{AllowedOrigins: []string{"http://app.test"}}))
+	pos.New(pool).Register(r, a)
+	finance.New(pool).Register(r, a)
+	receiving.New(pool).Register(r, a)
+	purchasing.New(pool).Register(r, a)
+	raw := func(method, path string, body any, token string) *httptest.ResponseRecorder {
+		data, _ := json.Marshal(body)
+		req := httptest.NewRequest(method, "/api/v1"+path, strings.NewReader(string(data)))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Origin", "http://app.test")
+		req.Header.Set("X-Pwint-Thit-Request", "1")
+		if token != "" {
+			req.Header.Set("Authorization", "Bearer "+token)
+		}
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		return w
+	}
+	call := func(method, path string, body any, token string, want int) map[string]any {
+		t.Helper()
+		w := raw(method, path, body, token)
+		if w.Code != want {
+			t.Fatalf("%s %s got %d want %d: %s", method, path, w.Code, want, w.Body.String())
+		}
+		v := map[string]any{}
+		if w.Code != 204 {
+			if err := json.Unmarshal(w.Body.Bytes(), &v); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return v
+	}
+	fixture, e := os.ReadFile("../../../database/tests/fixture.sql")
+	if e != nil {
+		t.Fatal(e)
+	}
+	_, err = conn.Exec(ctx, string(fixture[strings.Index(string(fixture), "INSERT INTO app.suppliers"):]))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	call("GET", "/accounts", nil, staff, 403)
+	_, err = conn.Exec(ctx, `INSERT INTO app.user_permissions(user_id,permission_code,granted_by) VALUES('00000000-0000-0000-0000-000000000002','payments.manage','00000000-0000-0000-0000-000000000001')`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	call("GET", "/accounts", nil, staff, 403)
+	if w := raw("GET", "/accounts/options", nil, staff); w.Code != 200 {
+		t.Fatal("payment operators need account choices")
+	}
+	call("POST", "/accounts", map[string]any{}, staff, 403)
+	seq := 1000
+	next := func() string { seq++; return fmt.Sprintf("10000000-0000-0000-0000-%012d", seq) }
+	scalar := func(sql string, args ...any) string {
+		t.Helper()
+		var v string
+		if e := conn.QueryRow(ctx, sql, args...).Scan(&v); e != nil {
+			t.Fatal(e)
+		}
+		return v
+	}
+	entry := map[string]any{"request_id": next(), "product_id": "00000000-0000-0000-0000-000000000020", "warehouse_id": "00000000-0000-0000-0000-000000000012", "unit_code": "CARTON", "quantity": "2", "unit_cost_mmk": "100.125", "retail_price_mmk": "150", "wholesale_price_mmk": "140", "received_at": time.Now().Add(-time.Hour).Format(time.RFC3339), "expires_on": "", "reason": "Opening count"}
+	entry["version"] = scalar("SELECT version::text FROM app.products WHERE id=$1", entry["product_id"])
+	call("POST", "/inventory/manual-stock", entry, staff, 403)
+	first := call("POST", "/inventory/manual-stock", entry, owner, 201)
+	repeat := call("POST", "/inventory/manual-stock", entry, owner, 201)
+	if first["id"] != repeat["id"] {
+		t.Fatal("manual retry duplicated")
+	}
+	if v := scalar("SELECT i.available_quantity::text FROM app.inventory i JOIN app.batches b ON b.id=i.batch_id WHERE b.manual_stock_entry_id=$1", first["id"]); v != "24.000000" {
+		t.Fatal(v)
+	}
+	if v := scalar("SELECT actual_unit_cost_mmk::text FROM app.batches WHERE manual_stock_entry_id=$1", first["id"]); v != "100.12500000" {
+		t.Fatal(v)
+	}
+	if v := scalar("SELECT retail_price_mmk::text FROM app.warehouse_prices WHERE product_id=$1 AND unit_code='CARTON'", entry["product_id"]); v != "1800.0000" {
+		t.Fatal(v)
+	}
+	entry["quantity"] = "3"
+	call("POST", "/inventory/manual-stock", entry, owner, 409)
+	_, err = conn.Exec(ctx, `INSERT INTO app.user_permissions(user_id,permission_code,granted_by) SELECT '00000000-0000-0000-0000-000000000002',code,'00000000-0000-0000-0000-000000000001' FROM app.permissions ON CONFLICT DO NOTHING`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	call("POST", "/inventory/manual-stock", entry, staff, 403)
+	account := call("POST", "/accounts", map[string]any{"request_id": next(), "name": "KBZ operating", "bank": "KBZ", "reference": "Test"}, owner, 201)["id"].(string)
+	post := func(kind, amount, date string) map[string]any {
+		return map[string]any{"request_id": next(), "account_id": account, "kind": kind, "amount_mmk": amount, "sender": "External sender", "description": "Test entry", "occurred_at": date, "reverses_id": ""}
+	}
+	yesterday := time.Now().Add(-24 * time.Hour).Format(time.RFC3339)
+	deposit := post("EXTERNAL_DEPOSIT", "1000.1234", yesterday)
+	deposited := call("POST", "/accounts/entries", deposit, owner, 201)
+	call("POST", "/accounts/entries", deposit, owner, 201)
+	balance := func(want string) {
+		t.Helper()
+		if v := scalar("SELECT sum(amount_mmk)::text FROM app.account_entries WHERE account_id=$1", account); v != want {
+			t.Fatalf("balance %s want %s", v, want)
+		}
+	}
+	balance("1000.1234")
+	personal := post("PERSONAL_EXPENSE", "100", time.Now().Add(-23*time.Hour).Format(time.RFC3339))
+	call("POST", "/accounts/entries", personal, owner, 201)
+	balance("900.1234")
+	// Concurrent retries create one ledger row, and independent deposits cannot lose updates.
+	concurrentAccount := call("POST", "/accounts", map[string]any{"request_id": next(), "name": "Yoma concurrent", "bank": "Yoma", "reference": ""}, owner, 201)["id"].(string)
+	concurrent := post("EXTERNAL_DEPOSIT", "10", yesterday)
+	concurrent["account_id"] = concurrentAccount
+	var wg sync.WaitGroup
+	codes := make(chan int, 2)
+	for i := 0; i < 2; i++ {
+		wg.Add(1)
+		go func() { defer wg.Done(); codes <- raw("POST", "/accounts/entries", concurrent, owner).Code }()
+	}
+	wg.Wait()
+	close(codes)
+	for code := range codes {
+		if code != 201 {
+			t.Fatal("concurrent deposit", code)
+		}
+	}
+	if v := scalar("SELECT sum(amount_mmk)::text FROM app.account_entries WHERE account_id=$1", concurrentAccount); v != "10.0000" {
+		t.Fatal(v)
+	}
+
+	reverseDeposit := post("REVERSAL", "0", time.Now().Format(time.RFC3339))
+	reverseDeposit["account_id"] = concurrentAccount
+	reverseDeposit["reverses_id"] = scalar("SELECT id::text FROM app.account_entries WHERE request_id=$1", concurrent["request_id"])
+	call("POST", "/accounts/entries", reverseDeposit, owner, 201)
+	call("POST", "/accounts/entries", reverseDeposit, owner, 201)
+	if v := scalar("SELECT sum(amount_mmk)::text FROM app.account_entries WHERE account_id=$1", concurrentAccount); v != "0.0000" {
+		t.Fatal("reversal retry", v)
+	}
+	_, err = conn.Exec(ctx, `UPDATE app.purchases SET status='POSTED',posted_at=now() WHERE id='00000000-0000-0000-0000-000000000040'`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	supplierPay := map[string]any{"request_id": next(), "correction_version": "0", "amount": "1", "method_code": "CASH", "paid_at": time.Now().Add(time.Hour).Format(time.RFC3339), "reference_number": "", "bank_account": "", "notes": "", "account_id": concurrentAccount}
+	call("POST", "/purchases/00000000-0000-0000-0000-000000000040/payments", supplierPay, owner, 409)
+	// A stable past timestamp later than the fixture purchase avoids a future-dated cash movement.
+	supplierPay["paid_at"] = time.Now().Format(time.RFC3339Nano)
+	call("POST", "/purchases/00000000-0000-0000-0000-000000000040/payments", supplierPay, owner, 200)
+	if v := scalar("SELECT sum(amount_mmk)::text FROM app.account_entries WHERE account_id=$1", concurrentAccount); v != "-25.0000" {
+		t.Fatal("historical INR account conversion", v)
+	}
+	category := scalar("SELECT id::text FROM app.expense_categories LIMIT 1")
+	expense := map[string]any{"request_id": next(), "category_id": category, "description": "Business rent", "incurred_on": time.Now().Add(-time.Hour).Format("2006-01-02"), "amount_mmk": "50", "notes": "", "paid_now": true, "method": "BANK_TRANSFER", "reference": "", "account_id": account}
+	withoutAccount := map[string]any{}
+	for k, v := range expense {
+		withoutAccount[k] = v
+	}
+	withoutAccount["request_id"] = next()
+	delete(withoutAccount, "account_id")
+	call("POST", "/expenses", withoutAccount, owner, 409)
+	if v := scalar("SELECT count(*)::text FROM app.expenses WHERE request_id=$1", withoutAccount["request_id"]); v != "0" {
+		t.Fatal("payment validation did not roll back expense")
+	}
+	saved := call("POST", "/expenses", expense, owner, 201)
+	balance("850.1234")
+	call("POST", "/expenses", expense, owner, 201)
+	balance("850.1234")
+	call("POST", "/expenses/"+saved["id"].(string)+"/reverse", map[string]any{"request_id": next(), "reason": "Correction"}, owner, 201)
+	balance("900.1234")
+	reconcile := post("BALANCE_ADJUSTMENT", "925", time.Now().Format(time.RFC3339))
+	call("POST", "/accounts/entries", reconcile, owner, 201)
+	balance("925.0000")
+	call("POST", "/accounts/entries", post("EXTERNAL_DEPOSIT", "10", yesterday), owner, 409)
+	// Failure in audit must roll back money, requests and stock as one unit.
+	_, err = conn.Exec(ctx, `CREATE FUNCTION app.test_fail_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'test audit failure'; END $$;CREATE TRIGGER test_fail BEFORE INSERT ON app.audit_logs FOR EACH ROW EXECUTE FUNCTION app.test_fail_audit()`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	call("POST", "/accounts/entries", post("BALANCE_ADJUSTMENT", "900", time.Now().Format(time.RFC3339)), owner, 503)
+	entry["request_id"] = next()
+	entry["version"] = scalar("SELECT version::text FROM app.products WHERE id=$1", entry["product_id"])
+	call("POST", "/inventory/manual-stock", entry, owner, 503)
+	balance("925.0000")
+	_, err = conn.Exec(ctx, "DROP TRIGGER test_fail ON app.audit_logs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v := scalar("SELECT count(*)::text FROM app.manual_stock_entries"); v != "1" {
+		t.Fatal("stock audit rollback", v)
+	}
+	if v := scalar("SELECT count(*)::text FROM app.expenses WHERE description='Test entry'"); v != "0" {
+		t.Fatal("personal expense leaked into profit")
+	}
+	if _, err = conn.Exec(ctx, "UPDATE app.account_entries SET amount_mmk=0 WHERE id=$1", deposited["id"]); err == nil {
+		t.Fatal("ledger mutated")
+	}
+	call("GET", "/accounts/history?account_id="+account, nil, owner, 200)
+}

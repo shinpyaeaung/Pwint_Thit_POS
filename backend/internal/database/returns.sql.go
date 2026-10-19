@@ -72,7 +72,7 @@ func (q *Queries) ReturnSaleSource(ctx context.Context, id pgtype.UUID) ([]byte,
 }
 
 const returnsHistory = `-- name: ReturnsHistory :one
-WITH filtered AS(SELECT request_id,kind,created_at,payload->>'reason' AS reason,result FROM app.stock_operations WHERE kind IN('returns.sale','returns.purchase') AND (kind='returns.sale' OR $1::boolean)),page AS(SELECT request_id, kind, created_at, reason, result FROM filtered ORDER BY created_at DESC,request_id LIMIT $3::int OFFSET $2::int)
+WITH filtered AS(SELECT request_id,kind,created_at,payload->>'reason' AS reason,result,coalesce((SELECT jsonb_agg(jsonb_build_object('product_name',p.name,'unit',p.base_unit_code,'quantity',i.quantity::text) ORDER BY p.name) FROM app.sales_return_items i JOIN app.products p ON p.id=i.product_id WHERE i.sales_return_id=(result->>'id')::uuid),(SELECT jsonb_agg(jsonb_build_object('product_name',p.name,'unit',p.base_unit_code,'quantity',i.quantity::text) ORDER BY p.name) FROM app.purchase_return_items i JOIN app.products p ON p.id=i.product_id WHERE i.purchase_return_id=(result->>'id')::uuid),'[]'::jsonb) AS items FROM app.stock_operations WHERE kind IN('returns.sale','returns.purchase') AND (kind='returns.sale' OR $1::boolean)),page AS(SELECT request_id, kind, created_at, reason, result, items FROM filtered ORDER BY created_at DESC,request_id LIMIT $3::int OFFSET $2::int)
 SELECT jsonb_build_object('total',(SELECT count(*) FROM filtered),'returns',coalesce((SELECT jsonb_agg(to_jsonb(page) ORDER BY created_at DESC,request_id) FROM page),'[]'))::jsonb
 `
 

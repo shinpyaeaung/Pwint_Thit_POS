@@ -26,6 +26,7 @@ type Service struct {
 func New(db DB) *Service { return &Service{db: db, q: database.New(db)} }
 func (s *Service) Register(r *gin.Engine, a *authz.Service) {
 	s.a = a
+	s.registerAccounts(r, a)
 	r.GET("/api/v1/dashboard", a.Require(permissions.DashboardView), s.Dashboard)
 	r.GET("/api/v1/expenses/categories", a.Require(permissions.ExpensesManage), s.Categories)
 	r.GET("/api/v1/expenses", a.Require(permissions.ExpensesManage), s.List)
@@ -121,6 +122,7 @@ func (s *Service) write(c *gin.Context, action func(*database.Queries) (any, err
 }
 func (s *Service) Post(c *gin.Context) {
 	var in struct {
+		AccountID   string `json:"account_id,omitempty"`
 		Request     string `json:"request_id"`
 		Category    string `json:"category_id"`
 		Description string `json:"description"`

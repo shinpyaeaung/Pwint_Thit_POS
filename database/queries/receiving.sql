@@ -42,3 +42,8 @@ jsonb_build_object('batch_id',batch_id,'warehouse_id',warehouse_id,'warehouse_na
  FROM documented GROUP BY group_id,group_name,warehouse_id,warehouse_name
 ), page AS (SELECT * FROM grouped ORDER BY group_name,group_id,warehouse_id LIMIT sqlc.arg(page_size)::int OFFSET sqlc.arg(page_offset)::int)
 SELECT jsonb_build_object('total',(SELECT count(*) FROM grouped),'groups',coalesce((SELECT jsonb_agg(to_jsonb(page) ORDER BY group_name,group_id,warehouse_id) FROM page),'[]'::jsonb))::jsonb;
+
+-- name: ManualStockPost :one
+SELECT app.manual_stock_post(sqlc.arg(data)::jsonb,sqlc.arg(actor)::uuid)::uuid;
+-- name: ManualStockProducts :one
+SELECT coalesce(jsonb_agg(to_jsonb(x)),'[]')::jsonb FROM (SELECT p.id,p.name,p.sku,p.version::text,p.base_unit_code,p.tracks_expiry,(SELECT jsonb_agg(jsonb_build_object('unit_code',u.unit_code,'units_per_pack',u.units_per_pack::text) ORDER BY u.units_per_pack) FROM app.product_units u WHERE u.product_id=p.id) AS packaging FROM app.products p WHERE p.is_active AND p.archived_at IS NULL AND (sqlc.arg(search)::text='' OR strpos(lower(p.name||' '||p.sku),lower(sqlc.arg(search)))>0) ORDER BY p.name,p.id LIMIT 50) x;
