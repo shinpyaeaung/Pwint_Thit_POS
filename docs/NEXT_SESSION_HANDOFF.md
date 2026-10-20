@@ -1,5 +1,11 @@
 # Pwint Thit POS 1.2 handoff
 
+## October 20: Finance sidebar cache fix
+
+Safari had cached older HTML separately for `/assistant`, `/expenses` and `/finance/profit`, loading an older bundle without Accounts & balances. Reloading restored the link. Nginx now requires revalidation of `index.html`, including SPA route fallbacks, so subsequent deployments cannot silently reuse stale app shells. Existing previously cached pages need one reload.
+
+Added browser regression coverage for clicking all four Finance destinations and retaining the Finance links and sidebar position. `make check` and all 36 real-stack Chromium/WebKit cases passed. Live nginx syntax and all four Finance route cache headers were verified. Deployed only the nginx configuration over the existing frontend image to preserve unrelated uncommitted UI work; database and business records were untouched.
+
 ## Current scope and baseline
 
 The user supplied the v1.2 redesign scope: one resumable purchase workflow through shipment/transportation/costing/receiving/inventory, optional sections controlled by checkboxes, full Super Admin permissions with explicit accounting/security restrictions, and automatically generated readable business IDs. This scope has been implemented on top of the verified v1.1 baseline. Do not start another business module without new user scope.

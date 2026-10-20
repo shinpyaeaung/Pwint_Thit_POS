@@ -27,6 +27,15 @@ test('business menu scrolls independently and every destination loads', async ({
   await expect.poll(() => nav.evaluate(element => element.scrollTop)).toBeCloseTo(menuPosition, 0)
   await page.reload()
   await expect.poll(() => nav.evaluate(element => element.scrollTop)).toBeCloseTo(menuPosition, 0)
+  const financeLinks = ['Accounts & balances', 'AI assistant demo', 'Operating expenses', 'Expenses & profit']
+  for (const name of ['AI assistant demo', 'Operating expenses', 'Expenses & profit', 'Accounts & balances']) {
+    await sidebar.getByRole('link', { name, exact: true }).click()
+    await expect(page.locator('main h1')).toBeVisible()
+    for (const financeLink of financeLinks) {
+      await expect(sidebar.getByRole('link', { name: financeLink, exact: true })).toBeInViewport()
+    }
+    await expect.poll(() => nav.evaluate(element => element.scrollTop)).toBeCloseTo(menuPosition, 0)
+  }
   await page.screenshot({ path: `/tmp/pwint-navigation-${testInfo.project.name}-desktop.png`, animations: 'disabled' })
   const links = await sidebar.getByRole('link').evaluateAll(elements => elements.map(element => element.getAttribute('href')!).filter(href => href !== '/'))
   expect(links).toContain('/purchasing-settings')
