@@ -42,6 +42,7 @@ test('business menu scrolls independently and every destination loads', async ({
   for (const href of links) {
     await page.goto(href)
     await expect(page.locator('main h1')).toBeVisible()
+    await expect(sidebar.getByRole('link', { name: 'Accounts & balances', exact: true })).toHaveAttribute('href', '/accounts')
     await expect(page.getByRole('heading', { name: /Page not found|Access restricted|Unable to check your session/ })).toHaveCount(0)
     await expect(page.getByText('Preparing report…', { exact: true })).toHaveCount(0)
   }

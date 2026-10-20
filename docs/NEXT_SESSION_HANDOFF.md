@@ -6,6 +6,8 @@ Safari had cached older HTML separately for `/assistant`, `/expenses` and `/fina
 
 Added browser regression coverage for clicking all four Finance destinations and retaining the Finance links and sidebar position. `make check` and all 36 real-stack Chromium/WebKit cases passed. Live nginx syntax and all four Finance route cache headers were verified. Deployed only the nginx configuration over the existing frontend image to preserve unrelated uncommitted UI work; database and business records were untouched.
 
+Follow-up: the same preexisting Safari cache affected other pages. Refreshed all sidebar destinations and home in the user's Safari session and confirmed Accounts & balances remained present. Verified revalidation headers on all 28 sidebar routes and expanded the browser regression to assert the Accounts link on every destination. Fresh `make check` and all 36 real-stack browser tests passed.
+
 ## Current scope and baseline
 
 The user supplied the v1.2 redesign scope: one resumable purchase workflow through shipment/transportation/costing/receiving/inventory, optional sections controlled by checkboxes, full Super Admin permissions with explicit accounting/security restrictions, and automatically generated readable business IDs. This scope has been implemented on top of the verified v1.1 baseline. Do not start another business module without new user scope.
