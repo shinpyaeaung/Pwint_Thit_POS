@@ -109,6 +109,7 @@ type Querier interface {
 	MarkLogin(ctx context.Context, id pgtype.UUID) error
 	MoneyAccountCreate(ctx context.Context, arg MoneyAccountCreateParams) (pgtype.UUID, error)
 	MoneyAccountOptions(ctx context.Context) ([]byte, error)
+	MoneyAccountUpdate(ctx context.Context, arg MoneyAccountUpdateParams) (pgtype.UUID, error)
 	MoneyAccounts(ctx context.Context) ([]byte, error)
 	POSCheckout(ctx context.Context, arg POSCheckoutParams) ([]byte, error)
 	POSCreateCustomer(ctx context.Context, arg POSCreateCustomerParams) (pgtype.UUID, error)

@@ -8,6 +8,14 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type AppAccountChange struct {
+	RequestID pgtype.UUID
+	AccountID pgtype.UUID
+	ActorID   pgtype.UUID
+	Payload   []byte
+	CreatedAt pgtype.Timestamptz
+}
+
 type AppAccountEntry struct {
 	ID             pgtype.UUID
 	Sequence       pgtype.Int8
@@ -385,6 +393,8 @@ type AppMoneyAccount struct {
 	RequestID      pgtype.UUID
 	RequestPayload []byte
 	CreatedAt      pgtype.Timestamptz
+	IsActive       bool
+	Version        int32
 }
 
 type AppPayment struct {

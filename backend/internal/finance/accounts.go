@@ -6,6 +6,7 @@ import (
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/authz"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/database"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/permissions"
+	"strings"
 	"time"
 )
 
@@ -13,8 +14,34 @@ func (s *Service) registerAccounts(r *gin.Engine, a *authz.Service) {
 	r.GET("/api/v1/accounts/options", a.RequireAny(permissions.PaymentsManage, permissions.AccountsView, permissions.AccountsManage), s.AccountOptions)
 	r.GET("/api/v1/accounts", a.Require(permissions.AccountsView), s.Accounts)
 	r.POST("/api/v1/accounts", a.Require(permissions.AccountsManage), s.CreateAccount)
+	r.PATCH("/api/v1/accounts/:id", a.Require(permissions.AccountsManage), s.UpdateAccount)
 	r.GET("/api/v1/accounts/history", a.Require(permissions.AccountsView), s.AccountHistory)
 	r.POST("/api/v1/accounts/entries", a.Require(permissions.AccountsManage), s.AccountEntry)
+}
+func (s *Service) UpdateAccount(c *gin.Context) {
+	var in struct {
+		Request   string `json:"request_id"`
+		Account   string `json:"account_id"`
+		Version   int    `json:"version"`
+		Name      string `json:"name"`
+		Bank      string `json:"bank"`
+		Reference string `json:"reference"`
+		Active    *bool  `json:"is_active"`
+	}
+	if !decode(c, &in) {
+		return
+	}
+	in.Account = c.Param("id")
+	in.Name = strings.TrimSpace(in.Name)
+	if !id(in.Request) || !id(in.Account) || in.Version < 1 || in.Name == "" || len(in.Name) > 100 || len(in.Bank) > 100 || len(in.Reference) > 200 || in.Active == nil {
+		fail(c, 400, "Enter valid account details and reload the latest version.")
+		return
+	}
+	d, _ := json.Marshal(in)
+	actor, _ := authz.Principal(c)
+	s.write(c, func(q *database.Queries) (any, error) {
+		return q.MoneyAccountUpdate(c.Request.Context(), database.MoneyAccountUpdateParams{Data: d, Actor: actor.ID})
+	})
 }
 func (s *Service) AccountOptions(c *gin.Context) {
 	b, e := s.q.MoneyAccountOptions(c.Request.Context())
@@ -51,7 +78,7 @@ func (s *Service) CreateAccount(c *gin.Context) {
 	if !decode(c, &in) {
 		return
 	}
-	if !id(in.Request) || len(in.Name) > 100 || len(in.Bank) > 100 || len(in.Reference) > 200 {
+	if !id(in.Request) || strings.TrimSpace(in.Name) == "" || len(in.Name) > 100 || len(in.Bank) > 100 || len(in.Reference) > 200 {
 		fail(c, 400, "Enter valid account details.")
 		return
 	}

@@ -77,7 +77,7 @@ func (q *Queries) MoneyAccountCreate(ctx context.Context, arg MoneyAccountCreate
 }
 
 const moneyAccountOptions = `-- name: MoneyAccountOptions :one
-SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'name',name,'bank',bank) ORDER BY name),'[]')::jsonb FROM app.money_accounts
+SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'name',name,'bank',bank) ORDER BY name),'[]')::jsonb FROM app.money_accounts WHERE is_active
 `
 
 func (q *Queries) MoneyAccountOptions(ctx context.Context) ([]byte, error) {
@@ -87,9 +87,25 @@ func (q *Queries) MoneyAccountOptions(ctx context.Context) ([]byte, error) {
 	return column_1, err
 }
 
+const moneyAccountUpdate = `-- name: MoneyAccountUpdate :one
+SELECT app.account_update($1::jsonb,$2::uuid)::uuid
+`
+
+type MoneyAccountUpdateParams struct {
+	Data  []byte
+	Actor pgtype.UUID
+}
+
+func (q *Queries) MoneyAccountUpdate(ctx context.Context, arg MoneyAccountUpdateParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, moneyAccountUpdate, arg.Data, arg.Actor)
+	var column_1 pgtype.UUID
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const moneyAccounts = `-- name: MoneyAccounts :one
-WITH accounts AS(SELECT a.id,a.name,a.bank,a.reference,coalesce(sum(e.amount_mmk),0) AS balance FROM app.money_accounts a LEFT JOIN app.account_entries e ON e.account_id=a.id GROUP BY a.id)
-SELECT jsonb_build_object('total_mmk',coalesce((SELECT sum(balance) FROM accounts),0)::text,'accounts',coalesce((SELECT jsonb_agg(jsonb_build_object('id',id,'name',name,'bank',bank,'reference',reference,'balance_mmk',balance::text) ORDER BY name) FROM accounts),'[]'))::jsonb
+WITH accounts AS(SELECT a.id,a.name,a.bank,a.reference,a.is_active,a.version,coalesce(sum(e.amount_mmk),0) AS balance FROM app.money_accounts a LEFT JOIN app.account_entries e ON e.account_id=a.id GROUP BY a.id)
+SELECT jsonb_build_object('total_mmk',coalesce((SELECT sum(balance) FROM accounts),0)::text,'accounts',coalesce((SELECT jsonb_agg(jsonb_build_object('id',id,'name',name,'bank',bank,'reference',reference,'is_active',is_active,'version',version,'balance_mmk',balance::text) ORDER BY is_active DESC,name) FROM accounts),'[]'))::jsonb
 `
 
 func (q *Queries) MoneyAccounts(ctx context.Context) ([]byte, error) {

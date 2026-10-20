@@ -1,5 +1,13 @@
 # Pwint Thit POS 1.2 handoff
 
+## October 20: account management and transaction date/time
+
+Accounts now has Manage account for name/bank/reference edits and Active account for archive/restore. Archival replaces destructive deletion, preserves balances/history in the screen and total, and excludes accounts from new-payment options. New manual/payment entries into archived accounts are rejected; source-linked expense reversals still correct their original account. Migration 000041 adds metadata versions, immutable retry records, identity/deletion guards and the active-account entry guard. PATCH requires accounts.manage; edits, audit and retry records are atomic, and stale versions cannot overwrite newer edits.
+
+Manual transaction forms use separate Myanmar date and time fields with seconds and explicit UTC+06:30 serialization, required values and an active-account default. Existing future-date and reconciliation restrictions remain unchanged.
+
+Verified `make check`, PostgreSQL integration and all 36 real-stack Chrome/Safari browser tests. Regressions cover chosen date/time persistence, metadata editing, archive/restore, permission denial, request retries, stale/concurrent updates, audit rollback, archived payment rejection and source reversals. Migration and deployment succeeded; all services are healthy. Live Safari shows Manage account and the new date/time controls. Deployment used isolated source to exclude unrelated uncommitted visual changes; no real ledger data was modified during verification.
+
 ## October 20: Finance sidebar cache fix
 
 Safari had cached older HTML separately for `/assistant`, `/expenses` and `/finance/profit`, loading an older bundle without Accounts & balances. Reloading restored the link. Nginx now requires revalidation of `index.html`, including SPA route fallbacks, so subsequent deployments cannot silently reuse stale app shells. Existing previously cached pages need one reload.

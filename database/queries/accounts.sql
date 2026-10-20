@@ -1,12 +1,14 @@
 -- name: MoneyAccountCreate :one
 SELECT app.account_create(sqlc.arg(data)::jsonb,sqlc.arg(actor)::uuid)::uuid;
+-- name: MoneyAccountUpdate :one
+SELECT app.account_update(sqlc.arg(data)::jsonb,sqlc.arg(actor)::uuid)::uuid;
 -- name: AccountEntryPost :one
 SELECT app.account_entry_post(sqlc.arg(data)::jsonb,sqlc.arg(actor)::uuid)::uuid;
 -- name: MoneyAccountOptions :one
-SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'name',name,'bank',bank) ORDER BY name),'[]')::jsonb FROM app.money_accounts;
+SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'name',name,'bank',bank) ORDER BY name),'[]')::jsonb FROM app.money_accounts WHERE is_active;
 -- name: MoneyAccounts :one
-WITH accounts AS(SELECT a.id,a.name,a.bank,a.reference,coalesce(sum(e.amount_mmk),0) AS balance FROM app.money_accounts a LEFT JOIN app.account_entries e ON e.account_id=a.id GROUP BY a.id)
-SELECT jsonb_build_object('total_mmk',coalesce((SELECT sum(balance) FROM accounts),0)::text,'accounts',coalesce((SELECT jsonb_agg(jsonb_build_object('id',id,'name',name,'bank',bank,'reference',reference,'balance_mmk',balance::text) ORDER BY name) FROM accounts),'[]'))::jsonb;
+WITH accounts AS(SELECT a.id,a.name,a.bank,a.reference,a.is_active,a.version,coalesce(sum(e.amount_mmk),0) AS balance FROM app.money_accounts a LEFT JOIN app.account_entries e ON e.account_id=a.id GROUP BY a.id)
+SELECT jsonb_build_object('total_mmk',coalesce((SELECT sum(balance) FROM accounts),0)::text,'accounts',coalesce((SELECT jsonb_agg(jsonb_build_object('id',id,'name',name,'bank',bank,'reference',reference,'is_active',is_active,'version',version,'balance_mmk',balance::text) ORDER BY is_active DESC,name) FROM accounts),'[]'))::jsonb;
 -- name: AccountHistory :one
 WITH running AS(SELECT e.*,a.name AS account_name,u.display_name AS recorded_by_name,p.currency_code,p.amount_original::text AS original_amount,
  sum(e.amount_mmk) OVER(PARTITION BY e.account_id ORDER BY e.occurred_at,e.sequence ROWS UNBOUNDED PRECEDING)::text AS balance_mmk,

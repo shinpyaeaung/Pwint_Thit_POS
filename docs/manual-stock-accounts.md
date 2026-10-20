@@ -18,9 +18,13 @@ Accounts & balances supports named banks such as KBZ and Yoma and cash accounts.
 
 Create an account, then use Update actual balance to record its opening balance. Account creation alone starts at zero. Existing payments are not silently assigned to new accounts or retroactively counted; enter the observed opening balance at the start of account tracking.
 
+Use **Manage account** on a card to edit its name, bank and reference. Uncheck **Active account** and save to archive; check it again to restore. Archiving replaces destructive deletion: the card, balance and history remain available, but the account is removed from new-payment choices and cannot receive new manual entries. Source-linked business-expense reversals still return funds to the original account. Total account balance includes archived accounts, so archiving never hides money. Metadata changes are version-checked, retry-safe and audited atomically; original account identity and transaction rows cannot be deleted.
+
 Once an account exists, new paid transactions require a selected account: POS, customer collections, supplier payments, cargo/additional-cost payments, refunds and paid business expenses. Expense reversals automatically restore the original account. Legacy payments with no assigned account remain unassigned on reversal. Installations without configured accounts retain their previous payment flow until accounts are set up.
 
 External deposits record sender, date/time, amount, account and description. Personal expenses are separate outflows. Neither creates sales revenue or business operating expenses. Business expenses remain in Operating expenses; paid entries debit the selected account, while unpaid expenses still affect profit but do not move cash. Account payment rows are cash movements, not a second revenue/expense calculation.
+
+Transaction entry has separate **Transaction date (Myanmar)** and **Transaction time (Myanmar)** controls, including seconds. Both are interpreted in UTC+06:30 regardless of the device timezone. Date, time and reason are required; future timestamps and entries inside reconciled periods remain rejected by the server.
 
 Daily balance updates record the difference between the observed actual balance and the ledger balance at the selected Myanmar timestamp. They preserve all earlier rows and do not affect profit. Enter all transactions through that time before reconciling. New entries cannot be backdated into a reconciled period; record corrections after the latest balance observation. A later reconciliation can record an additional difference. Transaction histories show signed income/outflow and per-account running balances, with account, type and Myanmar date filters. History filters do not alter current-balance cards.
 

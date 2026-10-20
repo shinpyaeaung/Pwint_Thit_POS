@@ -112,6 +112,7 @@ func TestManualStockAccountsIntegration(t *testing.T) {
 		t.Fatal("payment operators need account choices")
 	}
 	call("POST", "/accounts", map[string]any{}, staff, 403)
+	call("PATCH", "/accounts/00000000-0000-0000-0000-000000000001", map[string]any{}, staff, 403)
 	seq := 1000
 	next := func() string { seq++; return fmt.Sprintf("10000000-0000-0000-0000-%012d", seq) }
 	scalar := func(sql string, args ...any) string {
@@ -251,4 +252,68 @@ func TestManualStockAccountsIntegration(t *testing.T) {
 		t.Fatal("ledger mutated")
 	}
 	call("GET", "/accounts/history?account_id="+account, nil, owner, 200)
+	// Metadata edits and archival never rewrite the financial ledger.
+	update := map[string]any{"request_id": next(), "version": 1, "name": "KBZ renamed", "bank": "KBZ updated", "reference": "New reference", "is_active": true}
+	call("PATCH", "/accounts/"+account, update, owner, 201)
+	call("PATCH", "/accounts/"+account, update, owner, 201)
+	balance("925.0000")
+	update["request_id"] = next()
+	call("PATCH", "/accounts/"+account, update, owner, 409)
+	update["version"] = 2
+	update["is_active"] = false
+	call("PATCH", "/accounts/"+account, update, owner, 201)
+	if v := scalar("SELECT version::text FROM app.money_accounts WHERE id=$1", account); v != "3" {
+		t.Fatal("metadata retry or archive version", v)
+	}
+	options := raw("GET", "/accounts/options", nil, owner)
+	if strings.Contains(options.Body.String(), account) {
+		t.Fatal("archived account offered for payment")
+	}
+	call("POST", "/accounts/entries", post("EXTERNAL_DEPOSIT", "10", time.Now().Format(time.RFC3339)), owner, 409)
+	supplierPay["request_id"] = next()
+	supplierPay["account_id"] = account
+	supplierPay["paid_at"] = time.Now().Format(time.RFC3339)
+	call("POST", "/purchases/00000000-0000-0000-0000-000000000040/payments", supplierPay, owner, 409)
+	call("GET", "/accounts/history?account_id="+account, nil, owner, 200)
+	if _, err = conn.Exec(ctx, "DELETE FROM app.money_accounts WHERE id=$1", account); err == nil {
+		t.Fatal("account history can be deleted")
+	}
+	update["request_id"] = next()
+	update["version"] = 3
+	update["is_active"] = true
+	_, err = conn.Exec(ctx, "CREATE TRIGGER test_fail BEFORE INSERT ON app.audit_logs FOR EACH ROW EXECUTE FUNCTION app.test_fail_audit()")
+	if err != nil {
+		t.Fatal(err)
+	}
+	call("PATCH", "/accounts/"+account, update, owner, 503)
+	if v := scalar("SELECT is_active::text FROM app.money_accounts WHERE id=$1", account); v != "false" {
+		t.Fatal("account audit failure did not roll back")
+	}
+	_, err = conn.Exec(ctx, "DROP TRIGGER test_fail ON app.audit_logs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	call("PATCH", "/accounts/"+account, update, owner, 201)
+	balance("925.0000")
+	// Two editors cannot silently overwrite one another.
+	editA := map[string]any{"request_id": next(), "version": 1, "name": "Concurrent A", "bank": "", "reference": "", "is_active": true}
+	editB := map[string]any{"request_id": next(), "version": 1, "name": "Concurrent B", "bank": "", "reference": "", "is_active": true}
+	editCodes := make(chan int, 2)
+	for _, data := range []map[string]any{editA, editB} {
+		go func(d map[string]any) { editCodes <- raw("PATCH", "/accounts/"+concurrentAccount, d, owner).Code }(data)
+	}
+	firstCode, secondCode := <-editCodes, <-editCodes
+	if !((firstCode == 201 && secondCode == 409) || (firstCode == 409 && secondCode == 201)) {
+		t.Fatalf("concurrent metadata updates: %d, %d", firstCode, secondCode)
+	}
+	// Archival must not break source-linked financial corrections.
+	expense["request_id"] = next()
+	expense["account_id"] = concurrentAccount
+	archivedExpense := call("POST", "/expenses", expense, owner, 201)
+	archive := map[string]any{"request_id": next(), "version": 2, "name": "Archived bank", "bank": "", "reference": "", "is_active": false}
+	call("PATCH", "/accounts/"+concurrentAccount, archive, owner, 201)
+	call("POST", "/expenses/"+archivedExpense["id"].(string)+"/reverse", map[string]any{"request_id": next(), "reason": "Correct archived account payment"}, owner, 201)
+	if v := scalar("SELECT sum(amount_mmk)::text FROM app.account_entries WHERE account_id=$1", concurrentAccount); v != "-25.0000" {
+		t.Fatal("archived account source reversal lost balance", v)
+	}
 }
