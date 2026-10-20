@@ -60,7 +60,7 @@ func TestLandedPricingIntegration(t *testing.T) {
 	r := httpapi.New(q, slog.New(slog.NewJSONHandler(io.Discard, nil)), a, authn.New(pool, authn.Options{AllowedOrigins: []string{"http://app.test"}}))
 	pos.New(pool).Register(r, a)
 	raw := func(method, path string, body any, token string) *httptest.ResponseRecorder {
-		d, _ := json.Marshal(body)
+		d, _ := json.Marshal(testutil.WithPaymentAccount(path, body))
 		req := httptest.NewRequest(method, "/api/v1"+path, strings.NewReader(string(d)))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Origin", "http://app.test")

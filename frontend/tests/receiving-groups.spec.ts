@@ -1,10 +1,11 @@
+import { paymentBody } from './session'
 import {test,expect} from '@playwright/test'
 import {signIn} from './session'
 test('warehouse filters and optional stock/brand groups preserve variant quantities and prices',async({page})=>{
  test.setTimeout(120000)
  await signIn(page,'browser-packaging-owner')
  const suffix=crypto.randomUUID().slice(0,8),headers={Origin:process.env.E2E_BASE_URL!,'X-Pwint-Thit-Request':'1'}
- const post=async(path:string,data:unknown,status=201)=>{const r=await page.request.post(`/api/v1${path}`,{headers,data});expect(r.status(),await r.text()).toBe(status);return r.json()}
+ const post=async(path:string,data:unknown,status=201)=>{const r=await page.request.post(`/api/v1${path}`,{headers,data:paymentBody(path,data)});expect(r.status(),await r.text()).toBe(status);return r.json()}
  const get=async(path:string)=>{const r=await page.request.get(`/api/v1${path}`);expect(r.status()).toBe(200);return r.json()}
  const brand=await post('/catalog/brands',{name:`Variants ${suffix}`,is_active:true})
  const variants=[]

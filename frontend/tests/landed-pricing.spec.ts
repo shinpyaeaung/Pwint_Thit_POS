@@ -1,3 +1,4 @@
+import { paymentBody } from './session'
 import { test, expect } from '@playwright/test'
 import { signIn } from './session'
 test('warehouse prices use finalized landed cost and save linked bottle/carton prices',async({page})=>{
@@ -5,7 +6,7 @@ test('warehouse prices use finalized landed cost and save linked bottle/carton p
  page.setDefaultTimeout(10000)
  await signIn(page,'browser-packaging-owner')
  const suffix=crypto.randomUUID().slice(0,8),headers={Origin:process.env.E2E_BASE_URL!,'X-Pwint-Thit-Request':'1'}
- const create=async(path:string,data:unknown,status=201)=>{const r=await page.request.post(`/api/v1${path}`,{headers,data});expect(r.status(),await r.text()).toBe(status);return status===204?null:r.json()}
+ const create=async(path:string,data:unknown,status=201)=>{const r=await page.request.post(`/api/v1${path}`,{headers,data:paymentBody(path,data)});expect(r.status(),await r.text()).toBe(status);return status===204?null:r.json()}
  const product=await create('/products',{name:`Landed bottles ${suffix}`,base_unit_code:'BOTTLE',is_active:true,packaging:[{unit_code:'BOTTLE',units_per_pack:'1',is_default_sale:true,is_default_purchase:false},{unit_code:'CARTON',units_per_pack:'12',is_default_purchase:true,is_default_sale:false}]})
  const supplier=await create('/suppliers',{name:`Landed supplier ${suffix}`,is_active:true})
  const warehouse={...await create('/warehouses',{name:`Home ${suffix}`,code:`HOME-${suffix}`}),name:`Home ${suffix}`}

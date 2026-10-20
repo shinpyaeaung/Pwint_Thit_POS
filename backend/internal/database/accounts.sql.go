@@ -28,13 +28,13 @@ func (q *Queries) AccountEntryPost(ctx context.Context, arg AccountEntryPostPara
 }
 
 const accountHistory = `-- name: AccountHistory :one
-WITH running AS(SELECT e.id, e.sequence, e.account_id, e.kind, e.amount_mmk, e.sender, e.description, e.occurred_at, e.recorded_by, e.payment_id, e.reverses_id, e.request_id, e.request_payload, e.created_at,a.name AS account_name,u.display_name AS recorded_by_name,p.currency_code,p.amount_original::text AS original_amount,
+WITH running AS(SELECT e.id, e.sequence, e.account_id, e.kind, e.amount_mmk, e.sender, e.description, e.occurred_at, e.recorded_by, e.payment_id, e.reverses_id, e.request_id, e.request_payload, e.created_at, e.creditor_id, e.payer, e.payee, e.method, e.reference,a.name AS account_name,u.display_name AS recorded_by_name,p.method AS p_method,p.reference_number AS p_reference,p.currency_code,p.amount_original::text AS original_amount,
  sum(e.amount_mmk) OVER(PARTITION BY e.account_id ORDER BY e.occurred_at,e.sequence ROWS UNBOUNDED PRECEDING)::text AS balance_mmk,
  EXISTS(SELECT 1 FROM app.account_entries r WHERE r.reverses_id=e.id) AS reversed
  FROM app.account_entries e JOIN app.money_accounts a ON a.id=e.account_id JOIN app.users u ON u.id=e.recorded_by LEFT JOIN app.payments p ON p.id=e.payment_id),
- filtered AS(SELECT id, sequence, account_id, kind, amount_mmk, sender, description, occurred_at, recorded_by, payment_id, reverses_id, request_id, request_payload, created_at, account_name, recorded_by_name, currency_code, original_amount, balance_mmk, reversed FROM running WHERE ($1::text='' OR account_id::text=$1) AND ($2::text='' OR kind=$2) AND ($3::text='' OR occurred_at>=$3::date::timestamp AT TIME ZONE 'Asia/Yangon') AND ($4::text='' OR occurred_at<($4::date+1)::timestamp AT TIME ZONE 'Asia/Yangon')),
- page AS(SELECT id, sequence, account_id, kind, amount_mmk, sender, description, occurred_at, recorded_by, payment_id, reverses_id, request_id, request_payload, created_at, account_name, recorded_by_name, currency_code, original_amount, balance_mmk, reversed FROM filtered ORDER BY occurred_at DESC,sequence DESC LIMIT $6::int OFFSET $5::int)
-SELECT jsonb_build_object('total',(SELECT count(*) FROM filtered),'entries',coalesce((SELECT jsonb_agg(jsonb_build_object('id',id,'account_id',account_id,'account_name',account_name,'kind',kind,'amount_mmk',amount_mmk::text,'balance_mmk',balance_mmk,'sender',sender,'description',description,'occurred_at',occurred_at,'recorded_by',recorded_by_name,'reversed',reversed,'payment_id',payment_id,'currency_code',currency_code,'original_amount',original_amount) ORDER BY occurred_at DESC,sequence DESC) FROM page),'[]'))::jsonb
+ filtered AS(SELECT id, sequence, account_id, kind, amount_mmk, sender, description, occurred_at, recorded_by, payment_id, reverses_id, request_id, request_payload, created_at, creditor_id, payer, payee, method, reference, account_name, recorded_by_name, p_method, p_reference, currency_code, original_amount, balance_mmk, reversed FROM running WHERE ($1::text='' OR account_id::text=$1) AND ($2::text='' OR kind=$2) AND ($3::text='' OR occurred_at>=$3::date::timestamp AT TIME ZONE 'Asia/Yangon') AND ($4::text='' OR occurred_at<($4::date+1)::timestamp AT TIME ZONE 'Asia/Yangon')),
+ page AS(SELECT id, sequence, account_id, kind, amount_mmk, sender, description, occurred_at, recorded_by, payment_id, reverses_id, request_id, request_payload, created_at, creditor_id, payer, payee, method, reference, account_name, recorded_by_name, p_method, p_reference, currency_code, original_amount, balance_mmk, reversed FROM filtered ORDER BY occurred_at DESC,sequence DESC LIMIT $6::int OFFSET $5::int)
+SELECT jsonb_build_object('total',(SELECT count(*) FROM filtered),'entries',coalesce((SELECT jsonb_agg(jsonb_build_object('id',id,'account_id',account_id,'account_name',account_name,'kind',kind,'amount_mmk',amount_mmk::text,'balance_mmk',balance_mmk,'sender',sender,'description',description,'occurred_at',occurred_at,'payer',payer,'payee',payee,'method',coalesce(p_method,method),'reference',coalesce(p_reference,reference),'recorded_by',recorded_by_name,'reversed',reversed,'payment_id',payment_id,'currency_code',currency_code,'original_amount',original_amount) ORDER BY occurred_at DESC,sequence DESC) FROM page),'[]'))::jsonb
 `
 
 type AccountHistoryParams struct {
@@ -55,6 +55,106 @@ func (q *Queries) AccountHistory(ctx context.Context, arg AccountHistoryParams) 
 		arg.PageOffset,
 		arg.PageSize,
 	)
+	var column_1 []byte
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const creditorCreate = `-- name: CreditorCreate :one
+SELECT app.creditor_create($1::jsonb,$2::uuid)::uuid
+`
+
+type CreditorCreateParams struct {
+	Data  []byte
+	Actor pgtype.UUID
+}
+
+func (q *Queries) CreditorCreate(ctx context.Context, arg CreditorCreateParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, creditorCreate, arg.Data, arg.Actor)
+	var column_1 pgtype.UUID
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const creditorHistory = `-- name: CreditorHistory :one
+WITH running AS (
+ SELECT e.id, e.sequence, e.account_id, e.kind, e.amount_mmk, e.sender, e.description, e.occurred_at, e.recorded_by, e.payment_id, e.reverses_id, e.request_id, e.request_payload, e.created_at, e.creditor_id, e.payer, e.payee, e.method, e.reference,sum(e.amount_mmk) OVER(ORDER BY e.occurred_at,e.sequence ROWS UNBOUNDED PRECEDING) AS outstanding,p.currency_code,p.amount_original
+ FROM app.account_entries e LEFT JOIN app.payments p ON p.id=e.payment_id WHERE e.creditor_id=$1::uuid
+), page AS (SELECT id, sequence, account_id, kind, amount_mmk, sender, description, occurred_at, recorded_by, payment_id, reverses_id, request_id, request_payload, created_at, creditor_id, payer, payee, method, reference, outstanding, currency_code, amount_original FROM running ORDER BY occurred_at DESC,sequence DESC LIMIT $3::int OFFSET $2::int)
+SELECT jsonb_build_object('total',(SELECT count(*) FROM running),'entries',coalesce((SELECT jsonb_agg(jsonb_build_object(
+ 'id',id,'amount_mmk',amount_mmk::text,'balance_mmk',outstanding::text,'occurred_at',occurred_at,'payer',payer,'payee',payee,
+ 'payment_id',payment_id,'is_repayment',EXISTS(SELECT 1 FROM app.creditor_repayments r WHERE r.payment_id=page.payment_id),'reversed',EXISTS(SELECT 1 FROM app.creditor_repayment_reversals r WHERE r.original_payment_id=page.payment_id),'method',method,'reference',reference,'description',description,'currency_code',currency_code,'original_amount',amount_original::text
+ ) ORDER BY occurred_at DESC,sequence DESC) FROM page),'[]'))::jsonb
+`
+
+type CreditorHistoryParams struct {
+	CreditorID pgtype.UUID
+	PageOffset int32
+	PageSize   int32
+}
+
+func (q *Queries) CreditorHistory(ctx context.Context, arg CreditorHistoryParams) ([]byte, error) {
+	row := q.db.QueryRow(ctx, creditorHistory, arg.CreditorID, arg.PageOffset, arg.PageSize)
+	var column_1 []byte
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const creditorOptions = `-- name: CreditorOptions :one
+SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'name',name) ORDER BY name),'[]')::jsonb FROM app.creditors
+`
+
+func (q *Queries) CreditorOptions(ctx context.Context) ([]byte, error) {
+	row := q.db.QueryRow(ctx, creditorOptions)
+	var column_1 []byte
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const creditorRepay = `-- name: CreditorRepay :one
+SELECT app.creditor_repay($1::jsonb,$2::uuid)::uuid
+`
+
+type CreditorRepayParams struct {
+	Data  []byte
+	Actor pgtype.UUID
+}
+
+func (q *Queries) CreditorRepay(ctx context.Context, arg CreditorRepayParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, creditorRepay, arg.Data, arg.Actor)
+	var column_1 pgtype.UUID
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const creditorRepaymentReverse = `-- name: CreditorRepaymentReverse :one
+SELECT app.creditor_repayment_reverse($1::jsonb,$2::uuid)::uuid
+`
+
+type CreditorRepaymentReverseParams struct {
+	Data  []byte
+	Actor pgtype.UUID
+}
+
+func (q *Queries) CreditorRepaymentReverse(ctx context.Context, arg CreditorRepaymentReverseParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, creditorRepaymentReverse, arg.Data, arg.Actor)
+	var column_1 pgtype.UUID
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const creditors = `-- name: Creditors :one
+SELECT coalesce(jsonb_agg(doc ORDER BY name),'[]')::jsonb FROM (
+ SELECT c.name,jsonb_build_object('id',c.id,'name',c.name,'contact',c.contact,
+ 'funded_mmk',coalesce(sum(e.amount_mmk) FILTER(WHERE r.payment_id IS NULL AND v.payment_id IS NULL),0)::text,
+ 'settled_mmk',coalesce(-sum(e.amount_mmk) FILTER(WHERE r.payment_id IS NOT NULL OR v.payment_id IS NOT NULL),0)::text,
+ 'outstanding_mmk',coalesce(sum(e.amount_mmk),0)::text) doc
+ FROM app.creditors c LEFT JOIN app.account_entries e ON e.creditor_id=c.id LEFT JOIN app.creditor_repayments r ON r.payment_id=e.payment_id LEFT JOIN app.creditor_repayment_reversals v ON v.payment_id=e.payment_id GROUP BY c.id
+) creditors
+`
+
+func (q *Queries) Creditors(ctx context.Context) ([]byte, error) {
+	row := q.db.QueryRow(ctx, creditors)
 	var column_1 []byte
 	err := row.Scan(&column_1)
 	return column_1, err

@@ -31,6 +31,11 @@ type AppAccountEntry struct {
 	RequestID      pgtype.UUID
 	RequestPayload []byte
 	CreatedAt      pgtype.Timestamptz
+	CreditorID     pgtype.UUID
+	Payer          string
+	Payee          string
+	Method         string
+	Reference      string
 }
 
 type AppApproval struct {
@@ -150,6 +155,32 @@ type AppCategory struct {
 	IsActive  bool
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz
+}
+
+type AppCreditor struct {
+	ID             pgtype.UUID
+	Name           string
+	Contact        string
+	RequestID      pgtype.UUID
+	RequestPayload []byte
+	CreatedBy      pgtype.UUID
+	CreatedAt      pgtype.Timestamptz
+}
+
+type AppCreditorRepayment struct {
+	RequestID  pgtype.UUID
+	CreditorID pgtype.UUID
+	PaymentID  pgtype.UUID
+	ActorID    pgtype.UUID
+	Payload    []byte
+}
+
+type AppCreditorRepaymentReversal struct {
+	RequestID         pgtype.UUID
+	OriginalPaymentID pgtype.UUID
+	PaymentID         pgtype.UUID
+	ActorID           pgtype.UUID
+	Payload           []byte
 }
 
 type AppCurrency struct {

@@ -60,7 +60,7 @@ func TestPOSIntegration(t *testing.T) {
 	r := httpapi.New(q, slog.New(slog.NewJSONHandler(io.Discard, nil)), a, authn.New(pool, authn.Options{AllowedOrigins: []string{"http://app.test"}}))
 	pos.New(pool).Register(r, a)
 	raw := func(method, path string, body any, token string) *httptest.ResponseRecorder {
-		data, _ := json.Marshal(body)
+		data, _ := json.Marshal(testutil.WithPaymentAccount(path, body))
 		req := httptest.NewRequest(method, "/api/v1"+path, strings.NewReader(string(data)))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Origin", "http://app.test")
@@ -461,6 +461,18 @@ func TestPOSIntegration(t *testing.T) {
 	if unpaid["payment_status"] != "UNPAID" {
 		t.Fatal("unpaid status", unpaid)
 	}
+	// A credit invoice creates no cash entry until money is collected.
+	var ledgerOK bool
+	if err = conn.QueryRow(ctx, `SELECT NOT EXISTS(SELECT 1 FROM app.account_entries e JOIN app.payment_allocations a ON a.payment_id=e.payment_id WHERE a.sale_id=$1)`, historySale).Scan(&ledgerOK); err != nil || !ledgerOK {
+		t.Fatal("unpaid credit increased cash", err)
+	}
+	assertCollections := func(want string) {
+		t.Helper()
+		var total string
+		if e := conn.QueryRow(ctx, `SELECT coalesce(sum(e.amount_mmk),0)::numeric(20,4)::text FROM app.account_entries e JOIN app.payment_allocations a ON a.payment_id=e.payment_id WHERE a.sale_id=$1 AND e.account_id='00000000-0000-0000-0000-000000000999'`, historySale).Scan(&total); e != nil || total != want {
+			t.Fatal("customer cash collection", total, want, e)
+		}
+	}
 	collection := map[string]any{"request_id": "70000000-0000-0000-0000-000000000001", "sale_id": historySale, "amount_mmk": "300000", "method": "CASH", "reference": "Receipt 1"}
 	call("POST", specialPath+"/payments", collection, staff, 403)
 	beforePayment := snapshot()
@@ -480,6 +492,7 @@ func TestPOSIntegration(t *testing.T) {
 	if history["total_mmk"] != "500000.0000" || history["amount_paid_mmk"] != "300000.0000" || history["outstanding_mmk"] != "200000.0000" || history["payment_status"] != "PARTIALLY_PAID" {
 		t.Fatal("collection balance", history)
 	}
+	assertCollections("300000.0000")
 	collection["amount_mmk"] = "200000" // UUID cannot be reused with edited details.
 	call("POST", specialPath+"/payments", collection, owner, 409)
 	results = make(chan int, 2)
@@ -511,6 +524,7 @@ func TestPOSIntegration(t *testing.T) {
 	if history["outstanding_mmk"] != "0.0000" || history["payment_status"] != "PAID" {
 		t.Fatal("paid ledger", history)
 	}
+	assertCollections("500000.0000")
 	detail := call("GET", specialPath, nil, owner, 200)
 	if detail["outstanding_mmk"] != "0.0000" {
 		t.Fatal("customer balance", detail)

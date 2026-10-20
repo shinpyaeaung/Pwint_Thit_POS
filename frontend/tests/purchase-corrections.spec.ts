@@ -1,10 +1,11 @@
+import { paymentBody } from './session'
 import {test,expect} from '@playwright/test'
 import {signIn,testPassword} from './session'
 test('Super Admin corrects all completed purchase fields with required reason and immutable history',async({page,browser})=>{
  test.setTimeout(120000)
  await signIn(page,'browser-packaging-owner')
  const suffix=crypto.randomUUID().slice(0,8),headers={Origin:process.env.E2E_BASE_URL!,'X-Pwint-Thit-Request':'1'}
- const post=async(path:string,data:unknown,status=201)=>{const r=await page.request.post(`/api/v1${path}`,{headers,data});expect(r.status(),await r.text()).toBe(status);return r.json()}
+ const post=async(path:string,data:unknown,status=201)=>{const r=await page.request.post(`/api/v1${path}`,{headers,data:paymentBody(path,data)});expect(r.status(),await r.text()).toBe(status);return r.json()}
  const get=async(path:string)=>{const r=await page.request.get(`/api/v1${path}`);expect(r.status()).toBe(200);return r.json()}
  const first=await post('/products',{name:`Original ${suffix}`,base_unit_code:'PIECE',is_active:true,packaging:[{unit_code:'PIECE',units_per_pack:'1',is_default_purchase:true,is_default_sale:true},{unit_code:'CARTON',units_per_pack:'12'}]})
  const second=await post('/products',{name:`Corrected ${suffix}`,base_unit_code:'BOTTLE',is_active:true,packaging:[{unit_code:'BOTTLE',units_per_pack:'1',is_default_sale:true},{unit_code:'CARTON',units_per_pack:'12',is_default_purchase:true}]})

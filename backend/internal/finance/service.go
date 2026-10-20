@@ -27,6 +27,7 @@ func New(db DB) *Service { return &Service{db: db, q: database.New(db)} }
 func (s *Service) Register(r *gin.Engine, a *authz.Service) {
 	s.a = a
 	s.registerAccounts(r, a)
+	s.registerCreditors(r, a)
 	r.GET("/api/v1/dashboard", a.Require(permissions.DashboardView), s.Dashboard)
 	r.GET("/api/v1/expenses/categories", a.Require(permissions.ExpensesManage), s.Categories)
 	r.GET("/api/v1/expenses", a.Require(permissions.ExpensesManage), s.List)
@@ -122,6 +123,7 @@ func (s *Service) write(c *gin.Context, action func(*database.Queries) (any, err
 }
 func (s *Service) Post(c *gin.Context) {
 	var in struct {
+		CreditorID  string `json:"creditor_id,omitempty"`
 		AccountID   string `json:"account_id,omitempty"`
 		Request     string `json:"request_id"`
 		Category    string `json:"category_id"`
@@ -152,6 +154,10 @@ func (s *Service) Post(c *gin.Context) {
 			fail(c, 403, "Payment permission is required to record a paid expense.")
 			return
 		}
+	}
+	if (in.AccountID != "" && !id(in.AccountID)) || (in.CreditorID != "" && !id(in.CreditorID)) || (in.AccountID != "" && in.CreditorID != "") {
+		fail(c, 400, "Select one valid account or creditor.")
+		return
 	}
 	d, _ := json.Marshal(in)
 	actor, _ := authz.Principal(c)

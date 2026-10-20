@@ -2,6 +2,12 @@ INSERT INTO app.users(id,username,display_name,password_hash,role_code) VALUES
  ('00000000-0000-0000-0000-000000000001','owner','Owner','test-hash-not-a-real-password','SUPER_ADMIN'),
  ('00000000-0000-0000-0000-000000000002','staff','Staff','test-hash-not-a-real-password','STAFF_ADMIN');
 INSERT INTO app.suppliers(id,code,name) VALUES ('00000000-0000-0000-0000-000000000010','SUP-1','Supplier');
+-- Explicit funded account for payment integration fixtures only.
+INSERT INTO app.money_accounts(id,name,bank,created_by,request_id,request_payload)
+ VALUES('00000000-0000-0000-0000-000000000999','Fixture cash','Cash','00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000999','{}');
+INSERT INTO app.account_entries(account_id,kind,amount_mmk,sender,description,occurred_at,recorded_by)
+ VALUES('00000000-0000-0000-0000-000000000999','EXTERNAL_DEPOSIT',1000000000000,'Fixture funding','Test opening funds','2000-01-01','00000000-0000-0000-0000-000000000001');
+SELECT set_config('app.payment_account','00000000-0000-0000-0000-000000000999',false);
 INSERT INTO app.customers(id,code,name) VALUES ('00000000-0000-0000-0000-000000000011','CUS-1','Customer');
 INSERT INTO app.warehouses(id,code,name) VALUES ('00000000-0000-0000-0000-000000000012','MAIN','Main');
 INSERT INTO app.products(id,sku,name,base_unit_code) VALUES

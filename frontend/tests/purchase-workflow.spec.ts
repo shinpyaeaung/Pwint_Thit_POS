@@ -1,3 +1,4 @@
+import { paymentBody } from './session'
 import {test,expect} from '@playwright/test'
 import {signIn,testPassword} from './session'
 
@@ -6,7 +7,7 @@ test('purchase workspace resumes shipment, costs and receiving with generated ID
  await signIn(page,'browser-workflow-owner')
  const suffix=String(Date.now())
  const headers={Origin:process.env.E2E_BASE_URL!,'X-Pwint-Thit-Request':'1'}
- const post=async(path:string,data:object)=>{const res=await page.request.post(`/api/v1${path}`,{headers,data});expect(res.status(),await res.text()).toBe(201);return res.json()}
+ const post=async(path:string,data:object)=>{const res=await page.request.post(`/api/v1${path}`,{headers,data:paymentBody(path,data)});expect(res.status(),await res.text()).toBe(201);return res.json()}
  const supplier=await post('/suppliers',{name:`Workflow supplier ${suffix}`,is_active:true})
  expect(supplier.code).toMatch(/^SUP-\d{4}-\d{4,}$/)
  const product=await post('/products',{name:`Workflow goods ${suffix}`,base_unit_code:'PIECE',is_active:true,packaging:[{unit_code:'PIECE',units_per_pack:'1',is_default_purchase:true,is_default_sale:true},{unit_code:'PACK',units_per_pack:'2'}]})

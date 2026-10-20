@@ -61,7 +61,7 @@ func TestDistributionIntegration(t *testing.T) {
 	r := httpapi.New(q, slog.New(slog.NewJSONHandler(io.Discard, nil)), a, authn.New(pool, authn.Options{AllowedOrigins: []string{"http://app.test"}}))
 	pos.New(pool).Register(r, a)
 	raw := func(method, path string, body any, token string) *httptest.ResponseRecorder {
-		d, _ := json.Marshal(body)
+		d, _ := json.Marshal(testutil.WithPaymentAccount(path, body))
 		req := httptest.NewRequest(method, "/api/v1"+path, strings.NewReader(string(d)))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Origin", "http://app.test")
@@ -220,6 +220,21 @@ func TestDistributionIntegration(t *testing.T) {
 	}
 	if _, e = conn.Exec(ctx, `UPDATE app.payments SET notes='rewrite' WHERE id=$1`, costPayment["id"]); e == nil {
 		t.Fatal("payment history changed")
+	}
+
+	// Third-party cargo funding settles the provider while creating only a creditor liability.
+	exec(`INSERT INTO app.creditors(id,name,request_id,request_payload,created_by) VALUES('90000000-0000-0000-0000-000000000009','Mother','90000000-0000-0000-0000-000000000009','{}','00000000-0000-0000-0000-000000000001');
+ INSERT INTO app.transportation_stages(id,shipment_id,stage_number,start_location,destination,provider_name,transportation_fee_mmk) VALUES('90000000-0000-0000-0000-000000000010','00000000-0000-0000-0000-000000000050',2,'B','C','Mother-funded cargo',80)`)
+	payment["request_id"] = "90000000-0000-0000-0000-000000000011"
+	payment["target_id"] = "90000000-0000-0000-0000-000000000010"
+	payment["kind"] = "TRANSPORT"
+	payment["amount"] = "80"
+	payment["creditor_id"] = "90000000-0000-0000-0000-000000000009"
+	funded := call("POST", "/transport-payments", payment, owner, 201)
+	call("POST", "/transport-payments", payment, owner, 201)
+	var correct bool
+	if e = conn.QueryRow(ctx, `SELECT count(*)=1 AND bool_and(account_id IS NULL AND creditor_id='90000000-0000-0000-0000-000000000009' AND amount_mmk=80 AND payer='Mother' AND payee='Mother-funded cargo') FROM app.account_entries WHERE payment_id=$1`, funded["id"]).Scan(&correct); e != nil || !correct {
+		t.Fatal("third-party transport changed business cash or duplicated debt", e)
 	}
 
 }

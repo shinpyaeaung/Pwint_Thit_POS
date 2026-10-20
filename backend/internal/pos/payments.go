@@ -60,16 +60,17 @@ func (s *Service) TransportHistory(c *gin.Context) {
 }
 func (s *Service) TransportPay(c *gin.Context) {
 	var in struct {
-		AccountID string `json:"account_id,omitempty"`
-		Request   string `json:"request_id"`
-		Target    string `json:"target_id"`
-		Kind      string `json:"kind"`
-		Amount    string `json:"amount"`
-		Method    string `json:"method_code"`
-		Date      string `json:"paid_at"`
-		Reference string `json:"reference_number"`
-		Bank      string `json:"bank_account"`
-		Notes     string `json:"notes"`
+		CreditorID string `json:"creditor_id,omitempty"`
+		AccountID  string `json:"account_id,omitempty"`
+		Request    string `json:"request_id"`
+		Target     string `json:"target_id"`
+		Kind       string `json:"kind"`
+		Amount     string `json:"amount"`
+		Method     string `json:"method_code"`
+		Date       string `json:"paid_at"`
+		Reference  string `json:"reference_number"`
+		Bank       string `json:"bank_account"`
+		Notes      string `json:"notes"`
 	}
 	if !decode(c, &in) {
 		return
@@ -77,6 +78,10 @@ func (s *Service) TransportPay(c *gin.Context) {
 	_, dateErr := time.Parse(time.RFC3339, in.Date)
 	if !id(in.Request) || !id(in.Target) || (in.Kind != "TRANSPORT" && in.Kind != "ADDITIONAL_COST") || !money.MatchString(in.Amount) || dateErr != nil || len(in.Method) > 40 || len(in.Reference) > 200 || len(in.Bank) > 200 || len(in.Notes) > 4000 {
 		fail(c, 400, "Enter valid payment details.")
+		return
+	}
+	if (in.AccountID != "" && !id(in.AccountID)) || (in.CreditorID != "" && !id(in.CreditorID)) || (in.AccountID != "" && in.CreditorID != "") {
+		fail(c, 400, "Select one valid account or creditor.")
 		return
 	}
 	data, _ := json.Marshal(in)

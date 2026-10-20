@@ -58,6 +58,7 @@ func TestPurchasingIntegration(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	testutil.SeedPaymentAccount(t, conn)
 	q := database.New(pool)
 	a := authz.New(q)
 	r := httpapi.New(q, slog.New(slog.NewJSONHandler(io.Discard, nil)), a, authn.New(pool, authn.Options{AllowedOrigins: []string{"http://app.test"}}))
@@ -65,7 +66,7 @@ func TestPurchasingIntegration(t *testing.T) {
 	shipments.New(pool).Register(r, a)
 	receiving.New(pool).Register(r, a)
 	raw := func(method, path string, body any, token string) *httptest.ResponseRecorder {
-		data, _ := json.Marshal(body)
+		data, _ := json.Marshal(testutil.WithPaymentAccount(path, body))
 		req := httptest.NewRequest(method, "/api/v1"+path, strings.NewReader(string(data)))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Origin", "http://app.test")
@@ -483,7 +484,7 @@ func TestPurchasingIntegration(t *testing.T) {
 		call("POST", "/purchases/"+id+"/payments", payment, owner, 409)
 		payment["correction_version"] = "1"
 		call("POST", "/purchases/"+id+"/payments", payment, owner, 409) // Cannot backdate corrected values.
-		payment["paid_at"] = time.Now().Add(time.Minute).Format(time.RFC3339)
+		payment["paid_at"] = corrected["corrected_at"]
 		call("POST", "/purchases/"+id+"/payments", payment, owner, 200)
 		change["request_id"] = "c2000000-0000-0000-0000-000000000002"
 		call("POST", "/purchases/"+id+"/corrections", body, owner, 409)

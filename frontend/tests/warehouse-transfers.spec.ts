@@ -1,10 +1,11 @@
+import { paymentBody } from './session'
 import { test,expect } from '@playwright/test'
 import { signIn } from './session'
 test('warehouse shipment preserves source cost, adds cargo on receipt and exposes business data and demo',async({page})=>{
  test.setTimeout(120000)
  await signIn(page,'browser-packaging-owner')
  const suffix=crypto.randomUUID().slice(0,8),headers={Origin:process.env.E2E_BASE_URL!,'X-Pwint-Thit-Request':'1'}
- const post=async(path:string,data:unknown,status=201)=>{const r=await page.request.post(`/api/v1${path}`,{headers,data});expect(r.status(),await r.text()).toBe(status);return status===204?null:r.json()}
+ const post=async(path:string,data:unknown,status=201)=>{const r=await page.request.post(`/api/v1${path}`,{headers,data:paymentBody(path,data)});expect(r.status(),await r.text()).toBe(status);return status===204?null:r.json()}
  const get=async(path:string)=>{const r=await page.request.get(`/api/v1${path}`);expect(r.status(),await r.text()).toBe(200);return r.json()}
  const product=await post('/products',{name:`Transfer goods ${suffix}`,base_unit_code:'BOTTLE',is_active:true,packaging:[{unit_code:'BOTTLE',units_per_pack:'1',is_default_purchase:true,is_default_sale:true,retail_price_mmk:'150',wholesale_price_mmk:'150'},{unit_code:'CARTON',units_per_pack:'2'}]})
  const supplier=await post('/suppliers',{name:`Transfer supplier ${suffix}`,is_active:true})

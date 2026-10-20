@@ -82,6 +82,7 @@ func (s *Service) RecordPayment(c *gin.Context) {
 		return
 	}
 	var in struct {
+		CreditorID        string `json:"creditor_id,omitempty"`
 		AccountID         string `json:"account_id,omitempty"`
 		CorrectionVersion string `json:"correction_version,omitempty"`
 		RequestID         string `json:"request_id"`
@@ -99,6 +100,19 @@ func (s *Service) RecordPayment(c *gin.Context) {
 	_, dateErr := time.Parse(time.RFC3339, in.PaidAt)
 	if e != nil || !req.Valid || dateErr != nil || !decimal(in.Amount, 16, 4, true) || len(in.MethodCode) > 40 || len(in.Reference) > 200 || len(in.Bank) > 200 || len(in.Notes) > 4000 {
 		fail(c, 400, "Enter a positive payment amount, valid date, method and request ID. Reference and bank account allow 200 characters; notes allow 4000.")
+		return
+	}
+	for _, fundingID := range []string{in.AccountID, in.CreditorID} {
+		if fundingID != "" {
+			v, err := uuid(fundingID)
+			if err != nil || !v.Valid {
+				fail(c, 400, "Choose a valid account or creditor.")
+				return
+			}
+		}
+	}
+	if in.AccountID != "" && in.CreditorID != "" {
+		fail(c, 400, "Choose an account or third-party funding, not both.")
 		return
 	}
 	data, _ := json.Marshal(in)

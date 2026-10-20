@@ -60,7 +60,7 @@ func TestFinanceIntegration(t *testing.T) {
 	pos.New(pool).Register(r, a)
 	finance.New(pool).Register(r, a)
 	raw := func(method, path string, body any, token string) *httptest.ResponseRecorder {
-		data, _ := json.Marshal(body)
+		data, _ := json.Marshal(testutil.WithPaymentAccount(path, body))
 		req := httptest.NewRequest(method, "/api/v1"+path, strings.NewReader(string(data)))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Origin", "http://app.test")

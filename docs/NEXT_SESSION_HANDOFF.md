@@ -1,5 +1,15 @@
 # Pwint Thit POS 1.2 handoff
 
+## October 20: unified account payments and third-party liabilities
+
+The user requested POS, customer collections, supplier/transport/expense payments and creditor repayments integrated with Accounts & balances. Migration 000042 extends the immutable account ledger to support separate creditor liabilities. New money payments require an explicit business account or eligible third-party creditor; account/creditor row locks prevent concurrent and backdated overspending/overrepayment. Historical entries, exchange rates and existing balances are preserved; legacy unassigned source corrections remain unassigned.
+
+**Money owed to others** is available in Finance and Payment centre. Create creditors, select third-party funding for supplier/transport/paid operating expenses, inspect funding/repayment history, make partial/full repayments from selected accounts, and reverse mistaken repayments with immutable offsets. Customer receivables remain separate. Account history now includes payer/payee, method and reference. See [unified-financial-ledger.md](unified-financial-ledger.md) for operating rules and migration behavior.
+
+Verified `make check`, full PostgreSQL integration and all 38 real-stack Chromium/WebKit tests against isolated release source. Coverage includes concurrent debit rejection, no-account/insufficient-funds rejection, duplicate prevention, audit rollback, historical supplier conversion, third-party cargo funding, partial/full customer collection cash entries, partial/full creditor repayments, funding corrections and repayment reversals. Earlier browser attempts hit canceled dashboard fetches during navigation; the final isolated rerun passed all cases. The isolated copy uses its own dependencies to avoid Vite rejecting font paths outside its root.
+
+Migration 000042 completed successfully and the verified build is deployed at http://localhost:8088; API, frontend and PostgreSQL are healthy. Deployment was built from tracked baseline plus only this feature's changes. Unrelated preexisting visual edits remain in the workspace and must not be included in this feature's commit or deployed accidentally. Tests use disposable databases; no real transactions were created by verification.
+
 ## October 20: account management and transaction date/time
 
 Follow-up: the user requested no time input in Update actual balance. Balance adjustments now show the date only and use the automatically captured form-open time; other manual transactions keep editable date/time. Existing ledger/reconciliation rules remain unchanged. `make check` and all 36 real-stack browser tests passed on rerun after an interrupted run timed out. Only the focused frontend change was built for deployment.

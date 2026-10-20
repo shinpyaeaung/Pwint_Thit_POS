@@ -10,3 +10,9 @@ export async function signIn(page: Page, username = owner, password = testPasswo
   await page.getByRole('button', { name: 'Sign in', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
 }
+
+// Legacy workflow tests explicitly select the funded account seeded in their disposable database.
+export function paymentBody(path:string,data:unknown){
+ const eligible=path==='/pos/quote'||path==='/pos/checkout'||path==='/transport-payments'||path==='/expenses'||/^\/returns\/(sales|purchases)(\/preview)?$/.test(path)||/^\/(customers|purchases)\/[^/]+\/payments$/.test(path)
+ return eligible&&data&&typeof data==='object'&&!('account_id' in data)&&!('creditor_id' in data)?{...data,account_id:'00000000-0000-0000-0000-000000000999'}:data
+}

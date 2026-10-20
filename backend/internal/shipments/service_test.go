@@ -55,6 +55,7 @@ func TestShipmentIntegration(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	testutil.SeedPaymentAccount(t, conn)
 	q := database.New(pool)
 	a := authz.New(q)
 	r := httpapi.New(q, slog.New(slog.NewJSONHandler(io.Discard, nil)), a, authn.New(pool, authn.Options{AllowedOrigins: []string{"http://app.test"}}))

@@ -112,6 +112,9 @@ func TestManualStockAccountsIntegration(t *testing.T) {
 		t.Fatal("payment operators need account choices")
 	}
 	call("POST", "/accounts", map[string]any{}, staff, 403)
+	call("GET", "/creditors", nil, staff, 403)
+	call("POST", "/creditors", map[string]any{}, staff, 403)
+	call("POST", "/creditors/00000000-0000-0000-0000-000000000001/repayments", map[string]any{}, staff, 403)
 	call("PATCH", "/accounts/00000000-0000-0000-0000-000000000001", map[string]any{}, staff, 403)
 	seq := 1000
 	next := func() string { seq++; return fmt.Sprintf("10000000-0000-0000-0000-%012d", seq) }
@@ -200,10 +203,13 @@ func TestManualStockAccountsIntegration(t *testing.T) {
 	}
 	supplierPay := map[string]any{"request_id": next(), "correction_version": "0", "amount": "1", "method_code": "CASH", "paid_at": time.Now().Add(time.Hour).Format(time.RFC3339), "reference_number": "", "bank_account": "", "notes": "", "account_id": concurrentAccount}
 	call("POST", "/purchases/00000000-0000-0000-0000-000000000040/payments", supplierPay, owner, 409)
+	funding := post("EXTERNAL_DEPOSIT", "100", time.Now().Add(-time.Minute).Format(time.RFC3339Nano))
+	funding["account_id"] = concurrentAccount
+	call("POST", "/accounts/entries", funding, owner, 201)
 	// A stable past timestamp later than the fixture purchase avoids a future-dated cash movement.
 	supplierPay["paid_at"] = time.Now().Format(time.RFC3339Nano)
 	call("POST", "/purchases/00000000-0000-0000-0000-000000000040/payments", supplierPay, owner, 200)
-	if v := scalar("SELECT sum(amount_mmk)::text FROM app.account_entries WHERE account_id=$1", concurrentAccount); v != "-25.0000" {
+	if v := scalar("SELECT sum(amount_mmk)::text FROM app.account_entries WHERE account_id=$1", concurrentAccount); v != "75.0000" {
 		t.Fatal("historical INR account conversion", v)
 	}
 	category := scalar("SELECT id::text FROM app.expense_categories LIMIT 1")
@@ -313,7 +319,115 @@ func TestManualStockAccountsIntegration(t *testing.T) {
 	archive := map[string]any{"request_id": next(), "version": 2, "name": "Archived bank", "bank": "", "reference": "", "is_active": false}
 	call("PATCH", "/accounts/"+concurrentAccount, archive, owner, 201)
 	call("POST", "/expenses/"+archivedExpense["id"].(string)+"/reverse", map[string]any{"request_id": next(), "reason": "Correct archived account payment"}, owner, 201)
-	if v := scalar("SELECT sum(amount_mmk)::text FROM app.account_entries WHERE account_id=$1", concurrentAccount); v != "-25.0000" {
+	if v := scalar("SELECT sum(amount_mmk)::text FROM app.account_entries WHERE account_id=$1", concurrentAccount); v != "75.0000" {
 		t.Fatal("archived account source reversal lost balance", v)
 	}
+	t.Run("unified_funding_and_third_party_payables", func(t *testing.T) {
+		creditor := call("POST", "/creditors", map[string]any{"request_id": next(), "name": "Mother", "contact": "Family"}, owner, 201)["id"].(string)
+		empty := call("POST", "/accounts", map[string]any{"request_id": next(), "name": "My Cash", "bank": "Cash", "reference": ""}, owner, 201)["id"].(string)
+		funded := func() string {
+			return scalar("SELECT coalesce(sum(amount_mmk),0)::numeric(20,4)::text FROM app.account_entries WHERE creditor_id=$1", creditor)
+		}
+		cash := func() string {
+			return scalar("SELECT coalesce(sum(amount_mmk),0)::numeric(20,4)::text FROM app.account_entries WHERE account_id=$1", empty)
+		}
+		supplierPay["request_id"] = next()
+		supplierPay["account_id"] = empty
+		supplierPay["paid_at"] = time.Now().Format(time.RFC3339Nano)
+		call("POST", "/purchases/00000000-0000-0000-0000-000000000040/payments", supplierPay, owner, 409)
+		supplierPay["account_id"] = ""
+		supplierPay["creditor_id"] = creditor
+		call("POST", "/purchases/00000000-0000-0000-0000-000000000040/payments", supplierPay, owner, 200)
+		call("POST", "/purchases/00000000-0000-0000-0000-000000000040/payments", supplierPay, owner, 200)
+		if funded() != "25.0000" || cash() != "0.0000" {
+			t.Fatal("supplier third-party funding or duplicate changed wrong balance", funded(), cash())
+		}
+		expense["request_id"] = next()
+		expense["account_id"] = ""
+		expense["creditor_id"] = creditor
+		expense["description"] = "Mother paid business cost"
+		thirdExpense := call("POST", "/expenses", expense, owner, 201)
+		call("POST", "/expenses", expense, owner, 201)
+		if funded() != "75.0000" || cash() != "0.0000" {
+			t.Fatal("expense funding did not create separate debt")
+		}
+		repay := map[string]any{"request_id": next(), "account_id": empty, "amount_mmk": "30", "method": "CASH", "paid_at": scalar(`SELECT to_char(clock_timestamp() AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`), "reference": "Partial repayment", "notes": ""}
+		call("POST", "/creditors/"+creditor+"/repayments", repay, owner, 409)
+		deposit := post("EXTERNAL_DEPOSIT", "100", time.Now().Add(-time.Minute).Format(time.RFC3339Nano))
+		deposit["account_id"] = empty
+		call("POST", "/accounts/entries", deposit, owner, 201)
+		firstRepayment := call("POST", "/creditors/"+creditor+"/repayments", repay, owner, 201)
+		call("POST", "/creditors/"+creditor+"/repayments", repay, owner, 201)
+		if funded() != "45.0000" || cash() != "70.0000" {
+			t.Fatal("repayment was not atomic/deduplicated", funded(), cash())
+		}
+		// Concurrent debit requests cannot spend the same available funds twice.
+		debitA := post("PERSONAL_EXPENSE", "60", time.Now().Format(time.RFC3339Nano))
+		debitA["account_id"] = empty
+		debitB := post("PERSONAL_EXPENSE", "60", time.Now().Format(time.RFC3339Nano))
+		debitB["account_id"] = empty
+		results := make(chan int, 2)
+		for _, d := range []map[string]any{debitA, debitB} {
+			go func(body map[string]any) { results <- raw("POST", "/accounts/entries", body, owner).Code }(d)
+		}
+		x, y := <-results, <-results
+		if !((x == 201 && y == 409) || (x == 409 && y == 201)) || cash() != "10.0000" {
+			t.Fatalf("concurrent overspend: %d %d balance %s", x, y, cash())
+		}
+		// Audit failure rolls back both sides of a repayment and its request identity.
+		_, err = conn.Exec(ctx, "CREATE TRIGGER test_fail BEFORE INSERT ON app.audit_logs FOR EACH ROW EXECUTE FUNCTION app.test_fail_audit()")
+		if err != nil {
+			t.Fatal(err)
+		}
+		repay["request_id"] = next()
+		repay["amount_mmk"] = "5"
+		repay["paid_at"] = scalar(`SELECT to_char(clock_timestamp() AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`)
+		call("POST", "/creditors/"+creditor+"/repayments", repay, owner, 503)
+		if cash() != "10.0000" || funded() != "45.0000" {
+			t.Fatal("repayment audit rollback")
+		}
+		_, err = conn.Exec(ctx, "DROP TRIGGER test_fail ON app.audit_logs")
+		if err != nil {
+			t.Fatal(err)
+		}
+		// A funded expense cannot be reversed past the outstanding third-party debt.
+		call("POST", "/expenses/"+thirdExpense["id"].(string)+"/reverse", map[string]any{"request_id": next(), "reason": "Already partly repaid"}, owner, 409)
+		deposit["request_id"] = next()
+		deposit["occurred_at"] = time.Now().Format(time.RFC3339Nano)
+		call("POST", "/accounts/entries", deposit, owner, 201)
+		repay["request_id"] = next()
+		repay["amount_mmk"] = "45"
+		repay["paid_at"] = scalar(`SELECT to_char(clock_timestamp() AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`)
+		call("POST", "/creditors/"+creditor+"/repayments", repay, owner, 201)
+		if funded() != "0.0000" || cash() != "65.0000" {
+			t.Fatal("full repayment", funded(), cash())
+		}
+		repay["request_id"] = next()
+		repay["amount_mmk"] = "1"
+		call("POST", "/creditors/"+creditor+"/repayments", repay, owner, 409)
+		// Source reversal cancels an unpaid third-party liability without touching business cash.
+		expense["request_id"] = next()
+		fresh := call("POST", "/expenses", expense, owner, 201)
+		call("POST", "/expenses/"+fresh["id"].(string)+"/reverse", map[string]any{"request_id": next(), "reason": "Duplicate expense"}, owner, 201)
+		if funded() != "0.0000" || cash() != "65.0000" {
+			t.Fatal("third-party source reversal")
+		}
+		// Removing every account selection is rejected even on an installation with cash available.
+		expense["request_id"] = next()
+		delete(expense, "account_id")
+		delete(expense, "creditor_id")
+		call("POST", "/expenses", expense, owner, 409)
+
+		reversal := map[string]any{"request_id": next(), "reason": "Repayment entered twice"}
+		path := "/creditors/" + creditor + "/repayments/" + firstRepayment["id"].(string) + "/reverse"
+		call("POST", path, reversal, owner, 201)
+		call("POST", path, reversal, owner, 201)
+		if funded() != "30.0000" || cash() != "95.0000" {
+			t.Fatal("repayment reversal did not restore both ledgers", funded(), cash())
+		}
+		reversal["request_id"] = next()
+		call("POST", path, reversal, owner, 409)
+		call("GET", "/creditors/"+creditor+"/history", nil, owner, 200)
+	})
+
 }
