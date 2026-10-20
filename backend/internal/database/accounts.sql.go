@@ -28,12 +28,12 @@ func (q *Queries) AccountEntryPost(ctx context.Context, arg AccountEntryPostPara
 }
 
 const accountHistory = `-- name: AccountHistory :one
-WITH running AS(SELECT e.id, e.sequence, e.account_id, e.kind, e.amount_mmk, e.sender, e.description, e.occurred_at, e.recorded_by, e.payment_id, e.reverses_id, e.request_id, e.request_payload, e.created_at, e.creditor_id, e.payer, e.payee, e.method, e.reference,a.name AS account_name,u.display_name AS recorded_by_name,p.method AS p_method,p.reference_number AS p_reference,p.currency_code,p.amount_original::text AS original_amount,
+WITH running AS(SELECT e.id, e.sequence, e.account_id, e.kind, e.amount_mmk, e.sender, e.description, e.occurred_at, e.recorded_by, e.payment_id, e.reverses_id, e.request_id, e.request_payload, e.created_at, e.creditor_id, e.payer, e.payee, e.method, e.reference, e.debt_side, e.person_transaction_id,a.name AS account_name,u.display_name AS recorded_by_name,p.method AS p_method,p.reference_number AS p_reference,p.currency_code,p.amount_original::text AS original_amount,
  sum(e.amount_mmk) OVER(PARTITION BY e.account_id ORDER BY e.occurred_at,e.sequence ROWS UNBOUNDED PRECEDING)::text AS balance_mmk,
  EXISTS(SELECT 1 FROM app.account_entries r WHERE r.reverses_id=e.id) AS reversed
  FROM app.account_entries e JOIN app.money_accounts a ON a.id=e.account_id JOIN app.users u ON u.id=e.recorded_by LEFT JOIN app.payments p ON p.id=e.payment_id),
- filtered AS(SELECT id, sequence, account_id, kind, amount_mmk, sender, description, occurred_at, recorded_by, payment_id, reverses_id, request_id, request_payload, created_at, creditor_id, payer, payee, method, reference, account_name, recorded_by_name, p_method, p_reference, currency_code, original_amount, balance_mmk, reversed FROM running WHERE ($1::text='' OR account_id::text=$1) AND ($2::text='' OR kind=$2) AND ($3::text='' OR occurred_at>=$3::date::timestamp AT TIME ZONE 'Asia/Yangon') AND ($4::text='' OR occurred_at<($4::date+1)::timestamp AT TIME ZONE 'Asia/Yangon')),
- page AS(SELECT id, sequence, account_id, kind, amount_mmk, sender, description, occurred_at, recorded_by, payment_id, reverses_id, request_id, request_payload, created_at, creditor_id, payer, payee, method, reference, account_name, recorded_by_name, p_method, p_reference, currency_code, original_amount, balance_mmk, reversed FROM filtered ORDER BY occurred_at DESC,sequence DESC LIMIT $6::int OFFSET $5::int)
+ filtered AS(SELECT id, sequence, account_id, kind, amount_mmk, sender, description, occurred_at, recorded_by, payment_id, reverses_id, request_id, request_payload, created_at, creditor_id, payer, payee, method, reference, debt_side, person_transaction_id, account_name, recorded_by_name, p_method, p_reference, currency_code, original_amount, balance_mmk, reversed FROM running WHERE ($1::text='' OR account_id::text=$1) AND ($2::text='' OR kind=$2) AND ($3::text='' OR occurred_at>=$3::date::timestamp AT TIME ZONE 'Asia/Yangon') AND ($4::text='' OR occurred_at<($4::date+1)::timestamp AT TIME ZONE 'Asia/Yangon')),
+ page AS(SELECT id, sequence, account_id, kind, amount_mmk, sender, description, occurred_at, recorded_by, payment_id, reverses_id, request_id, request_payload, created_at, creditor_id, payer, payee, method, reference, debt_side, person_transaction_id, account_name, recorded_by_name, p_method, p_reference, currency_code, original_amount, balance_mmk, reversed FROM filtered ORDER BY occurred_at DESC,sequence DESC LIMIT $6::int OFFSET $5::int)
 SELECT jsonb_build_object('total',(SELECT count(*) FROM filtered),'entries',coalesce((SELECT jsonb_agg(jsonb_build_object('id',id,'account_id',account_id,'account_name',account_name,'kind',kind,'amount_mmk',amount_mmk::text,'balance_mmk',balance_mmk,'sender',sender,'description',description,'occurred_at',occurred_at,'payer',payer,'payee',payee,'method',coalesce(p_method,method),'reference',coalesce(p_reference,reference),'recorded_by',recorded_by_name,'reversed',reversed,'payment_id',payment_id,'currency_code',currency_code,'original_amount',original_amount) ORDER BY occurred_at DESC,sequence DESC) FROM page),'[]'))::jsonb
 `
 
@@ -78,12 +78,12 @@ func (q *Queries) CreditorCreate(ctx context.Context, arg CreditorCreateParams) 
 
 const creditorHistory = `-- name: CreditorHistory :one
 WITH running AS (
- SELECT e.id, e.sequence, e.account_id, e.kind, e.amount_mmk, e.sender, e.description, e.occurred_at, e.recorded_by, e.payment_id, e.reverses_id, e.request_id, e.request_payload, e.created_at, e.creditor_id, e.payer, e.payee, e.method, e.reference,sum(e.amount_mmk) OVER(ORDER BY e.occurred_at,e.sequence ROWS UNBOUNDED PRECEDING) AS outstanding,p.currency_code,p.amount_original
+ SELECT e.id, e.sequence, e.account_id, e.kind, e.amount_mmk, e.sender, e.description, e.occurred_at, e.recorded_by, e.payment_id, e.reverses_id, e.request_id, e.request_payload, e.created_at, e.creditor_id, e.payer, e.payee, e.method, e.reference, e.debt_side, e.person_transaction_id,sum(e.amount_mmk) OVER(PARTITION BY e.debt_side ORDER BY e.occurred_at,e.sequence ROWS UNBOUNDED PRECEDING) AS outstanding,p.currency_code,p.amount_original
  FROM app.account_entries e LEFT JOIN app.payments p ON p.id=e.payment_id WHERE e.creditor_id=$1::uuid
-), page AS (SELECT id, sequence, account_id, kind, amount_mmk, sender, description, occurred_at, recorded_by, payment_id, reverses_id, request_id, request_payload, created_at, creditor_id, payer, payee, method, reference, outstanding, currency_code, amount_original FROM running ORDER BY occurred_at DESC,sequence DESC LIMIT $3::int OFFSET $2::int)
+), page AS (SELECT id, sequence, account_id, kind, amount_mmk, sender, description, occurred_at, recorded_by, payment_id, reverses_id, request_id, request_payload, created_at, creditor_id, payer, payee, method, reference, debt_side, person_transaction_id, outstanding, currency_code, amount_original FROM running ORDER BY occurred_at DESC,sequence DESC LIMIT $3::int OFFSET $2::int)
 SELECT jsonb_build_object('total',(SELECT count(*) FROM running),'entries',coalesce((SELECT jsonb_agg(jsonb_build_object(
  'id',id,'amount_mmk',amount_mmk::text,'balance_mmk',outstanding::text,'occurred_at',occurred_at,'payer',payer,'payee',payee,
- 'payment_id',payment_id,'is_repayment',EXISTS(SELECT 1 FROM app.creditor_repayments r WHERE r.payment_id=page.payment_id),'reversed',EXISTS(SELECT 1 FROM app.creditor_repayment_reversals r WHERE r.original_payment_id=page.payment_id),'method',method,'reference',reference,'description',description,'currency_code',currency_code,'original_amount',amount_original::text
+ 'cash_amount_mmk',(SELECT a.amount_mmk::text FROM app.account_entries a WHERE a.person_transaction_id=page.person_transaction_id AND a.account_id IS NOT NULL),'person_transaction_id',person_transaction_id,'person_kind',(SELECT kind FROM app.person_transactions t WHERE t.id=page.person_transaction_id),'person_reversed',EXISTS(SELECT 1 FROM app.person_transactions t WHERE t.reverses_id=page.person_transaction_id),'account_id',(SELECT account_id FROM app.person_transactions t WHERE t.id=page.person_transaction_id),'debt_side',debt_side,'payment_id',payment_id,'is_repayment',EXISTS(SELECT 1 FROM app.creditor_repayments r WHERE r.payment_id=page.payment_id),'reversed',EXISTS(SELECT 1 FROM app.creditor_repayment_reversals r WHERE r.original_payment_id=page.payment_id),'method',method,'reference',reference,'description',description,'currency_code',currency_code,'original_amount',amount_original::text
  ) ORDER BY occurred_at DESC,sequence DESC) FROM page),'[]'))::jsonb
 `
 
@@ -146,9 +146,9 @@ func (q *Queries) CreditorRepaymentReverse(ctx context.Context, arg CreditorRepa
 const creditors = `-- name: Creditors :one
 SELECT coalesce(jsonb_agg(doc ORDER BY name),'[]')::jsonb FROM (
  SELECT c.name,jsonb_build_object('id',c.id,'name',c.name,'contact',c.contact,
- 'funded_mmk',coalesce(sum(e.amount_mmk) FILTER(WHERE r.payment_id IS NULL AND v.payment_id IS NULL),0)::text,
+ 'funded_mmk',coalesce(sum(e.amount_mmk) FILTER(WHERE e.debt_side='PAYABLE' AND r.payment_id IS NULL AND v.payment_id IS NULL),0)::text,
  'settled_mmk',coalesce(-sum(e.amount_mmk) FILTER(WHERE r.payment_id IS NOT NULL OR v.payment_id IS NOT NULL),0)::text,
- 'outstanding_mmk',coalesce(sum(e.amount_mmk),0)::text) doc
+ 'receivable_mmk',coalesce(sum(e.amount_mmk) FILTER(WHERE e.debt_side='RECEIVABLE'),0)::text,'outstanding_mmk',coalesce(sum(e.amount_mmk) FILTER(WHERE e.debt_side='PAYABLE'),0)::text) doc
  FROM app.creditors c LEFT JOIN app.account_entries e ON e.creditor_id=c.id LEFT JOIN app.creditor_repayments r ON r.payment_id=e.payment_id LEFT JOIN app.creditor_repayment_reversals v ON v.payment_id=e.payment_id GROUP BY c.id
 ) creditors
 `
@@ -177,7 +177,7 @@ func (q *Queries) MoneyAccountCreate(ctx context.Context, arg MoneyAccountCreate
 }
 
 const moneyAccountOptions = `-- name: MoneyAccountOptions :one
-SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'name',name,'bank',bank) ORDER BY name),'[]')::jsonb FROM app.money_accounts WHERE is_active
+SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'name',name,'bank',bank,'account_type',account_type,'holder',holder,'last_digits',right(reference,4)) ORDER BY name),'[]')::jsonb FROM app.money_accounts WHERE is_active
 `
 
 func (q *Queries) MoneyAccountOptions(ctx context.Context) ([]byte, error) {
@@ -204,13 +204,29 @@ func (q *Queries) MoneyAccountUpdate(ctx context.Context, arg MoneyAccountUpdate
 }
 
 const moneyAccounts = `-- name: MoneyAccounts :one
-WITH accounts AS(SELECT a.id,a.name,a.bank,a.reference,a.is_active,a.version,coalesce(sum(e.amount_mmk),0) AS balance FROM app.money_accounts a LEFT JOIN app.account_entries e ON e.account_id=a.id GROUP BY a.id)
-SELECT jsonb_build_object('total_mmk',coalesce((SELECT sum(balance) FROM accounts),0)::text,'accounts',coalesce((SELECT jsonb_agg(jsonb_build_object('id',id,'name',name,'bank',bank,'reference',reference,'is_active',is_active,'version',version,'balance_mmk',balance::text) ORDER BY is_active DESC,name) FROM accounts),'[]'))::jsonb
+WITH accounts AS(SELECT a.id,a.name,a.bank,a.reference,a.account_type,a.holder,a.is_active,a.version,coalesce(sum(e.amount_mmk),0) AS balance FROM app.money_accounts a LEFT JOIN app.account_entries e ON e.account_id=a.id GROUP BY a.id)
+SELECT jsonb_build_object('total_mmk',coalesce((SELECT sum(balance) FROM accounts),0)::text,'accounts',coalesce((SELECT jsonb_agg(jsonb_build_object('id',id,'name',name,'bank',bank,'reference',reference,'account_type',account_type,'holder',holder,'is_active',is_active,'version',version,'balance_mmk',balance::text) ORDER BY is_active DESC,name) FROM accounts),'[]'))::jsonb
 `
 
 func (q *Queries) MoneyAccounts(ctx context.Context) ([]byte, error) {
 	row := q.db.QueryRow(ctx, moneyAccounts)
 	var column_1 []byte
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const personTransaction = `-- name: PersonTransaction :one
+SELECT app.person_transaction($1::jsonb,$2::uuid)::uuid
+`
+
+type PersonTransactionParams struct {
+	Data  []byte
+	Actor pgtype.UUID
+}
+
+func (q *Queries) PersonTransaction(ctx context.Context, arg PersonTransactionParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, personTransaction, arg.Data, arg.Actor)
+	var column_1 pgtype.UUID
 	err := row.Scan(&column_1)
 	return column_1, err
 }

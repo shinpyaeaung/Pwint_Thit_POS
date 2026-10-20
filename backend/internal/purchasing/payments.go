@@ -92,13 +92,14 @@ func (s *Service) RecordPayment(c *gin.Context) {
 		Reference         string `json:"reference_number"`
 		Bank              string `json:"bank_account"`
 		Notes             string `json:"notes"`
+		CashRecipient     string `json:"cash_recipient,omitempty"`
 	}
 	if !decode(c, &in) {
 		return
 	}
 	req, e := uuid(in.RequestID)
 	_, dateErr := time.Parse(time.RFC3339, in.PaidAt)
-	if e != nil || !req.Valid || dateErr != nil || !decimal(in.Amount, 16, 4, true) || len(in.MethodCode) > 40 || len(in.Reference) > 200 || len(in.Bank) > 200 || len(in.Notes) > 4000 {
+	if e != nil || !req.Valid || dateErr != nil || !decimal(in.Amount, 16, 4, true) || len(in.MethodCode) > 40 || len(in.Reference) > 200 || len(in.Bank) > 200 || len(in.Notes) > 4000 || len(in.CashRecipient) > 200 {
 		fail(c, 400, "Enter a positive payment amount, valid date, method and request ID. Reference and bank account allow 200 characters; notes allow 4000.")
 		return
 	}

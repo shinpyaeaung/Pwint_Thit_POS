@@ -125,6 +125,7 @@ type Querier interface {
 	POSProducts(ctx context.Context, arg POSProductsParams) ([]byte, error)
 	POSSales(ctx context.Context, arg POSSalesParams) ([]byte, error)
 	POSWarehouses(ctx context.Context) ([]byte, error)
+	PersonTransaction(ctx context.Context, arg PersonTransactionParams) (pgtype.UUID, error)
 	PostPurchase(ctx context.Context, id pgtype.UUID) error
 	PostReceiving(ctx context.Context, arg PostReceivingParams) (pgtype.UUID, error)
 	ProductInUse(ctx context.Context, productID pgtype.UUID) (bool, error)

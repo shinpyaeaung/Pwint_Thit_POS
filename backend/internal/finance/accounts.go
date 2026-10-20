@@ -20,6 +20,9 @@ func (s *Service) registerAccounts(r *gin.Engine, a *authz.Service) {
 }
 func (s *Service) UpdateAccount(c *gin.Context) {
 	var in struct {
+		Type      string `json:"account_type,omitempty"`
+		Holder    string `json:"holder,omitempty"`
+		Opening   string `json:"opening_balance,omitempty"`
 		Request   string `json:"request_id"`
 		Account   string `json:"account_id"`
 		Version   int    `json:"version"`
@@ -33,7 +36,7 @@ func (s *Service) UpdateAccount(c *gin.Context) {
 	}
 	in.Account = c.Param("id")
 	in.Name = strings.TrimSpace(in.Name)
-	if !id(in.Request) || !id(in.Account) || in.Version < 1 || in.Name == "" || len(in.Name) > 100 || len(in.Bank) > 100 || len(in.Reference) > 200 || in.Active == nil {
+	if !id(in.Request) || !id(in.Account) || in.Version < 1 || in.Name == "" || len(in.Name) > 100 || len(in.Bank) > 100 || len(in.Reference) > 200 || len(in.Holder) > 100 || (in.Type != "" && in.Type != "BANK" && in.Type != "CASH") || (in.Opening != "" && !money.MatchString(in.Opening)) || in.Active == nil {
 		fail(c, 400, "Enter valid account details and reload the latest version.")
 		return
 	}
@@ -70,6 +73,9 @@ func (s *Service) AccountHistory(c *gin.Context) {
 }
 func (s *Service) CreateAccount(c *gin.Context) {
 	var in struct {
+		Type      string `json:"account_type,omitempty"`
+		Holder    string `json:"holder,omitempty"`
+		Opening   string `json:"opening_balance,omitempty"`
 		Request   string `json:"request_id"`
 		Name      string `json:"name"`
 		Bank      string `json:"bank"`
@@ -78,7 +84,7 @@ func (s *Service) CreateAccount(c *gin.Context) {
 	if !decode(c, &in) {
 		return
 	}
-	if !id(in.Request) || strings.TrimSpace(in.Name) == "" || len(in.Name) > 100 || len(in.Bank) > 100 || len(in.Reference) > 200 {
+	if !id(in.Request) || strings.TrimSpace(in.Name) == "" || len(in.Name) > 100 || len(in.Bank) > 100 || len(in.Reference) > 200 || len(in.Holder) > 100 || (in.Type != "" && in.Type != "BANK" && in.Type != "CASH") || (in.Opening != "" && !money.MatchString(in.Opening)) {
 		fail(c, 400, "Enter valid account details.")
 		return
 	}

@@ -17,25 +17,27 @@ type AppAccountChange struct {
 }
 
 type AppAccountEntry struct {
-	ID             pgtype.UUID
-	Sequence       pgtype.Int8
-	AccountID      pgtype.UUID
-	Kind           string
-	AmountMmk      pgtype.Numeric
-	Sender         string
-	Description    string
-	OccurredAt     pgtype.Timestamptz
-	RecordedBy     pgtype.UUID
-	PaymentID      pgtype.UUID
-	ReversesID     pgtype.UUID
-	RequestID      pgtype.UUID
-	RequestPayload []byte
-	CreatedAt      pgtype.Timestamptz
-	CreditorID     pgtype.UUID
-	Payer          string
-	Payee          string
-	Method         string
-	Reference      string
+	ID                  pgtype.UUID
+	Sequence            pgtype.Int8
+	AccountID           pgtype.UUID
+	Kind                string
+	AmountMmk           pgtype.Numeric
+	Sender              string
+	Description         string
+	OccurredAt          pgtype.Timestamptz
+	RecordedBy          pgtype.UUID
+	PaymentID           pgtype.UUID
+	ReversesID          pgtype.UUID
+	RequestID           pgtype.UUID
+	RequestPayload      []byte
+	CreatedAt           pgtype.Timestamptz
+	CreditorID          pgtype.UUID
+	Payer               string
+	Payee               string
+	Method              string
+	Reference           string
+	DebtSide            string
+	PersonTransactionID pgtype.UUID
 }
 
 type AppApproval struct {
@@ -426,6 +428,8 @@ type AppMoneyAccount struct {
 	CreatedAt      pgtype.Timestamptz
 	IsActive       bool
 	Version        int32
+	AccountType    string
+	Holder         string
 }
 
 type AppPayment struct {
@@ -477,6 +481,18 @@ type AppPermission struct {
 	Description string
 	IsSensitive bool
 	CreatedAt   pgtype.Timestamptz
+}
+
+type AppPersonTransaction struct {
+	ID         pgtype.UUID
+	RequestID  pgtype.UUID
+	CreditorID pgtype.UUID
+	AccountID  pgtype.UUID
+	Kind       string
+	ReversesID pgtype.UUID
+	ActorID    pgtype.UUID
+	Payload    []byte
+	CreatedAt  pgtype.Timestamptz
 }
 
 type AppPosDamagedStock struct {

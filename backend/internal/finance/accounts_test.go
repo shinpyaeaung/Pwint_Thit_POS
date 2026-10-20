@@ -150,7 +150,7 @@ func TestManualStockAccountsIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 	call("POST", "/inventory/manual-stock", entry, staff, 403)
-	account := call("POST", "/accounts", map[string]any{"request_id": next(), "name": "KBZ operating", "bank": "KBZ", "reference": "Test"}, owner, 201)["id"].(string)
+	account := call("POST", "/accounts", map[string]any{"request_id": next(), "account_type": "CASH", "name": "KBZ operating", "bank": "KBZ", "reference": "Test"}, owner, 201)["id"].(string)
 	post := func(kind, amount, date string) map[string]any {
 		return map[string]any{"request_id": next(), "account_id": account, "kind": kind, "amount_mmk": amount, "sender": "External sender", "description": "Test entry", "occurred_at": date, "reverses_id": ""}
 	}
@@ -169,7 +169,7 @@ func TestManualStockAccountsIntegration(t *testing.T) {
 	call("POST", "/accounts/entries", personal, owner, 201)
 	balance("900.1234")
 	// Concurrent retries create one ledger row, and independent deposits cannot lose updates.
-	concurrentAccount := call("POST", "/accounts", map[string]any{"request_id": next(), "name": "Yoma concurrent", "bank": "Yoma", "reference": ""}, owner, 201)["id"].(string)
+	concurrentAccount := call("POST", "/accounts", map[string]any{"request_id": next(), "account_type": "CASH", "name": "Yoma concurrent", "bank": "Yoma", "reference": ""}, owner, 201)["id"].(string)
 	concurrent := post("EXTERNAL_DEPOSIT", "10", yesterday)
 	concurrent["account_id"] = concurrentAccount
 	var wg sync.WaitGroup
@@ -213,7 +213,7 @@ func TestManualStockAccountsIntegration(t *testing.T) {
 		t.Fatal("historical INR account conversion", v)
 	}
 	category := scalar("SELECT id::text FROM app.expense_categories LIMIT 1")
-	expense := map[string]any{"request_id": next(), "category_id": category, "description": "Business rent", "incurred_on": time.Now().Add(-time.Hour).Format("2006-01-02"), "amount_mmk": "50", "notes": "", "paid_now": true, "method": "BANK_TRANSFER", "reference": "", "account_id": account}
+	expense := map[string]any{"request_id": next(), "category_id": category, "description": "Business rent", "incurred_on": time.Now().Add(-time.Hour).Format("2006-01-02"), "amount_mmk": "50", "notes": "", "paid_now": true, "method": "CASH", "reference": "", "account_id": account}
 	withoutAccount := map[string]any{}
 	for k, v := range expense {
 		withoutAccount[k] = v
@@ -428,6 +428,91 @@ func TestManualStockAccountsIntegration(t *testing.T) {
 		reversal["request_id"] = next()
 		call("POST", path, reversal, owner, 409)
 		call("GET", "/creditors/"+creditor+"/history", nil, owner, 200)
+	})
+
+	t.Run("bank_cash_and_personal_loans", func(t *testing.T) {
+		cashAccount := call("POST", "/accounts", map[string]any{"request_id": next(), "name": "Loan cash", "bank": "", "reference": "", "account_type": "CASH", "holder": "Owner", "opening_balance": "100"}, owner, 201)["id"].(string)
+		bankAccount := call("POST", "/accounts", map[string]any{"request_id": next(), "name": "Loan bank", "bank": "KBZ", "reference": "123", "account_type": "BANK", "holder": "Owner", "opening_balance": "100"}, owner, 201)["id"].(string)
+		person := call("POST", "/creditors", map[string]any{"request_id": next(), "name": "Loan partner", "contact": ""}, owner, 201)["id"].(string)
+		stamp := func() string {
+			return scalar("SELECT to_char(clock_timestamp() AT TIME ZONE 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"')")
+		}
+		path := "/creditors/" + person + "/transactions"
+		payload := func(kind, amount string) map[string]any {
+			return map[string]any{"request_id": next(), "account_id": cashAccount, "kind": kind, "amount_mmk": amount, "occurred_at": stamp(), "description": "Personal transaction", "reference": "Receipt"}
+		}
+		check := func(cash, owed, lent string) {
+			t.Helper()
+			if got := scalar("SELECT sum(amount_mmk)::text FROM app.account_entries WHERE account_id=$1", cashAccount); got != cash {
+				t.Fatal("cash", got, cash)
+			}
+			if got := scalar("SELECT coalesce(sum(amount_mmk),0)::numeric(20,4)::text FROM app.account_entries WHERE creditor_id=$1 AND debt_side='PAYABLE'", person); got != owed {
+				t.Fatal("owed", got, owed)
+			}
+			if got := scalar("SELECT coalesce(sum(amount_mmk),0)::numeric(20,4)::text FROM app.account_entries WHERE creditor_id=$1 AND debt_side='RECEIVABLE'", person); got != lent {
+				t.Fatal("lent", got, lent)
+			}
+		}
+		borrow := payload("BORROW", "50")
+		call("POST", path, borrow, owner, 201)
+		call("POST", path, borrow, owner, 201)
+		check("150.0000", "50.0000", "0.0000")
+		call("POST", path, payload("LEND", "70"), owner, 201)
+		check("80.0000", "50.0000", "70.0000")
+		gift := call("POST", path, payload("GIFT_RECEIVED", "30"), owner, 201)
+		check("110.0000", "50.0000", "70.0000")
+		call("POST", path, payload("COLLECT", "20"), owner, 201)
+		check("130.0000", "50.0000", "50.0000")
+		call("POST", path, payload("COLLECT", "51"), owner, 409)
+		call("POST", path, payload("GIFT_GIVEN", "131"), owner, 409)
+		repay := map[string]any{"request_id": next(), "account_id": cashAccount, "amount_mmk": "10", "method": "CASH", "paid_at": stamp(), "reference": "", "notes": ""}
+		call("POST", "/creditors/"+person+"/repayments", repay, owner, 201)
+		check("120.0000", "40.0000", "50.0000")
+		reverse := payload("REVERSAL", "0")
+		reverse["reverses_id"] = gift["id"]
+		call("POST", path, reverse, owner, 201)
+		call("POST", path, reverse, owner, 201)
+		check("90.0000", "40.0000", "50.0000")
+		if _, e := conn.Exec(ctx, "CREATE TRIGGER test_fail BEFORE INSERT ON app.audit_logs FOR EACH ROW EXECUTE FUNCTION app.test_fail_audit()"); e != nil {
+			t.Fatal(e)
+		}
+		call("POST", path, payload("BORROW", "5"), owner, 503)
+		check("90.0000", "40.0000", "50.0000")
+		if _, e := conn.Exec(ctx, "DROP TRIGGER test_fail ON app.audit_logs"); e != nil {
+			t.Fatal(e)
+		}
+		// Database category validation prevents forged cash/bank selections.
+		expense["request_id"] = next()
+		expense["account_id"] = bankAccount
+		expense["method"] = "CASH"
+		delete(expense, "creditor_id")
+		call("POST", "/expenses", expense, owner, 409)
+		expense["method"] = "BANK_TRANSFER"
+		call("POST", "/expenses", expense, owner, 201)
+		expense["request_id"] = next()
+		expense["account_id"] = cashAccount
+		call("POST", "/expenses", expense, owner, 409)
+		archive := map[string]any{"request_id": next(), "version": 1, "name": "Loan cash", "bank": "", "reference": "", "holder": "Owner", "account_type": "CASH", "is_active": false}
+		call("PATCH", "/accounts/"+cashAccount, archive, owner, 201)
+		call("POST", path, payload("BORROW", "5"), owner, 409)
+		check("90.0000", "40.0000", "50.0000")
+
+		archive["request_id"] = next()
+		archive["version"] = 2
+		archive["is_active"] = true
+		call("PATCH", "/accounts/"+cashAccount, archive, owner, 201)
+		fullCollection := call("POST", path, payload("COLLECT", "50"), owner, 201)
+		check("140.0000", "40.0000", "0.0000")
+		repay["request_id"] = next()
+		repay["amount_mmk"] = "40"
+		repay["paid_at"] = stamp()
+		call("POST", "/creditors/"+person+"/repayments", repay, owner, 201)
+		check("100.0000", "0.0000", "0.0000")
+		reverse = payload("REVERSAL", "0")
+		reverse["reverses_id"] = fullCollection["id"]
+		call("POST", path, reverse, owner, 201)
+		check("50.0000", "0.0000", "50.0000")
+		call("GET", "/creditors/"+person+"/history", nil, owner, 200)
 	})
 
 }

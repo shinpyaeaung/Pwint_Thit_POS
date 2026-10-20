@@ -11,6 +11,7 @@ import (
 )
 
 func (s *Service) registerCreditors(r *gin.Engine, a *authz.Service) {
+	r.POST("/api/v1/creditors/:id/transactions", a.Require(permissions.AccountsManage), s.PersonTransaction)
 	r.POST("/api/v1/creditors/:id/repayments/:payment/reverse", a.Require(permissions.AccountsView), a.Require(permissions.PaymentsManage), a.Require(permissions.TransactionsReverse), s.ReverseCreditorRepayment)
 	r.GET("/api/v1/creditors/options", a.RequireAny(permissions.PaymentsManage, permissions.AccountsView, permissions.AccountsManage), s.CreditorOptions)
 	r.GET("/api/v1/creditors", a.Require(permissions.AccountsView), s.Creditors)
@@ -107,5 +108,37 @@ func (s *Service) ReverseCreditorRepayment(c *gin.Context) {
 	actor, _ := authz.Principal(c)
 	s.write(c, func(q *database.Queries) (any, error) {
 		return q.CreditorRepaymentReverse(c.Request.Context(), database.CreditorRepaymentReverseParams{Data: d, Actor: actor.ID})
+	})
+}
+
+func (s *Service) PersonTransaction(c *gin.Context) {
+	var in struct {
+		Request     string `json:"request_id"`
+		Creditor    string `json:"creditor_id"`
+		Account     string `json:"account_id"`
+		Kind        string `json:"kind"`
+		Amount      string `json:"amount_mmk"`
+		Date        string `json:"occurred_at"`
+		Description string `json:"description"`
+		Reference   string `json:"reference"`
+		Reverses    string `json:"reverses_id"`
+	}
+	if !decode(c, &in) {
+		return
+	}
+	in.Creditor = c.Param("id")
+	_, e := time.Parse(time.RFC3339, in.Date)
+	if !id(in.Request) || !id(in.Creditor) || !id(in.Account) || e != nil || !money.MatchString(in.Amount) || len(in.Description) > 1000 || len(in.Reference) > 200 {
+		fail(c, 400, "Enter a person, account, amount, date and description.")
+		return
+	}
+	if in.Kind == "REVERSAL" && !id(in.Reverses) {
+		fail(c, 400, "Choose the original transaction.")
+		return
+	}
+	d, _ := json.Marshal(in)
+	actor, _ := authz.Principal(c)
+	s.write(c, func(q *database.Queries) (any, error) {
+		return q.PersonTransaction(c.Request.Context(), database.PersonTransactionParams{Data: d, Actor: actor.ID})
 	})
 }

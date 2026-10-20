@@ -44,7 +44,7 @@ func (q *Queries) RecordSupplierPayment(ctx context.Context, arg RecordSupplierP
 }
 
 const supplierPaymentHistory = `-- name: SupplierPaymentHistory :one
-SELECT jsonb_build_object('payments',COALESCE(jsonb_agg(jsonb_build_object('id',p.id,'payment_number',p.payment_number,'amount',p.amount_original::text,'currency_code',p.currency_code,'amount_mmk',p.amount_mmk::text,'method',COALESCE(p.method_name_snapshot,p.method),'bank_account',p.bank_account,'paid_at',p.paid_at,'reference_number',p.reference_number,'notes',p.notes,'status',p.status,'created_at',p.created_at,'created_by',u.display_name) ORDER BY p.paid_at,p.created_at),'[]'::jsonb))::jsonb
+SELECT jsonb_build_object('payments',COALESCE(jsonb_agg(jsonb_build_object('id',p.id,'payment_number',p.payment_number,'amount',p.amount_original::text,'currency_code',p.currency_code,'amount_mmk',p.amount_mmk::text,'method',COALESCE(p.method_name_snapshot,p.method),'bank_account',p.bank_account,'cash_recipient',(SELECT e.payee FROM app.account_entries e WHERE e.payment_id=p.id AND p.method='CASH' ORDER BY e.sequence LIMIT 1),'paid_at',p.paid_at,'reference_number',p.reference_number,'notes',p.notes,'status',p.status,'created_at',p.created_at,'created_by',u.display_name) ORDER BY p.paid_at,p.created_at),'[]'::jsonb))::jsonb
 FROM app.payments p JOIN app.payment_allocations a ON a.payment_id=p.id JOIN app.users u ON u.id=p.recorded_by WHERE a.purchase_id=$1
 `
 

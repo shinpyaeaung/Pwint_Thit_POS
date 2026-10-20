@@ -130,7 +130,7 @@ func TestSchemaIntegration(t *testing.T) {
 		if err = tx.QueryRow(ctx, `SELECT outstanding_mmk::text FROM app.customer_debts`).Scan(&debt); err != nil || debt != "0.0000" {
 			t.Fatalf("return credit: %s %v", debt, err)
 		}
-		exec(t, tx, `INSERT INTO app.payments(id,payment_number,direction,method,currency_code,amount_original,mmk_per_unit,supplier_id,paid_at,recorded_by) VALUES
+		exec(t, tx, `SELECT set_config('app.payment_account','00000000-0000-0000-0000-000000000998',true); INSERT INTO app.payments(id,payment_number,direction,method,currency_code,amount_original,mmk_per_unit,supplier_id,paid_at,recorded_by) VALUES
   ('00000000-0000-0000-0000-000000000093','PAY-2','OUT','BANK_TRANSFER','INR',3000,30,'00000000-0000-0000-0000-000000000010',now(),'00000000-0000-0000-0000-000000000001');
   INSERT INTO app.payment_allocations(payment_id,purchase_id,settlement_mmk,applied_mmk,applied_original) VALUES
   ('00000000-0000-0000-0000-000000000093','00000000-0000-0000-0000-000000000040',90000,75000,3000);

@@ -1,5 +1,19 @@
 # Pwint Thit POS 1.2 handoff
 
+## October 21: bank/cash categories and integrated personal accounts
+
+The user's payment/account improvement scope is implemented in migration 000043 and the account/payment UI. Accounts & balances contains Bank Accounts, Cash Accounts, Other People's Accounts and legacy accounts needing classification. Setup records bank/holder/number or cash name/owner with an atomic opening-balance ledger entry. Account cards show bank prominently and holder beneath, with explicit Archive Account and Restore Account actions. Manual account transactions use a date only with automatic time.
+
+Supplier payments start with Bank Transfer or Cash and one paying account selection, filtered to matching business accounts plus people paying on the business's behalf. Cash asks who received it; that recipient is snapshotted in ledger and supplier history. Free-text bank details are removed. Other payment selectors filter by method, and the database rejects category mismatches. Existing payment methods/history remain intact.
+
+Other People's Accounts integrates borrowing, lending, gifts received/given, partial/full personal-loan collections, creditor repayments and corrections. Lending and borrowing are distinct ledger sides; gifts move actual cash with zero debt. Customer invoice receivables remain separate. Corrections preserve original cash/debt entries and add offsets. `/creditors` remains only a compatibility bookmark to the integrated category; its sidebar and Payment centre entries are removed.
+
+Verified full PostgreSQL integration, `make check`, and all 38 real-stack Chromium/WebKit cases in the isolated release. Backend coverage includes separate debts, gifts, overcollection/overdraft rejection, retries, audit rollback, partial/full settlement, reversals and archival. One browser attempt was invalidated by refreshing its release files mid-run; the subsequent stable run passed. See [account-categories-and-people.md](account-categories-and-people.md).
+
+Migration 000043 completed successfully; API, frontend and PostgreSQL are healthy at http://localhost:8088. Live Safari confirms the cash-account/recipient flow without bank details and removal of the separate Owed Money sidebar entry. No real payments were posted during verification.
+
+Unrelated visual changes remain in the workspace. The POS file also contains unrelated edits: only the `AccountSelect` method prop belongs to this phase; the release and Git index use the tracked baseline plus that focused change.
+
 ## October 20: unified account payments and third-party liabilities
 
 The user requested POS, customer collections, supplier/transport/expense payments and creditor repayments integrated with Accounts & balances. Migration 000042 extends the immutable account ledger to support separate creditor liabilities. New money payments require an explicit business account or eligible third-party creditor; account/creditor row locks prevent concurrent and backdated overspending/overrepayment. Historical entries, exchange rates and existing balances are preserved; legacy unassigned source corrections remain unassigned.
