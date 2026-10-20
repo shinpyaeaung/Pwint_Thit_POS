@@ -3,6 +3,7 @@ package finance
 import (
 	"encoding/json"
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/authz"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/database"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/permissions"
@@ -11,6 +12,8 @@ import (
 )
 
 func (s *Service) registerAccounts(r *gin.Engine, a *authz.Service) {
+	r.GET("/api/v1/accounts/:id/delete-preview", a.SuperAdminOnly(), s.DeleteAccountPreview)
+	r.DELETE("/api/v1/accounts/:id", a.SuperAdminOnly(), s.DeleteAccount)
 	r.GET("/api/v1/accounts/options", a.RequireAny(permissions.PaymentsManage, permissions.AccountsView, permissions.AccountsManage), s.AccountOptions)
 	r.GET("/api/v1/accounts", a.Require(permissions.AccountsView), s.Accounts)
 	r.POST("/api/v1/accounts", a.Require(permissions.AccountsManage), s.CreateAccount)
@@ -117,5 +120,38 @@ func (s *Service) AccountEntry(c *gin.Context) {
 	actor, _ := authz.Principal(c)
 	s.write(c, func(q *database.Queries) (any, error) {
 		return q.AccountEntryPost(c.Request.Context(), database.AccountEntryPostParams{Data: d, Actor: actor.ID})
+	})
+}
+
+func (s *Service) DeleteAccountPreview(c *gin.Context) {
+	if !id(c.Param("id")) {
+		fail(c, 400, "Invalid account.")
+		return
+	}
+	var account pgtype.UUID
+	_ = account.Scan(c.Param("id"))
+	b, e := s.q.MoneyAccountDeletePreview(c.Request.Context(), account)
+	respond(c, b, e)
+}
+func (s *Service) DeleteAccount(c *gin.Context) {
+	var in struct {
+		Request      string `json:"request_id"`
+		Account      string `json:"account_id"`
+		Fingerprint  string `json:"fingerprint"`
+		Confirmation string `json:"confirmation"`
+		Reason       string `json:"reason"`
+	}
+	if !decode(c, &in) {
+		return
+	}
+	in.Account = c.Param("id")
+	if !id(in.Account) || !id(in.Request) || len(in.Fingerprint) != 32 || len(in.Confirmation) > 100 || strings.TrimSpace(in.Reason) == "" || len(in.Reason) > 1000 {
+		fail(c, 400, "Review the account and enter a deletion reason.")
+		return
+	}
+	d, _ := json.Marshal(in)
+	actor, _ := authz.Principal(c)
+	s.write(c, func(q *database.Queries) (any, error) {
+		return q.MoneyAccountDelete(c.Request.Context(), database.MoneyAccountDeleteParams{Data: d, Actor: actor.ID})
 	})
 }

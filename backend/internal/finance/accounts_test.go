@@ -513,6 +513,83 @@ func TestManualStockAccountsIntegration(t *testing.T) {
 		call("POST", path, reverse, owner, 201)
 		check("50.0000", "0.0000", "50.0000")
 		call("GET", "/creditors/"+person+"/history", nil, owner, 200)
+		t.Run("permanent deletion with history and atomic rollback", func(t *testing.T) {
+			call("GET", "/accounts/"+cashAccount+"/delete-preview", nil, staff, 403)
+			call("DELETE", "/accounts/"+cashAccount, map[string]any{}, staff, 403)
+			preview := call("GET", "/accounts/"+cashAccount+"/delete-preview", nil, owner, 200)
+			del := map[string]any{"request_id": next(), "fingerprint": preview["fingerprint"], "confirmation": "Loan cash", "reason": "Delete test account and history"}
+			// Metadata change invalidates the displayed confirmation.
+			archive["request_id"] = next()
+			archive["version"] = 3
+			archive["is_active"] = false
+			call("PATCH", "/accounts/"+cashAccount, archive, owner, 201)
+			call("DELETE", "/accounts/"+cashAccount, del, owner, 409)
+			preview = call("GET", "/accounts/"+cashAccount+"/delete-preview", nil, owner, 200)
+			del["fingerprint"] = preview["fingerprint"]
+			if _, e := conn.Exec(ctx, "DELETE FROM app.money_accounts WHERE id=$1", cashAccount); e == nil {
+				t.Fatal("unguarded deletion")
+			}
+			otherCollection := payload("COLLECT", "10")
+			otherCollection["account_id"] = bankAccount
+			otherID := call("POST", path, otherCollection, owner, 201)["id"]
+			call("DELETE", "/accounts/"+cashAccount, del, owner, 409)
+			undoCollection := payload("REVERSAL", "0")
+			undoCollection["account_id"] = bankAccount
+			undoCollection["reverses_id"] = otherID
+			call("POST", path, undoCollection, owner, 201)
+			before := scalar("SELECT count(*)::text FROM app.account_entries WHERE account_id=$1", cashAccount)
+			if _, e := conn.Exec(ctx, "CREATE TRIGGER test_fail BEFORE INSERT ON app.audit_logs FOR EACH ROW EXECUTE FUNCTION app.test_fail_audit()"); e != nil {
+				t.Fatal(e)
+			}
+			call("DELETE", "/accounts/"+cashAccount, del, owner, 503)
+			if scalar("SELECT count(*)::text FROM app.account_entries WHERE account_id=$1", cashAccount) != before {
+				t.Fatal("failed deletion lost history")
+			}
+			if _, e := conn.Exec(ctx, "DROP TRIGGER test_fail ON app.audit_logs"); e != nil {
+				t.Fatal(e)
+			}
+			call("DELETE", "/accounts/"+cashAccount, del, owner, 201)
+			call("DELETE", "/accounts/"+cashAccount, del, owner, 201)
+			for _, table := range []string{"money_accounts", "account_entries", "person_transactions", "account_changes"} {
+				column := "account_id"
+				if table == "money_accounts" {
+					column = "id"
+				}
+				if scalar("SELECT count(*)::text FROM app."+table+" WHERE "+column+"=$1", cashAccount) != "0" {
+					t.Fatal("remaining", table)
+				}
+			}
+			if scalar("SELECT coalesce(sum(amount_mmk),0)::numeric(20,4)::text FROM app.account_entries WHERE creditor_id=$1", person) != "0.0000" {
+				t.Fatal("loan history survived")
+			}
+			if scalar("SELECT count(*)::text FROM app.account_delete_scope") != "0" {
+				t.Fatal("purge capability leaked")
+			}
+			call("POST", path, borrow, owner, 409)
+			// Bank payment deletion removes its settlement, preserving the expense itself.
+			paymentsBefore := scalar("SELECT count(*)::text FROM app.payment_allocations WHERE payment_id IN (SELECT payment_id FROM app.account_entries WHERE account_id=$1)", bankAccount)
+			if paymentsBefore == "0" {
+				t.Fatal("missing bank payment fixture")
+			}
+			expenseID := scalar("SELECT a.expense_id::text FROM app.payment_allocations a JOIN app.account_entries e ON e.payment_id=a.payment_id WHERE e.account_id=$1 AND a.expense_id IS NOT NULL LIMIT 1", bankAccount)
+			call("POST", "/expenses/"+expenseID+"/reverse", map[string]any{"request_id": next(), "reason": "Test original and offset removal"}, owner, 201)
+			expensesBefore := scalar("SELECT count(*)::text FROM app.expenses")
+			createAgain := map[string]any{}
+			if e := json.Unmarshal([]byte(scalar("SELECT request_payload::text FROM app.money_accounts WHERE id=$1", bankAccount)), &createAgain); e != nil {
+				t.Fatal(e)
+			}
+			allocationsBefore := scalar("SELECT count(*)::text FROM app.payment_allocations")
+			bankPreview := call("GET", "/accounts/"+bankAccount+"/delete-preview", nil, owner, 200)
+			call("DELETE", "/accounts/"+bankAccount, map[string]any{"request_id": next(), "fingerprint": bankPreview["fingerprint"], "confirmation": "Loan bank", "reason": "Remove bank history"}, owner, 201)
+			call("POST", "/accounts", createAgain, owner, 409)
+			if scalar("SELECT count(*)::text FROM app.payment_allocations") == allocationsBefore {
+				t.Fatal("payment settlements survived deletion")
+			}
+			if scalar("SELECT count(*)::text FROM app.expenses") != expensesBefore {
+				t.Fatal("source expense removed")
+			}
+		})
+
 	})
 
 }

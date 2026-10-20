@@ -45,3 +45,8 @@ SELECT app.creditor_repayment_reverse(sqlc.arg(data)::jsonb,sqlc.arg(actor)::uui
 
 -- name: PersonTransaction :one
 SELECT app.person_transaction(sqlc.arg(data)::jsonb,sqlc.arg(actor)::uuid)::uuid;
+
+-- name: MoneyAccountDeletePreview :one
+SELECT app.account_delete_preview(sqlc.arg(account_id)::uuid)::jsonb;
+-- name: MoneyAccountDelete :one
+SELECT app.account_delete(sqlc.arg(data)::jsonb,sqlc.arg(actor)::uuid)::uuid;

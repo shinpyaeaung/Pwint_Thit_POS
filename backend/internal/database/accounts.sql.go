@@ -176,6 +176,33 @@ func (q *Queries) MoneyAccountCreate(ctx context.Context, arg MoneyAccountCreate
 	return column_1, err
 }
 
+const moneyAccountDelete = `-- name: MoneyAccountDelete :one
+SELECT app.account_delete($1::jsonb,$2::uuid)::uuid
+`
+
+type MoneyAccountDeleteParams struct {
+	Data  []byte
+	Actor pgtype.UUID
+}
+
+func (q *Queries) MoneyAccountDelete(ctx context.Context, arg MoneyAccountDeleteParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, moneyAccountDelete, arg.Data, arg.Actor)
+	var column_1 pgtype.UUID
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const moneyAccountDeletePreview = `-- name: MoneyAccountDeletePreview :one
+SELECT app.account_delete_preview($1::uuid)::jsonb
+`
+
+func (q *Queries) MoneyAccountDeletePreview(ctx context.Context, accountID pgtype.UUID) ([]byte, error) {
+	row := q.db.QueryRow(ctx, moneyAccountDeletePreview, accountID)
+	var column_1 []byte
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const moneyAccountOptions = `-- name: MoneyAccountOptions :one
 SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'name',name,'bank',bank,'account_type',account_type,'holder',holder,'last_digits',right(reference,4)) ORDER BY name),'[]')::jsonb FROM app.money_accounts WHERE is_active
 `

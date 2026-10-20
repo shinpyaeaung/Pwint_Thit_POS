@@ -1,5 +1,9 @@
 # Pwint Thit POS 1.2 handoff
 
+## October 21: permanent bank/cash account deletion
+
+User explicitly authorized deleting accounts and their transaction history. Migration 000044 and Super Admin-only DELETE /accounts/:id implement this exception to archival/append-only rules. The UI previews balances/counts, requires the exact account name and a reason, and rejects stale confirmations. Deletion removes the account, account metadata changes, ledger entries, linked payments/allocations and personal transactions atomically. Source purchases/sales/expenses/returns, stock movements, costing snapshots and security audits remain; outstanding balances and payment reports recompute from remaining settlements. Linked reversals are included; cross-account linked reversals or remaining negative creditor balances block deletion instead of erasing unrelated accounts. Audit receipts and request-ID tombstones prevent retries recreating erased transactions. No live business accounts were erased during implementation. See [permanent account deletion](account-deletion.md).
+
 ## October 21: bank/cash categories and integrated personal accounts
 
 The user's payment/account improvement scope is implemented in migration 000043 and the account/payment UI. Accounts & balances contains Bank Accounts, Cash Accounts, Other People's Accounts and legacy accounts needing classification. Setup records bank/holder/number or cash name/owner with an atomic opening-balance ledger entry. Account cards show bank prominently and holder beneath, with explicit Archive Account and Restore Account actions. Manual account transactions use a date only with automatic time.

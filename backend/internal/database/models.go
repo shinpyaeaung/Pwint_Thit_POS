@@ -16,6 +16,21 @@ type AppAccountChange struct {
 	CreatedAt pgtype.Timestamptz
 }
 
+type AppAccountDeleteScope struct {
+	Tx          int64
+	Relation    string
+	Fingerprint string
+}
+
+type AppAccountDeletion struct {
+	RequestID pgtype.UUID
+	AccountID pgtype.UUID
+	ActorID   pgtype.UUID
+	Payload   []byte
+	Summary   []byte
+	CreatedAt pgtype.Timestamptz
+}
+
 type AppAccountEntry struct {
 	ID                  pgtype.UUID
 	Sequence            pgtype.Int8
@@ -252,6 +267,10 @@ type AppDamagedProduct struct {
 	ActualUnitCostMmk pgtype.Numeric
 	DiscountLossMmk   pgtype.Numeric
 	RecordNumber      string
+}
+
+type AppDeletedFinanceRequest struct {
+	RequestID pgtype.UUID
 }
 
 type AppExchangeRate struct {

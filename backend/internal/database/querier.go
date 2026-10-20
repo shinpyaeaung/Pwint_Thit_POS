@@ -114,6 +114,8 @@ type Querier interface {
 	ManualStockProducts(ctx context.Context, search string) ([]byte, error)
 	MarkLogin(ctx context.Context, id pgtype.UUID) error
 	MoneyAccountCreate(ctx context.Context, arg MoneyAccountCreateParams) (pgtype.UUID, error)
+	MoneyAccountDelete(ctx context.Context, arg MoneyAccountDeleteParams) (pgtype.UUID, error)
+	MoneyAccountDeletePreview(ctx context.Context, accountID pgtype.UUID) ([]byte, error)
 	MoneyAccountOptions(ctx context.Context) ([]byte, error)
 	MoneyAccountUpdate(ctx context.Context, arg MoneyAccountUpdateParams) (pgtype.UUID, error)
 	MoneyAccounts(ctx context.Context) ([]byte, error)
