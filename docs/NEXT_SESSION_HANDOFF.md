@@ -2,6 +2,8 @@
 
 ## October 20: account management and transaction date/time
 
+Follow-up: the user requested no time input in Update actual balance. Balance adjustments now show the date only and use the automatically captured form-open time; other manual transactions keep editable date/time. Existing ledger/reconciliation rules remain unchanged. `make check` and all 36 real-stack browser tests passed on rerun after an interrupted run timed out. Only the focused frontend change was built for deployment.
+
 Accounts now has Manage account for name/bank/reference edits and Active account for archive/restore. Archival replaces destructive deletion, preserves balances/history in the screen and total, and excludes accounts from new-payment options. New manual/payment entries into archived accounts are rejected; source-linked expense reversals still correct their original account. Migration 000041 adds metadata versions, immutable retry records, identity/deletion guards and the active-account entry guard. PATCH requires accounts.manage; edits, audit and retry records are atomic, and stale versions cannot overwrite newer edits.
 
 Manual transaction forms use separate Myanmar date and time fields with seconds and explicit UTC+06:30 serialization, required values and an active-account default. Existing future-date and reconciliation restrictions remain unchanged.

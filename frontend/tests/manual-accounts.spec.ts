@@ -54,6 +54,8 @@ test('manual stock and accounts: stock, sale, refund, bank balance and personal 
  expect((await get('/accounts')).accounts.find((a:{id:string})=>a.id===account.id).balance_mmk).toBe('1100.0000')
  // Manual reconciliation is an explicit dated difference, not a replacement of history.
  await page.locator('section .panel').filter({has:page.getByText(`KBZ ${suffix}`,{exact:true})}).getByRole('button',{name:'Update actual balance',exact:true}).click()
+ await expect(page.getByLabel('Transaction date (Myanmar)',{exact:true})).toBeVisible()
+ await expect(page.getByLabel('Transaction time (Myanmar)',{exact:true})).toHaveCount(0)
  await page.getByLabel('Actual account balance (MMK)',{exact:true}).fill('1110')
  await page.getByLabel('Description / reason',{exact:true}).fill('Bank observed balance')
  await page.getByRole('button',{name:'Post account entry',exact:true}).click();await expect(page.getByRole('dialog')).toHaveCount(0)
