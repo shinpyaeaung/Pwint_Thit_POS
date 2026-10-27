@@ -9,7 +9,7 @@ import { requestJSON,ApiError } from '@/services/api'
 import { can,permissions,type CurrentUser } from '@/permissions'
 import { amount } from '../purchases/types'
 import { Field } from '../shipments/Fields'
-import { useCart,lineTotal,scaled,fixed,price,type Product,type Mode } from './cart'
+import { useCart,lineTotal,cartTotal,price,type Product,type Mode } from './cart'
 import { PriceEditor,CustomerEditor } from './Editors'
 type Quote={requires_below_cost_approval:boolean;can_approve_below_cost:boolean;quote_hash:string;total_mmk:string;paid_mmk:string;change_mmk:string;outstanding_mmk:string;cost_mmk?:string;profit_mmk?:string;lines:{product_name:string;quantity:string;unit_code:string;total_mmk:string;cost_mmk?:string;below_cost:boolean}[]}
 export default function POS({current}:{current:CurrentUser}){
@@ -31,7 +31,7 @@ export default function POS({current}:{current:CurrentUser}){
  const customers=useQuery({queryKey:['pos-customers',customerSearch],queryFn:({signal})=>requestJSON<{id:string;name:string;code:string;customer_type:string}[]>(`/pos/customers?q=${encodeURIComponent(customerSearch)}`,{signal})})
  const customerPrices=useQuery({queryKey:['pos-customer-prices',customer],queryFn:()=>requestJSON<{product_id:string;unit_code:string;price_mmk:string}[]>(`/customers/${customer}/prices`),enabled:!!customer})
  const effectiveLines=cart.lines.map(l=>({...l,product:{...l.product,packaging:l.product.packaging.map(p=>({...p,special_price_mmk:customer?customerPrices.data?.find(v=>v.product_id===l.product.id&&v.unit_code===p.unit_code)?.price_mmk:undefined}))}}))
- const totals=effectiveLines.map(l=>lineTotal(l,mode)),valid=cart.lines.length>0&&(!customer||customerPrices.isSuccess)&&totals.every(t=>t!==null),total=valid?fixed(totals.reduce((sum,t)=>sum+scaled(t!,4),0n),4):'0.0000'
+ const totals=effectiveLines.map(l=>lineTotal(l,mode)),sum=cartTotal(totals),valid=sum!==null&&(!customer||customerPrices.isSuccess),total=valid?sum:'0.0000'
  const add=useCallback((p:Product,barcode='',clearSearch=true)=>{const u=p.packaging.find(u=>barcode&&u.barcode===barcode)||(barcode&&p.barcode===barcode?p.packaging.find(u=>u.unit_code===p.base_unit_code):undefined)||p.packaging.find(u=>u.is_default_sale)||p.packaging[0];if(!u){setMessage('Configure product packaging first.');return}if(price({...u,special_price_mmk:customer?customerPrices.data?.find(v=>v.product_id===p.id&&v.unit_code===u.unit_code)?.price_mmk:undefined},mode)===null){setMessage('Set a selling price for this unit first.');return}try{cart.add(p,u.unit_code);setMessage('');if(clearSearch)setSearch('');searchRef.current?.focus()}catch{setMessage('Correct the existing quantity first.')}},[cart,mode,customer,customerPrices.data])
  async function scan(){const generation=scanGeneration.current;const code=search.trim();if(!activeWarehouse||!code)return;setSearch('');try{const found=await client.fetchQuery({queryKey:['pos-products',activeWarehouse,code],queryFn:()=>requestJSON<Product[]>(`/pos/products?warehouse_id=${activeWarehouse}&q=${encodeURIComponent(code)}`),staleTime:0});if(generation!==scanGeneration.current)return;const exact=found.filter(p=>p.barcode===code||p.sku===code||p.packaging.some(u=>u.barcode===code));if(exact.length===1)add(exact[0],code,false);else if(found.length===1)add(found[0],code,false);else{setSearch(previous=>previous||code);setMessage(found.length?'Choose a product from the results.':'No matching product.')}}catch(e){if(generation!==scanGeneration.current)return;setSearch(previous=>previous||code);setMessage((e as Error).message)}}
 

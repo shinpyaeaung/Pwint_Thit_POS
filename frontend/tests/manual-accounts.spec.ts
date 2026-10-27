@@ -40,9 +40,39 @@ test('manual stock and accounts: stock, sale, refund, bank balance and personal 
  await expect(page.getByRole('table')).toContainText('Family deposit')
  const recorded=(await get(`/accounts/history?account_id=${account.id}`)).entries.find((e:{description:string})=>e.description===`External ${suffix}`)
  expect(new Date(new Date(recorded.occurred_at).getTime()+390*60000).toISOString().slice(0,10)).toBe(transactionDate)
- const saleBody={account_id:account.id,request_id:crypto.randomUUID(),warehouse_id:warehouse.id,customer_id:'',pricing_mode:'RETAIL',payment_method:'BANK_TRANSFER',payment_reference:'',tender_mmk:'300',due_date:'',reason:'',quote_hash:'',items:[{product_id:product.id,unit_code:'PIECE',units_per_pack:'1',quantity:'2',unit_price_mmk:'150',discount_mmk:'0'}]}
- const quote=await post('/pos/quote',saleBody,200)
- const sale=await post('/pos/checkout',{...saleBody,quote_hash:quote.quote_hash,approve_below_cost:false},201)
+ // Simulate a committed sale whose success body is lost on the way back.
+ // Retrying must preserve the request and produce exactly one cash/stock effect.
+ await page.goto('/pos')
+ await choose('POS warehouse',`Opening ${suffix}`)
+ await page.getByLabel('Scan barcode or search products',{exact:true}).fill(suffix)
+ const posProduct=(await get(`/pos/products?warehouse_id=${warehouse.id}&q=${suffix}`))[0]
+ await page.getByRole('button',{name:`Add ${posProduct.sku}`,exact:true}).click()
+ await page.getByLabel(`Quantity ${posProduct.sku}`,{exact:true}).fill('2')
+ await choose('Payment method','Bank transfer')
+ await choose('Bank / cash account',`${account.name} · ${account.bank}`)
+ await page.getByRole('button',{name:'Review checkout · F8',exact:true}).click()
+ let postedID='', firstPayload=''
+ await page.route('**/api/v1/pos/checkout',async route=>{
+  const payload=route.request().postData()!
+  if(firstPayload) expect(payload).toBe(firstPayload)
+  else firstPayload=payload
+  const response=await route.fetch()
+  expect(response.status(),await response.text()).toBe(201)
+  const result=await response.json()
+  if(!postedID){postedID=result.id;await route.fulfill({response,body:'{"id":'})}
+  else {expect(result.id).toBe(postedID);await route.fulfill({response})}
+ })
+ const review=page.getByRole('dialog',{name:'Review checkout',exact:true})
+ await review.getByRole('button',{name:'Complete sale',exact:true}).click()
+ await expect(review.getByRole('alert')).toContainText('Retry this same checkout')
+ await expect(review.getByRole('button',{name:'Back',exact:true})).toBeDisabled()
+ await review.getByRole('button',{name:'Complete sale',exact:true}).click()
+ await expect(page).toHaveURL(/\/sales\/[a-f0-9-]+$/)
+ await page.unroute('**/api/v1/pos/checkout')
+ const sale={id:postedID}
+ expect((await get('/accounts')).accounts.find((a:{id:string})=>a.id===account.id).balance_mmk).toBe('1300.0000')
+ const stock=(await get(`/inventory?warehouse_id=${warehouse.id}`)).stock
+ expect(stock.find((row:{product_id:string})=>row.product_id===product.id).available_quantity).toBe('22.000000')
  const source=await get(`/returns/sales/${sale.id}`)
  const body={account_id:account.id,request_id:crypto.randomUUID(),sale_id:sale.id,purchase_id:'',replacement_sale_id:'',warehouse_id:'',resolution:'REFUND',reason:`Return ${suffix}`,method:'BANK_TRANSFER',reference:'',approve_refund:false,quote_hash:'',items:[{sale_item_batch_id:source.items[0].sale_item_batch_id,quantity:'1',disposition:'SELLABLE',bucket:''}]}
  const preview=await post('/returns/sales/preview',body,200);await post('/returns/sales',{...body,approve_refund:true,quote_hash:preview.quote_hash},200)

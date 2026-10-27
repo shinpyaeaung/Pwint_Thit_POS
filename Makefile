@@ -31,6 +31,7 @@ generate:
 check:
 	cd backend && go test -race ./... && go vet ./...
 	pnpm --dir frontend run lint
+	pnpm --dir frontend run test:unit
 	pnpm --dir frontend run build
 
 test-integration:

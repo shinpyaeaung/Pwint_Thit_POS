@@ -9,7 +9,7 @@ The complete [system specification](docs/Pwint_Thit_Distribution_Overall_System_
 
 ## Requirements
 
-- Node.js 24+, pnpm 12.3.4, Go 1.27.1+, and Make
+- Node.js 24+, pnpm 12.3.4, Go 1.27.3+, and Make
 - Docker with Compose (Docker Desktop or Colima on macOS)
 - Google Chrome for browser tests; install the Safari-compatible WebKit test browser with `pnpm --dir frontend exec playwright install webkit` after setup
 

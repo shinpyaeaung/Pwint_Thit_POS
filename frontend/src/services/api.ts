@@ -4,12 +4,14 @@ export class ApiError extends Error {
 }
 
 export async function requestJSON<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const headers = new Headers(options.headers)
+  if (!headers.has('Accept')) headers.set('Accept', 'application/json')
+  if (options.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
+  if (options.method && !['GET', 'HEAD', 'OPTIONS'].includes(options.method.toUpperCase())) headers.set('X-Pwint-Thit-Request', '1')
   let response: Response
   try {
     response = await fetch(`/api/v1${path}`, {
-      ...options, credentials: 'same-origin',
-      headers: { Accept: 'application/json', ...(options.body ? { 'Content-Type': 'application/json' } : {}),
-        ...(options.method && options.method !== 'GET' ? { 'X-Pwint-Thit-Request': '1' } : {}), ...options.headers },
+      ...options, credentials: 'same-origin', headers,
     })
   } catch (error) {
     if (options.signal?.aborted) throw error
@@ -20,6 +22,13 @@ export async function requestJSON<T>(path: string, options: RequestInit = {}): P
     throw new ApiError(body?.error?.message || 'The server is unavailable. Please try again.', response.status)
   }
   if (response.status === 204) return undefined as T
-  return response.json() as Promise<T>
+  try {
+    return await response.json() as T
+  } catch (error) {
+    if (options.signal?.aborted) throw error
+    // A write may already have committed. Keep checkout's same-request retry
+    // protection active when the success body is truncated or unreadable.
+    throw new ApiError('The server response could not be read. Retry the same request to confirm its result.', 502)
+  }
 }
 export const getJSON = (path: string, signal?: AbortSignal): Promise<unknown> => requestJSON(path, { signal })

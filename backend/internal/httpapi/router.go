@@ -22,6 +22,11 @@ func New(db DatabaseChecker, logger *slog.Logger, authorization *authz.Service, 
 	r := gin.New()
 	_ = r.SetTrustedProxies(nil)
 	r.Use(func(c *gin.Context) {
+		// Socket write timeouts do not cancel database queries. Bound all request
+		// work before the server's 15-second write timeout, including pool waits.
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 12*time.Second)
+		defer cancel()
+		c.Request = c.Request.WithContext(ctx)
 		var id [16]byte
 		_, _ = rand.Read(id[:])
 		requestID := hex.EncodeToString(id[:])

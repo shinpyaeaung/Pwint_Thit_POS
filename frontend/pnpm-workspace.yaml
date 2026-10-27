@@ -3,3 +3,7 @@
 minimumReleaseAgeExclude:
   - framer-motion@13.4.1
   - motion-dom@13.4.1
+
+# Patched transitive source-map parser (GHSA-68fv-2mgg-jv7q).
+overrides:
+  'source-map-js@<1.2.2': 1.2.2

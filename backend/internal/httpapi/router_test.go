@@ -9,12 +9,33 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
 type checkStub struct {
 	result     int32
 	err        error
 	panicValue bool
+}
+
+func TestRequestWorkIsBoundedAndCancelled(t *testing.T) {
+	r := New(checkStub{}, slog.New(slog.NewJSONHandler(io.Discard, nil)), nil)
+	var requestContext context.Context
+	r.GET("/slow-work", func(c *gin.Context) {
+		requestContext = c.Request.Context()
+		deadline, ok := requestContext.Deadline()
+		if !ok || time.Until(deadline) > 12*time.Second {
+			t.Fatal("request database work must have a bounded deadline")
+		}
+		c.Status(http.StatusNoContent)
+	})
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, httptest.NewRequest("GET", "/slow-work", nil))
+	if w.Code != http.StatusNoContent || requestContext.Err() != context.Canceled {
+		t.Fatal("request work must be cancelled after the handler returns")
+	}
 }
 
 func (s checkStub) CheckDatabase(ctx context.Context) (int32, error) {

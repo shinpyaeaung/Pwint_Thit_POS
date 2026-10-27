@@ -1,5 +1,13 @@
 # Pwint Thit POS 1.2 handoff
 
+## October 27: production-readiness review
+
+See [the review report](code-review-2026-10-27.md) for findings, verification and remaining deployment requirements. Fixed uncertain checkout handling when a committed success response is truncated, Headers-object merging, and POS rendering of large exact totals. Added six frontend unit regressions to `make check` and extended the real-stack Chrome/WebKit account workflow to verify a committed checkout retry has exactly one stock and cash effect. All checks, PostgreSQL integration, and 38 browser cases passed.
+
+Updated Go to 1.27.3, backend security dependencies, Vite to 8.3.3 and source-map-js to 1.2.2; pnpm remains 12.3.4. Frontend audit is clean; govulncheck reports no affected imported packages (an unused OpenPGP package has a module-only advisory). API requests now bound database work to 12 seconds. Nginx blocks frame embedding and object content. No financial rules or schema changes were made.
+
+The read-only `scripts/verify-integrity.sql` reported zero violations for movement/stock reconciliation, sale FIFO quantities, invoice totals, and historical cash/personal-debt balances in the existing database. No business records were changed. Existing unrelated frontend visual edits remain separate; only the POS import and exact-total expression belong to this review. Public production readiness still depends on HTTPS, least-privilege database deployment, verified backups/restores, monitoring and representative load testing.
+
 ## October 21: permanent bank/cash account deletion
 
 User explicitly authorized deleting accounts and their transaction history. Migration 000044 and Super Admin-only DELETE /accounts/:id implement this exception to archival/append-only rules. The UI previews balances/counts, requires the exact account name and a reason, and rejects stale confirmations. Deletion removes the account, account metadata changes, ledger entries, linked payments/allocations and personal transactions atomically. Source purchases/sales/expenses/returns, stock movements, costing snapshots and security audits remain; outstanding balances and payment reports recompute from remaining settlements. Linked reversals are included; cross-account linked reversals or remaining negative creditor balances block deletion instead of erasing unrelated accounts. Audit receipts and request-ID tombstones prevent retries recreating erased transactions. No live business accounts were erased during implementation. See [permanent account deletion](account-deletion.md).
