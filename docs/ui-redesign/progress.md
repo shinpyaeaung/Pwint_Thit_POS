@@ -11,3 +11,9 @@ Phase 1 complete: `make check` passed again and the final real-stack run passed 
 The next baseline run passed both correction cases and exposed a concurrent aggregate-read race in Chromium's shipment journey: dashboard profit and the separate profit endpoint were read across another worker's posted sale. The assertion now retries the two independent reads for at most ten seconds, requiring exact agreement. This changes only the test's timing assumption, not either endpoint or financial calculation.
 
 Visual baseline: reviewed the 1280×600 Accounts screenshot from the navigation test. Rounded/shadowed action pills, oversized account cards, 10–11px pale navigation labels and repeated shell branding reduce useful density. These observations are covered by the Phase 2 tokens and Phase 3 shell strategy.
+
+## Phase 2 — shared design system (complete)
+
+Implemented semantic neutral tokens, 4/6/8/10px radii, 13px base type, darker helper/label text, tabular figures, quiet ruled panels, compact controls and table rows, common filter/tab/table utilities, checkbox/radio focus and coarse-pointer targets. Shared page headers, states, badges and overlays use the same tokens. Buttons no longer scale or gain shadows on hover. Loading placeholders are static and reduced-motion/print behavior remains.
+
+`make check` passed. Reviewed the generated component-library and modal screenshots: labels, exact decimal fields, table pagination, dialog boundaries and visible focus are clear. All 38 real-stack browser cases passed in 109.17 seconds. Removed two inert undefined shadow declarations found during source review; this does not change rendered appearance. Shell and cost-journey typography are scheduled for Phase 3, remaining page-level styling for Phase 5.

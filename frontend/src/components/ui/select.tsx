@@ -10,26 +10,26 @@ type SelectProps = Pick<ComponentProps<typeof SelectPrimitive.Trigger>, 'id' | '
   required?: boolean
   children: ReactNode
 }
-// Ignore the native form bridge’s transient empty value when asynchronous options change.
+// Ignore the native form bridge's transient empty value when asynchronous options change.
 // Encode all values so optional "All"/"Not assigned" choices can round-trip empty strings.
 const encode = (value: string | number) => `option:${value}`
 export function Select({ value, onValueChange, disabled, required, children, className, ...props }: SelectProps) {
   return <SelectPrimitive.Root value={encode(value)} onValueChange={v => { if (v.startsWith('option:')) onValueChange(v.slice(7)) }} disabled={disabled} required={required}>
-    <SelectPrimitive.Trigger {...props} className={cn('group inline-flex h-10 w-full min-w-0 items-center justify-between gap-3 rounded-lg border border-input bg-white px-3 text-left text-[13px] font-normal text-foreground shadow-xs outline-none transition-colors hover:border-neutral-400 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/15 data-[state=open]:border-primary data-[state=open]:ring-2 data-[state=open]:ring-primary/10 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:opacity-60 aria-invalid:border-destructive [&>span:first-child]:truncate', className)}>
+    <SelectPrimitive.Trigger {...props} className={cn('group inline-flex h-9 w-full min-w-0 items-center justify-between gap-3 rounded-md border border-border bg-surface px-3 text-left text-[13px] font-normal text-foreground outline-none transition-colors duration-150 hover:border-foreground/40 focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-primary/10 data-[state=open]:border-primary data-[state=open]:ring-[3px] data-[state=open]:ring-primary/10 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:opacity-60 aria-invalid:border-destructive [&>span:first-child]:truncate', className)}>
       <SelectPrimitive.Value />
-      <SelectPrimitive.Icon asChild><ChevronDown className="size-3.5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" /></SelectPrimitive.Icon>
+      <SelectPrimitive.Icon asChild><ChevronDown className="size-3.5 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" /></SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>
     <SelectPrimitive.Portal>
-      <SelectPrimitive.Content position="popper" sideOffset={6} collisionPadding={12} className="z-[100] max-h-[min(320px,var(--radix-select-content-available-height))] min-w-[var(--radix-select-trigger-width)] max-w-[calc(100vw-24px)] overflow-hidden rounded-xl border bg-white text-foreground shadow-[0_8px_30px_-8px_rgb(0_0_0/0.2)]">
-        <SelectPrimitive.ScrollUpButton className="flex h-6 items-center justify-center bg-white text-muted-foreground"><ChevronUp className="size-4" /></SelectPrimitive.ScrollUpButton>
+      <SelectPrimitive.Content position="popper" sideOffset={6} collisionPadding={12} className="z-[100] max-h-[min(320px,var(--radix-select-content-available-height))] min-w-[var(--radix-select-trigger-width)] max-w-[calc(100vw-24px)] overflow-hidden rounded-md border border-border bg-surface text-foreground animate-in fade-in-0 zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2" style={{boxShadow: 'var(--shadow-lg)'}}>
+        <SelectPrimitive.ScrollUpButton className="flex h-6 items-center justify-center bg-surface text-muted-foreground"><ChevronUp className="size-4" /></SelectPrimitive.ScrollUpButton>
         <SelectPrimitive.Viewport className="p-1.5">{children}</SelectPrimitive.Viewport>
-        <SelectPrimitive.ScrollDownButton className="flex h-6 items-center justify-center bg-white text-muted-foreground"><ChevronDown className="size-4" /></SelectPrimitive.ScrollDownButton>
+        <SelectPrimitive.ScrollDownButton className="flex h-6 items-center justify-center bg-surface text-muted-foreground"><ChevronDown className="size-4" /></SelectPrimitive.ScrollDownButton>
       </SelectPrimitive.Content>
     </SelectPrimitive.Portal>
   </SelectPrimitive.Root>
 }
 export function SelectItem({ value, disabled, children }: { value: string | number; disabled?: boolean; children: ReactNode }) {
-  return <SelectPrimitive.Item value={encode(value)} disabled={disabled} className="relative flex min-h-9 cursor-default select-none items-center rounded-md py-2 pl-3 pr-9 text-[13px] outline-none data-[highlighted]:bg-muted data-[state=checked]:bg-primary/5 data-[state=checked]:font-medium data-[state=checked]:text-primary data-[disabled]:pointer-events-none data-[disabled]:opacity-40">
+  return <SelectPrimitive.Item value={encode(value)} disabled={disabled} className="relative flex min-h-9 cursor-default select-none items-center rounded-lg py-2 pl-3 pr-9 text-[13px] outline-none transition-colors data-[highlighted]:bg-muted data-[state=checked]:bg-primary/5 data-[state=checked]:font-medium data-[state=checked]:text-primary data-[disabled]:pointer-events-none data-[disabled]:opacity-40">
     <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
     <SelectPrimitive.ItemIndicator className="absolute right-3 flex items-center"><Check className="size-3.5" /></SelectPrimitive.ItemIndicator>
   </SelectPrimitive.Item>

@@ -2,6 +2,7 @@
 @import "tw-animate-css";
 
 @theme inline {
+  --color-brand-red: #ba0d0d;
   --color-brand-yellow: #f7a712;
   --font-sans: 'Inter', sans-serif;
   --color-background: var(--background);
@@ -18,35 +19,100 @@
   --color-border: var(--border);
   --color-input: var(--border);
   --color-ring: var(--primary);
-  --radius-sm: 8px;
-  --radius-md: 10px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
 }
 :root {
   font-family: 'Inter', sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  --background: #f8f8f8;
-  --foreground: #171717;
+  --background: #fafaf9;
+  --foreground: #1c1917;
   --primary: #ba0d0d;
   --primary-foreground: #ffffff;
-  --secondary: #f5f5f5;
-  --muted: #f5f5f5;
-  --muted-foreground: #737373;
-  --accent: #fff5df;
-  --border: #e5e5e5;
+  --secondary: #f5f5f4;
+  --muted: #f5f5f4;
+  --muted-foreground: #625c57;
+  --accent: #fefce8;
+  --border: #dedbd6;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.03);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.03);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.03);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.06), 0 4px 6px -4px rgb(0 0 0 / 0.04);
+  --shadow-overlay: 0 20px 50px -12px rgb(0 0 0 / 0.2);
 }
+
 @layer base {
   * { @apply border-border; }
-  body { @apply m-0 min-w-[320px] bg-background text-foreground; font-variant-numeric: tabular-nums; }
+  body { @apply m-0 min-w-[320px] bg-background text-foreground; font-variant-numeric: tabular-nums; font-size: 13px; line-height: 1.5; }
   button:not(:disabled), a { cursor: pointer; }
 }
 
 @layer components {
-  .panel { @apply rounded-xl border bg-white shadow-xs; }
-  .field { @apply block w-full rounded-xl border bg-white px-3 py-2.5 text-sm font-normal outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground aria-invalid:border-destructive aria-invalid:ring-destructive/20; }
+  .panel {
+    @apply rounded-lg border bg-surface;
+  }
+  .field {
+    @apply block w-full rounded-md border border-border bg-surface px-3 py-2 text-[13px] font-normal outline-none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+  }
+  .field:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgb(186 13 13 / 0.08);
+  }
+  .field:disabled {
+    @apply cursor-not-allowed bg-muted text-muted-foreground;
+  }
+  .field[aria-invalid="true"] {
+    @apply border-destructive;
+    box-shadow: 0 0 0 3px rgb(186 13 13 / 0.1);
+  }
+
+  .skeleton { background: var(--muted); border-radius: var(--radius-sm); }
+  .section-title { @apply border-b pb-3 text-sm font-semibold text-foreground; }
+  .filter-toolbar { @apply mb-4 flex flex-wrap items-center gap-3 border-y bg-surface px-3 py-3; }
+  .tab-strip { @apply mb-4 flex flex-wrap gap-1 border-b; }
+  .tab-button { @apply min-h-9 rounded-t-md border-b-2 border-transparent px-3 py-2 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground; }
+  .tab-button[aria-pressed="true"] { @apply border-primary text-primary; }
+  .data-grid { @apply w-full text-left text-[13px]; }
+  .data-grid th { @apply border-b bg-muted px-3 py-2.5 text-xs font-semibold text-muted-foreground; }
+  .data-grid td { @apply border-b px-3 py-3; }
+  .data-grid tbody tr:last-child td { border-bottom: 0; }
+  .data-grid tbody tr:hover { background: var(--background); }
+  input[type="checkbox"], input[type="radio"] { accent-color: var(--primary); width: 1rem; height: 1rem; flex-shrink: 0; }
+  input[type="checkbox"]:focus-visible, input[type="radio"]:focus-visible, summary:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+  .field::placeholder { color: var(--muted-foreground); }
+  textarea.field { min-height: 5rem; resize: vertical; }
+  @media (pointer: coarse) { [data-slot="button"], [role="combobox"], .field { min-height: 40px; } }
+
+  /* Page entrance animation */
+  @keyframes page-enter {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .page-enter {
+    animation: page-enter 0.3s ease-out both;
+  }
+
+  /* Staggered children animation */
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .fade-up {
+    animation: fade-up 0.35s ease-out both;
+  }
+  .fade-up-delay-1 { animation-delay: 0.05s; }
+  .fade-up-delay-2 { animation-delay: 0.1s; }
+  .fade-up-delay-3 { animation-delay: 0.15s; }
+  .fade-up-delay-4 { animation-delay: 0.2s; }
 }
 
 @layer base {
