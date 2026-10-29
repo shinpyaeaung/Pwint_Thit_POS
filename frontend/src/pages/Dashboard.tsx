@@ -1,3 +1,4 @@
+import { MoneyChart } from '@/components/charts/money-chart'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowUpRight, RefreshCw, Package, TriangleAlert, Receipt, CircleDollarSign } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -99,18 +100,12 @@ export default function Dashboard({ current }: { current: CurrentUser }) {
               </div>
               <a href="/finance/profit" className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">View profit report ↗</a>
             </div>
-            <dl className="px-5 py-3">{[
-              ['Net sales', month.revenue_mmk],
-              ['Cost of goods sold', month.cogs_mmk],
-              ['Gross Profit', month.gross_profit_mmk],
-              ['Operating expenses', month.expenses_mmk],
-              ['Net Profit', month.net_profit_mmk]
-            ].map(([label, value]) => (
-              <div key={label} className={`flex flex-wrap justify-between gap-2 py-3 text-sm ${label === 'Net Profit' ? 'border-t-2 border-border text-base font-semibold text-foreground' : label === 'Gross Profit' ? 'border-t border-border font-semibold text-foreground' : 'text-muted-foreground'}`}>
-                <dt>{label}</dt>
-                <dd className={`tabular-nums ${value?.startsWith('-') ? 'text-primary' : ''}`}>{mmk(value)}</dd>
-              </div>
-            ))}</dl>
+            <MoneyChart embedded title="Monthly revenue & costs" scope={`${d.business_date.slice(0,7)} · month to date`} series={[
+              {label:'Net sales',exact:month.revenue_mmk}, {label:'Cost of goods sold',exact:month.cogs_mmk},
+              {label:'Gross Profit',exact:month.gross_profit_mmk}, {label:'Operating expenses',exact:month.expenses_mmk},
+              {label:'Net Profit',exact:month.net_profit_mmk,accent:true},
+            ]}/>
+
             {month.incomplete_cost_sales > 0 && <p role="alert" className="border-t border-border px-5 py-3 text-xs font-medium text-primary bg-red-50/50">{month.incomplete_cost_sales} sales have incomplete actual cost. Profit is unavailable.</p>}
           </section>
         )}
@@ -134,20 +129,18 @@ export default function Dashboard({ current }: { current: CurrentUser }) {
                 <CircleDollarSign className="size-4 text-muted-foreground" />
                 <h2 className="text-xs font-semibold  text-muted-foreground">Outstanding balances</h2>
               </div>
-              <dl className="mt-4 grid grid-cols-2 gap-4">{[
-                ['Customer Debt', d.customer_debt_mmk],
-                ['Supplier Debt', d.supplier_debt_mmk]
-              ].map(([label, value]) => value !== undefined && (
-                <div key={label} className="border-l-2 pl-3">
-                  <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
-                  <dd className="mt-1 break-words text-base font-semibold tabular-nums text-foreground">{mmk(value)}</dd>
-                </div>
-              ))}</dl>
+              <MoneyChart embedded title="Receivables & payables" scope="Current outstanding balances" series={[
+                ...(d.customer_debt_mmk!==undefined?[{label:'Customer Debt',exact:d.customer_debt_mmk}]:[]),
+                ...(d.supplier_debt_mmk!==undefined?[{label:'Supplier Debt',exact:d.supplier_debt_mmk}]:[]),
+              ]}/>
+
               <p className="mt-4 text-xs leading-5 text-muted-foreground">Unpaid invoice balances after payments, credits and refunds. Supplier balances retain transaction rates.</p>
             </section>
           )}
         </div>
       </div>
+
+      <p className="text-xs text-muted-foreground">Historical sales and profit trends are unavailable in this snapshot. Use Reports to compare recorded periods.</p>
 
       {/* Stock Attention Alerts */}
       {(d.low_stock || d.expiring || d.damaged) && (

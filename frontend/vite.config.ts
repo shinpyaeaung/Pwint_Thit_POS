@@ -11,6 +11,7 @@ export default defineConfig(({ mode }) => {
   return {
     define: { __APP_VERSION__: JSON.stringify(version) },
     plugins: [react(), tailwindcss(), { name: 'app-version-title', transformIndexHtml: html => html.replace('%APP_VERSION%', version.replace(/\.0$/, '')) }],
+    build: { rolldownOptions: { output: { codeSplitting: { groups: [{ name: 'react-runtime', test: /\/node_modules\/(react|react-dom|scheduler)\// }] } } } },
     resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
     server: {
       host: '127.0.0.1', port: 5173, strictPort: true,
