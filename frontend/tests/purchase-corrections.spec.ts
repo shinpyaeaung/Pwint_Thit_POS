@@ -60,7 +60,9 @@ test('Super Admin corrects all completed purchase fields with required reason an
  await expect(page.getByRole('heading',{name:'Before correction',exact:true})).toBeVisible()
  await expect(page.getByRole('heading',{name:'After correction',exact:true})).toBeVisible()
  await page.screenshot({path:'/tmp/pwint-purchase-correction-history.png',fullPage:true})
- await post(`/purchases/${purchase.id}/payments`,{request_id:crypto.randomUUID(),correction_version:'1',amount:'100',method_code:'CASH',paid_at:new Date().toISOString()},200)
+ // Use the database-authored correction time: valid chronology without host/container clock skew.
+ expect(corrected.corrected_at).toBeTruthy()
+ await post(`/purchases/${purchase.id}/payments`,{request_id:crypto.randomUUID(),correction_version:'1',amount:'100',method_code:'CASH',paid_at:corrected.corrected_at},200)
  expect((await get(`/purchases/${purchase.id}`)).outstanding_original).toBe('11800.0000')
  const staff=await post('/users',{username:`correct-reader-${suffix}`,display_name:'Correction reader',password:testPassword})
  expect((await page.request.put(`/api/v1/users/${staff.id}/permissions`,{headers,data:{permissions:['purchases.view','purchases.view_cost','purchases.create','transactions.reverse']}})).status()).toBe(204)

@@ -438,9 +438,13 @@ test('shipment goods, transportation timeline, expenses and restricted staff acc
  // Phase 19: actual aggregates, refresh recovery, responsive layout and restricted dashboard.
  await page.goto('/')
  await expect(page.getByRole('heading',{name:'Distribution dashboard',exact:true})).toBeVisible()
- const snapshot=await(await page.request.get('/api/v1/dashboard')).json()
- const profitReport=await(await page.request.get('/api/v1/finance/profit')).json()
- expect(snapshot.profit.month.net_profit_mmk).toBe(profitReport.net_profit_mmk)
+ // Other browser workers post sales into this disposable database. Compare again
+ // if a commit lands between these independent aggregate reads.
+ await expect(async()=>{
+  const snapshot=await(await page.request.get('/api/v1/dashboard')).json()
+  const profitReport=await(await page.request.get('/api/v1/finance/profit')).json()
+  expect(snapshot.profit.month.net_profit_mmk).toBe(profitReport.net_profit_mmk)
+ }).toPass({timeout:10000})
  await expect(page.getByRole('region',{name:'Monthly profit',exact:true})).toContainText('Gross Profit')
  for(const name of ['Inventory value','Low Stock','Expiring Products','Damaged Products','Recent transactions']) await expect(page.getByRole('region',{name,exact:true})).toBeVisible()
  await page.screenshot({path:'/tmp/pwint-dashboard-desktop.png',fullPage:true})

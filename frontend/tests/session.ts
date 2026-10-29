@@ -9,6 +9,10 @@ export async function signIn(page: Page, username = owner, password = testPasswo
   await page.getByLabel('Password', { exact: true }).fill(password)
   await page.getByRole('button', { name: 'Sign in', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
+  // The shell renders before its lazy destination. Wait for the destination and
+  // initial dashboard query before tests navigate away (WebKit reports canceled loads).
+  await expect(page.locator('main h1')).toBeVisible()
+  await expect(page.getByText('Loading business snapshot…', { exact: true })).toHaveCount(0)
 }
 
 // Legacy workflow tests explicitly select the funded account seeded in their disposable database.
