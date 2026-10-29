@@ -2,6 +2,8 @@
 
 ## October 27: production-readiness review
 
+Deployment completed October 29 after resuming the interrupted build session. The already-built isolated release is running at http://localhost:8088; frontend, API and PostgreSQL are healthy and migration execution succeeded. Nginx syntax, login HTTP 200, no-cache and security headers were verified. All five read-only integrity checks again returned zero violations. Existing data/volume and unrelated workspace UI edits were preserved. Review code was committed and pushed as `0bdec4f`.
+
 See [the review report](code-review-2026-10-27.md) for findings, verification and remaining deployment requirements. Fixed uncertain checkout handling when a committed success response is truncated, Headers-object merging, and POS rendering of large exact totals. Added six frontend unit regressions to `make check` and extended the real-stack Chrome/WebKit account workflow to verify a committed checkout retry has exactly one stock and cash effect. All checks, PostgreSQL integration, and 38 browser cases passed.
 
 Updated Go to 1.27.3, backend security dependencies, Vite to 8.3.3 and source-map-js to 1.2.2; pnpm remains 12.3.4. Frontend audit is clean; govulncheck reports no affected imported packages (an unused OpenPGP package has a module-only advisory). API requests now bound database work to 12 seconds. Nginx blocks frame embedding and object content. No financial rules or schema changes were made.

@@ -46,6 +46,8 @@ Invoice checkout payment/debt snapshots are intentionally historical and explici
 
 ## Remaining production work and limits
 
+Local deployment was completed on 29 October from the isolated reviewed release (`0bdec4f`). Frontend, API and PostgreSQL are healthy at http://localhost:8088. The migration service completed, Nginx configuration and response headers passed verification, and the five read-only integrity checks still returned zero violations. The database volume was preserved.
+
 This review does **not** certify a public production deployment. The repository currently supplies a local deployment foundation:
 
 1. Configure and verify a real HTTPS domain, production origins/cookies, dedicated production credentials and restricted database roles/network access. The Compose database initialization role is also the API role; least-privilege production role separation is still needed.
