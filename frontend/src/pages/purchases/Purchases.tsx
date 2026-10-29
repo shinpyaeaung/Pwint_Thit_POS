@@ -56,9 +56,9 @@ function PurchaseDetails({ p, current }: { p: Purchase; current: CurrentUser }) 
    { id: 'product', header: 'Product / SKU', cell: i => <div className="min-w-36"><p className="font-medium">{i.product_name}</p><p className="mt-1 text-xs text-muted-foreground">{i.sku}</p></div> },
    { id: 'qty', header: 'Quantity / Conversion', cell: i => <div className="min-w-40 text-xs"><p>{amount(i.quantity)} {i.unit_name}</p><p className="mt-1 text-muted-foreground">× {amount(i.units_per_pack)} = {amount(i.base_quantity)} base units</p></div> },
    ...(p.can_view_cost ? [
-    { id: 'price', header: 'Unit price', cell: (i: NonNullable<Purchase['items']>[number]) => <span className="whitespace-nowrap text-xs">{amount(i.unit_price_original)} {p.currency_code}</span> },
+    { id: 'price', header: 'Unit price', align:'right' as const, cell: (i: NonNullable<Purchase['items']>[number]) => <span className="whitespace-nowrap text-xs">{amount(i.unit_price_original)} {p.currency_code}</span> },
     { id: 'adjustments', header: 'Discount / Tax', cell: (i: NonNullable<Purchase['items']>[number]) => <span className="whitespace-nowrap text-xs">{amount(i.discount_original)} / {amount(i.tax_original)}</span> },
-    { id: 'total', header: 'Line total', cell: (i: NonNullable<Purchase['items']>[number]) => <span className="whitespace-nowrap text-xs font-medium">{amount(i.total_original)} {p.currency_code}</span> },
+    { id: 'total', header: 'Line total', align:'right' as const, cell: (i: NonNullable<Purchase['items']>[number]) => <span className="whitespace-nowrap text-xs font-medium">{amount(i.total_original)} {p.currency_code}</span> },
    ] : []),
   ]} />
   {p.can_view_cost && <section className="panel mt-6 p-5"><h2 className="mb-4 text-sm font-semibold">Supplier payable for this purchase</h2><div className="grid gap-5 sm:grid-cols-3">{[['Payment status',p.payment_status?.replaceAll('_',' ') || 'Not posted'],['Paid (MMK)',`${amount(p.amount_paid_mmk)} MMK`],['Outstanding',`${amount(p.outstanding_original)} ${p.currency_code} / ${amount(p.outstanding_mmk)} MMK`]].map(([label,value]) => <div key={label}><p className="text-xs text-muted-foreground">{label}</p><p className="mt-2 text-sm font-medium tabular-nums">{value}</p></div>)}</div></section>}

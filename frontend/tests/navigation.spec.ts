@@ -44,7 +44,7 @@ test('business menu scrolls independently and every destination loads', async ({
     await expect(page.locator('main h1')).toBeVisible()
     await expect(sidebar.getByRole('link', { name: 'Accounts & balances', exact: true })).toHaveAttribute('href', '/accounts')
     await expect(page.getByRole('heading', { name: /Page not found|Access restricted|Unable to check your session/ })).toHaveCount(0)
-    await expect(page.getByText('Preparing report…', { exact: true })).toHaveCount(0)
+    if (href === '/reports' || href === '/business-data') await expect(page.getByLabel('Report results', { exact: true })).toBeVisible()
   }
   // A new installation must explain the empty warehouse selector.
   await page.route('**/api/v1/pos/warehouses', route => route.fulfill({ json: [] }))
@@ -95,6 +95,7 @@ test('business menu scrolls independently and every destination loads', async ({
     await menu.getByRole('link', { name: 'Reports', exact: true }).click()
     await expect(menu).toHaveCount(0)
     await expect(page.getByRole('heading', { name: 'Business reports', exact: true })).toBeVisible()
+    await expect(page.getByLabel('Report results', { exact: true })).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     await page.evaluate(() => document.fonts.ready.then(() => undefined))
     await page.getByRole('button', { name: 'Open navigation', exact: true }).click()
