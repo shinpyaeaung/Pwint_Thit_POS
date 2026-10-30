@@ -23,11 +23,11 @@ function CostForm({id,source,sources}:{id:string;source:Source;sources:PurchaseS
 export function CostResult({result:r,sources=[],items=[]}:{result:Result;sources?:PurchaseSource[];items?:SourceItem[]}) {
  return <div className="min-w-0 space-y-4"><CostJourney sources={sources} converted={r.purchase_mmk} transport={r.transport_mmk} other={r.expense_mmk} landed={r.landed_mmk} finalized={r.finalized} canPreviewProfit={false} zeroSellable={r.items.every(i=>i.actual_unit_cost_mmk===null)} scope={`Whole shipment · ${methods[r.method as keyof typeof methods]} allocation`} notes={r.notes}/><DataTable caption="Landed cost allocation" rows={r.items} rowKey={i=>i.id} pageSize={100} columns={[
  {id:'item',header:r.counts_confirmed||r.finalized?'Product / Sellable':'Product / Expected (estimate)',cell:i=><div className="min-w-36">{i.product_name}<p className="text-xs text-muted-foreground">{amount(i.sellable_quantity)} {i.base_unit_code}</p>{i.received_quantity!==undefined&&<p className="text-xs text-muted-foreground">Received {amount(i.received_quantity)} − damaged {amount(i.damaged_quantity)}</p>}{r.method==='WEIGHT'&&<p className="text-xs">{amount(i.weight_kg)} kg</p>}{r.method==='CARTONS'&&<p className="text-xs">{amount(i.carton_quantity)} cartons</p>}</div>},
- {id:'purchase',header:'Purchase (MMK)',cell:i=>amount(i.purchase_mmk)},
- {id:'transport',header:'Transport (MMK)',cell:i=>amount(i.transport_mmk)},
- {id:'expense',header:'Expenses (MMK)',cell:i=>amount(i.expense_mmk)},
- {id:'landed',header:'Landed (MMK)',cell:i=><strong className="tabular-nums">{amount(i.landed_mmk)}</strong>},
- {id:'carton',header:'Landed Cost per Carton (MMK)',cell:i=>amount(cartonCost(i.actual_unit_cost_mmk,i.carton_size??items.find(x=>x.id===i.id)?.carton_size))},
- {id:'unit',header:'Landed Cost per Piece (MMK)',cell:i=><span className="tabular-nums" data-testid="actual-unit-cost">{i.actual_unit_cost_mmk===null?'No sellable units — retain as loss':amount(i.actual_unit_cost_mmk)}</span>},
+ {id:'purchase',header:'Purchase (MMK)',align:'right' as const,cell:i=>amount(i.purchase_mmk)},
+ {id:'transport',header:'Transport (MMK)',align:'right' as const,cell:i=>amount(i.transport_mmk)},
+ {id:'expense',header:'Expenses (MMK)',align:'right' as const,cell:i=>amount(i.expense_mmk)},
+ {id:'landed',header:'Landed (MMK)',align:'right' as const,cell:i=><strong className="tabular-nums">{amount(i.landed_mmk)}</strong>},
+ {id:'carton',header:'Landed Cost per Carton (MMK)',align:'right' as const,cell:i=>amount(cartonCost(i.actual_unit_cost_mmk,i.carton_size??items.find(x=>x.id===i.id)?.carton_size))},
+ {id:'unit',header:'Landed Cost per Piece (MMK)',align:'right' as const,cell:i=><span className="tabular-nums" data-testid="actual-unit-cost">{i.actual_unit_cost_mmk===null?'No sellable units — retain as loss':amount(i.actual_unit_cost_mmk)}</span>},
  ]}/><p className="text-xs leading-5 text-muted-foreground">MMK allocations reconcile to four decimal places; unit costs retain eight. Zero sellable quantity has no unit cost. Profit calculations must use finalized landed batch costs, never supplier purchase price alone.</p></div>
 }

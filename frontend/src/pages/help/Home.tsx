@@ -17,7 +17,7 @@ export default function Home({ current }: { current: CurrentUser }) {
             </span>
             <span className="truncate">{item.label}</span>
           </div>
-          <ArrowRight className="size-4 shrink-0 text-stone-300 transition-transform duration-150 group-hover:translate-x-0.5 group-hover:text-primary" />
+          <ArrowRight className="size-4 shrink-0 text-muted-foreground transition-transform duration-150 group-hover:translate-x-0.5 group-hover:text-primary" />
         </a>
       ))}
     </div>

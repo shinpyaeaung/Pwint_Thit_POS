@@ -8,14 +8,16 @@ const { version } = JSON.parse(readFileSync(new URL('./package.json', import.met
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '..', '')
+  const proxy = { '/api': { target: process.env.API_PROXY_TARGET || env.API_PROXY_TARGET || 'http://127.0.0.1:8080', changeOrigin: true } }
   return {
     define: { __APP_VERSION__: JSON.stringify(version) },
     plugins: [react(), tailwindcss(), { name: 'app-version-title', transformIndexHtml: html => html.replace('%APP_VERSION%', version.replace(/\.0$/, '')) }],
     build: { rolldownOptions: { output: { codeSplitting: { groups: [{ name: 'react-runtime', test: /\/node_modules\/(react|react-dom|scheduler)\// }] } } } },
     resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
+    preview: { host: '127.0.0.1', proxy },
     server: {
       host: '127.0.0.1', port: 5173, strictPort: true,
-      proxy: { '/api': { target: process.env.API_PROXY_TARGET || env.API_PROXY_TARGET || 'http://127.0.0.1:8080', changeOrigin: true } },
+      proxy,
     },
   }
 })

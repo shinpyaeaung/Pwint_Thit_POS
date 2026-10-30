@@ -29,7 +29,7 @@ function List({current}:{current:CurrentUser}) {
  {id:'route',header:'Origin → Warehouse',cell:s=><span>{s.start_location} → {s.destination_name}</span>},
  {id:'status',header:'Status',cell:s=><StatusBadge>{label(s.status)}</StatusBadge>},
  {id:'eta',header:'Expected arrival',cell:s=>dateLabel(s.expected_arrival_at)},
- {id:'cost',header:'Transport / Expenses (MMK)',cell:s=>s.can_view_cost?<span className="whitespace-nowrap tabular-nums">{amount(s.transport_total_mmk)} / {amount(s.expense_total_mmk)}</span>:'Restricted'},
+ {id:'cost',header:'Transport / Expenses (MMK)',align:'right' as const,cell:s=>s.can_view_cost?<span className="whitespace-nowrap tabular-nums">{amount(s.transport_total_mmk)} / {amount(s.expense_total_mmk)}</span>:'Restricted'},
  ]}/></>
 }
 export function ShipmentDetails({id,current,embedded=false}:{id:string;current:CurrentUser;embedded?:boolean}) {

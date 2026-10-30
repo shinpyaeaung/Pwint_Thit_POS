@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { signIn, testPassword } from './session'
+import { signIn, testPassword, expectChartsFit } from './session'
 
 test('reports expose all views, server date presets, exact purchases and restricted access', async ({ page, browser }, testInfo) => {
   test.setTimeout(90000)
@@ -65,6 +65,7 @@ test('reports expose all views, server date presets, exact purchases and restric
   await page.getByRole('button', { name: 'Try again', exact: true }).click()
   await expect(page.getByRole('table', { name: 'Purchase Report', exact: true })).toBeVisible()
   await page.setViewportSize({ width: 375, height: 812 })
+  await expectChartsFit(page)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.screenshot({ path: `/tmp/pwint-reports-${testInfo.project.name}-mobile.png`, fullPage: true, animations: 'disabled' })
 

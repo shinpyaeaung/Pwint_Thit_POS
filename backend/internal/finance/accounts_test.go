@@ -126,6 +126,10 @@ func TestManualStockAccountsIntegration(t *testing.T) {
 		}
 		return v
 	}
+	// Database-authored time avoids host/container skew and preserves microseconds.
+	dbNow := func() string {
+		return scalar(`SELECT to_char(clock_timestamp() AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`)
+	}
 	entry := map[string]any{"request_id": next(), "product_id": "00000000-0000-0000-0000-000000000020", "warehouse_id": "00000000-0000-0000-0000-000000000012", "unit_code": "CARTON", "quantity": "2", "unit_cost_mmk": "100.125", "retail_price_mmk": "150", "wholesale_price_mmk": "140", "received_at": time.Now().Add(-time.Hour).Format(time.RFC3339), "expires_on": "", "reason": "Opening count"}
 	entry["version"] = scalar("SELECT version::text FROM app.products WHERE id=$1", entry["product_id"])
 	call("POST", "/inventory/manual-stock", entry, staff, 403)
@@ -189,7 +193,7 @@ func TestManualStockAccountsIntegration(t *testing.T) {
 		t.Fatal(v)
 	}
 
-	reverseDeposit := post("REVERSAL", "0", time.Now().Format(time.RFC3339))
+	reverseDeposit := post("REVERSAL", "0", dbNow())
 	reverseDeposit["account_id"] = concurrentAccount
 	reverseDeposit["reverses_id"] = scalar("SELECT id::text FROM app.account_entries WHERE request_id=$1", concurrent["request_id"])
 	call("POST", "/accounts/entries", reverseDeposit, owner, 201)
@@ -206,8 +210,8 @@ func TestManualStockAccountsIntegration(t *testing.T) {
 	funding := post("EXTERNAL_DEPOSIT", "100", time.Now().Add(-time.Minute).Format(time.RFC3339Nano))
 	funding["account_id"] = concurrentAccount
 	call("POST", "/accounts/entries", funding, owner, 201)
-	// A stable past timestamp later than the fixture purchase avoids a future-dated cash movement.
-	supplierPay["paid_at"] = time.Now().Format(time.RFC3339Nano)
+	// Use the same clock as the database future-date guard.
+	supplierPay["paid_at"] = dbNow()
 	call("POST", "/purchases/00000000-0000-0000-0000-000000000040/payments", supplierPay, owner, 200)
 	if v := scalar("SELECT sum(amount_mmk)::text FROM app.account_entries WHERE account_id=$1", concurrentAccount); v != "75.0000" {
 		t.Fatal("historical INR account conversion", v)
@@ -230,7 +234,7 @@ func TestManualStockAccountsIntegration(t *testing.T) {
 	balance("850.1234")
 	call("POST", "/expenses/"+saved["id"].(string)+"/reverse", map[string]any{"request_id": next(), "reason": "Correction"}, owner, 201)
 	balance("900.1234")
-	reconcile := post("BALANCE_ADJUSTMENT", "925", time.Now().Format(time.RFC3339))
+	reconcile := post("BALANCE_ADJUSTMENT", "925", dbNow())
 	call("POST", "/accounts/entries", reconcile, owner, 201)
 	balance("925.0000")
 	call("POST", "/accounts/entries", post("EXTERNAL_DEPOSIT", "10", yesterday), owner, 409)
@@ -239,7 +243,7 @@ func TestManualStockAccountsIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	call("POST", "/accounts/entries", post("BALANCE_ADJUSTMENT", "900", time.Now().Format(time.RFC3339)), owner, 503)
+	call("POST", "/accounts/entries", post("BALANCE_ADJUSTMENT", "900", dbNow()), owner, 503)
 	entry["request_id"] = next()
 	entry["version"] = scalar("SELECT version::text FROM app.products WHERE id=$1", entry["product_id"])
 	call("POST", "/inventory/manual-stock", entry, owner, 503)
@@ -275,10 +279,10 @@ func TestManualStockAccountsIntegration(t *testing.T) {
 	if strings.Contains(options.Body.String(), account) {
 		t.Fatal("archived account offered for payment")
 	}
-	call("POST", "/accounts/entries", post("EXTERNAL_DEPOSIT", "10", time.Now().Format(time.RFC3339)), owner, 409)
+	call("POST", "/accounts/entries", post("EXTERNAL_DEPOSIT", "10", dbNow()), owner, 409)
 	supplierPay["request_id"] = next()
 	supplierPay["account_id"] = account
-	supplierPay["paid_at"] = time.Now().Format(time.RFC3339)
+	supplierPay["paid_at"] = dbNow()
 	call("POST", "/purchases/00000000-0000-0000-0000-000000000040/payments", supplierPay, owner, 409)
 	call("GET", "/accounts/history?account_id="+account, nil, owner, 200)
 	if _, err = conn.Exec(ctx, "DELETE FROM app.money_accounts WHERE id=$1", account); err == nil {
@@ -333,7 +337,7 @@ func TestManualStockAccountsIntegration(t *testing.T) {
 		}
 		supplierPay["request_id"] = next()
 		supplierPay["account_id"] = empty
-		supplierPay["paid_at"] = time.Now().Format(time.RFC3339Nano)
+		supplierPay["paid_at"] = dbNow()
 		call("POST", "/purchases/00000000-0000-0000-0000-000000000040/payments", supplierPay, owner, 409)
 		supplierPay["account_id"] = ""
 		supplierPay["creditor_id"] = creditor
@@ -362,9 +366,9 @@ func TestManualStockAccountsIntegration(t *testing.T) {
 			t.Fatal("repayment was not atomic/deduplicated", funded(), cash())
 		}
 		// Concurrent debit requests cannot spend the same available funds twice.
-		debitA := post("PERSONAL_EXPENSE", "60", time.Now().Format(time.RFC3339Nano))
+		debitA := post("PERSONAL_EXPENSE", "60", dbNow())
 		debitA["account_id"] = empty
-		debitB := post("PERSONAL_EXPENSE", "60", time.Now().Format(time.RFC3339Nano))
+		debitB := post("PERSONAL_EXPENSE", "60", dbNow())
 		debitB["account_id"] = empty
 		results := make(chan int, 2)
 		for _, d := range []map[string]any{debitA, debitB} {
@@ -393,7 +397,7 @@ func TestManualStockAccountsIntegration(t *testing.T) {
 		// A funded expense cannot be reversed past the outstanding third-party debt.
 		call("POST", "/expenses/"+thirdExpense["id"].(string)+"/reverse", map[string]any{"request_id": next(), "reason": "Already partly repaid"}, owner, 409)
 		deposit["request_id"] = next()
-		deposit["occurred_at"] = time.Now().Format(time.RFC3339Nano)
+		deposit["occurred_at"] = dbNow()
 		call("POST", "/accounts/entries", deposit, owner, 201)
 		repay["request_id"] = next()
 		repay["amount_mmk"] = "45"

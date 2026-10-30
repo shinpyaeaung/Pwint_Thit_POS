@@ -51,9 +51,10 @@ These are local deployment foundations. Before a Linux VPS launch, configure a d
 ## Verification
 
 ```sh
-make check             # Go tests with race detection, go vet, frontend lint and build
+make check             # Go race tests/vet, frontend lint/unit tests, TypeScript and build
 make test-integration  # Real pgx/sqlc query against running PostgreSQL
 make test-e2e          # Isolated API/database + Chrome and WebKit browser tests
+make test-e2e-production # Same workflows against compiled production bundles
 ```
 
 The browser suite creates a disposable database, starts isolated Go/Vite servers, seeds test-only users, and removes them afterward. It verifies login, logout, session restoration, denied access, permission grants/revocations, health recovery, and mobile width. Both integration suites require running PostgreSQL and a configured database URL with CREATEDB access. Plain `go test` skips database/browser integration unless explicitly configured.

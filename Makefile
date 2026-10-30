@@ -1,7 +1,7 @@
 COMPOSE := $(shell if docker compose version >/dev/null 2>&1; then echo "docker compose"; else echo "docker-compose"; fi)
 SQLC_VERSION := v1.31.1
 
-.PHONY: setup dev db-up db-stop backend frontend generate check test-integration test-e2e up down migrate create-admin
+.PHONY: setup dev db-up db-stop backend frontend generate check test-integration test-e2e test-e2e-production up down migrate create-admin
 setup:
 	@test -f .env || cp .env.example .env
 	pnpm --dir frontend install --frozen-lockfile
@@ -39,6 +39,10 @@ test-integration:
 
 test-e2e:
 	RUN_BROWSER_TESTS=1 node scripts/integration.mjs
+
+test-e2e-production:
+	pnpm --dir frontend run build
+	E2E_PRODUCTION=1 RUN_BROWSER_TESTS=1 node scripts/integration.mjs
 
 up:
 	$(COMPOSE) up -d --build --wait

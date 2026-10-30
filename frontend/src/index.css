@@ -42,9 +42,6 @@
   --border: #dedbd6;
   --surface: #ffffff;
   --surface-raised: #ffffff;
-  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.03);
-  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.03);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.03);
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.06), 0 4px 6px -4px rgb(0 0 0 / 0.04);
   --shadow-overlay: 0 20px 50px -12px rgb(0 0 0 / 0.2);
 }
@@ -78,7 +75,6 @@
   .skeleton { background: var(--muted); border-radius: var(--radius-sm); }
   p[role="alert"] { @apply border-l-2 border-destructive bg-red-50 px-3 py-2 text-sm text-red-900; }
   .panel > h2:first-child { @apply border-b pb-3 text-sm font-semibold; }
-  .section-title { @apply border-b pb-3 text-sm font-semibold text-foreground; }
   .filter-toolbar { @apply mb-4 flex flex-wrap items-center gap-3 border-y bg-surface px-3 py-3; }
   .tab-strip { @apply mb-4 flex flex-wrap gap-1 border-b; }
   .tab-button { @apply min-h-9 rounded-t-md border-b-2 border-transparent px-3 py-2 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground; }
@@ -92,29 +88,9 @@
   input[type="checkbox"]:focus-visible, input[type="radio"]:focus-visible, summary:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
   .field::placeholder { color: var(--muted-foreground); }
   textarea.field { min-height: 5rem; resize: vertical; }
-  @media (pointer: coarse) { [data-slot="button"], [role="combobox"], .field { min-height: 40px; } }
+  @media (pointer: coarse) { [data-slot="button"], [role="combobox"], [role="option"], .tab-button, .field { min-height: 40px; } }
 
-  /* Page entrance animation */
-  @keyframes page-enter {
-    from { opacity: 0; transform: translateY(6px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  .page-enter {
-    animation: page-enter 0.3s ease-out both;
-  }
 
-  /* Staggered children animation */
-  @keyframes fade-up {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  .fade-up {
-    animation: fade-up 0.35s ease-out both;
-  }
-  .fade-up-delay-1 { animation-delay: 0.05s; }
-  .fade-up-delay-2 { animation-delay: 0.1s; }
-  .fade-up-delay-3 { animation-delay: 0.15s; }
-  .fade-up-delay-4 { animation-delay: 0.2s; }
 }
 
 @layer base {

@@ -1,5 +1,13 @@
 # Pwint Thit POS 1.2 handoff
 
+## October 30: six-phase UI/UX redesign
+
+All six phases from the user's redesign brief are complete, verified and deployed at http://localhost:8088. See [the release review](ui-redesign/release.md) and [phase evidence](ui-redesign/progress.md). The light-only red/yellow system now has compact shared controls, a PT shell, redesigned operational/financial layouts, account rows, labelled payment balances and accessible real-data charts. No production API contracts, permissions, financial logic, schema or business records changed.
+
+`make check`, the full PostgreSQL integration suite and all 38 Chromium/WebKit cases against compiled production bundles passed. `make test-e2e-production` is now available; browser workers are capped at four to match authentication hash capacity. Fixtures use database timestamps where strict current-time checks require them. Existing-database integrity checks reported zero violations in all five categories. Frontend/API/PostgreSQL are healthy; only the frontend container was replaced. Nginx and live Chrome login/mobile/API smoke checks passed.
+
+Charts preserve exact decimal values and disclose current-page scope; historical trend series remain unavailable from the current API. Public deployment prerequisites from the earlier production review still apply. All six phase commits are pushed. Wait for the user's next scope before adding another module or redesign.
+
 ## October 27: production-readiness review
 
 Deployment completed October 29 after resuming the interrupted build session. The already-built isolated release is running at http://localhost:8088; frontend, API and PostgreSQL are healthy and migration execution succeeded. Nginx syntax, login HTTP 200, no-cache and security headers were verified. All five read-only integrity checks again returned zero violations. Existing data/volume and unrelated workspace UI edits were preserved. Review code was committed and pushed as `0bdec4f`.

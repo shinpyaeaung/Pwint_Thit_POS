@@ -99,7 +99,12 @@ func runBrowserIntegration(t *testing.T, accountSuite bool) {
 	reports.Register(router, pool, authz.New(q))
 	server := httptest.NewServer(router)
 	defer server.Close()
-	frontend := exec.Command("pnpm", "--dir", "../../../frontend", "exec", "vite", "--host", "127.0.0.1", "--port", strconv.Itoa(port), "--strictPort")
+	frontendArgs := []string{"--dir", "../../../frontend", "exec", "vite"}
+	if os.Getenv("E2E_PRODUCTION") == "1" {
+		frontendArgs = append(frontendArgs, "preview")
+	}
+	frontendArgs = append(frontendArgs, "--host", "127.0.0.1", "--port", strconv.Itoa(port), "--strictPort")
+	frontend := exec.Command("pnpm", frontendArgs...)
 	frontend.Env = append(os.Environ(), "API_PROXY_TARGET="+server.URL)
 	frontend.Stdout = os.Stdout
 	frontend.Stderr = os.Stderr

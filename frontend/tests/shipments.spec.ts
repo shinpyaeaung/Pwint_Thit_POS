@@ -1,3 +1,4 @@
+import { expectChartsFit } from './session'
 import { test,expect } from '@playwright/test'
 import { signIn,testPassword } from './session'
 test('shipment goods, transportation timeline, expenses and restricted staff access',async({page,browser})=>{
@@ -456,6 +457,7 @@ test('shipment goods, transportation timeline, expenses and restricted staff acc
  await expect(page.getByRole('alert').filter({hasText:'may be out of date'})).toHaveCount(0)
  await page.setViewportSize({width:375,height:812})
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true)
+ await expectChartsFit(page)
  await page.screenshot({path:'/tmp/pwint-dashboard-mobile.png',fullPage:true})
  expect((await page.request.put(`/api/v1/users/${(await staff.json()).id}/permissions`,{headers,data:{permissions:['dashboard.view']}})).status()).toBe(204)
  const dashboardContext=await browser.newContext({baseURL:process.env.E2E_BASE_URL})

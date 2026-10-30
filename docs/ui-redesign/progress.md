@@ -41,3 +41,15 @@ Completed page-level typography/radius/surface normalization across administrati
 `make check` passed. All mutations, historical amounts, permissions and workflow choices are unchanged. All 38 real-stack browser cases passed in 110.03 seconds.
 
 Phase 5 browser review: the first run exposed assertions coupled to the former `.panel` account cards and slash-separated payment text. Updated them to locate semantic account articles and independently verify labelled Total/Paid/Remaining values. Financial/API assertions remain unchanged. Desktop Accounts screenshot reviewed: large balances fit, actions stay grouped and history filters align. Final rerun passed all 38 cases.
+
+## Phase 6 — final QA and release (complete)
+
+Widened chart label gutters, added an explicit rounded-axis explanation and a contrasting boundary for yellow highlights, removed unused entrance animations/shadow variables, normalized the final decorative colors and aligned remaining money columns. Coarse-pointer targets now include view selectors and dropdown options.
+
+Added `make test-e2e-production` to exercise the actual compiled chunks with real API/database workflows. Capped browser workers at four after the faster production build correctly triggered the server's four-hash concurrency guard with six simultaneous sign-ins. Added a chart-resize readiness assertion so mobile screenshots wait for actual drawing dimensions, not merely contained overflow.
+
+`make check` passed with Go cache access; full PostgreSQL integration passed after replacing current-time account-test fixtures with database-authored timestamps. Future-date validation remains tested. The existing database's five read-only integrity checks all returned zero violations. The frontend production image built successfully. Final production-browser gate passed all 38 cases in 121.69 seconds. The verified frontend image is deployed at localhost:8088; all three services are healthy. Live Chrome login/mobile/API checks and nginx/security-header checks passed. Existing API/database containers and data volume were preserved.
+
+The first production run exposed excess test concurrency (six workers against the four-hash guard); the next run was invalidated for one page load by a concurrent check rebuilding the served directory. No assertions were weakened. Final verification runs against a fixed build with four workers and no source/build changes. Mobile report screenshots after explicit resize readiness show readable labels and correctly sized charts. Container and local build hashes agree for the entry, React runtime and lazy chart bundles.
+
+All six phases are complete. See [the final release review](release.md) for verification, deployment and remaining scope limits.
