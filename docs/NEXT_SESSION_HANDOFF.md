@@ -1,5 +1,11 @@
 # Pwint Thit POS 1.2 handoff
 
+## October 30: direct product images and official logo
+
+Implemented and deployed the user's direct-file upload correction: no Supabase and no image URL entry. Product forms support JPEG/PNG selection, preview, replacement and removal. Migration 000045 stores validated image bytes in PostgreSQL, with atomic product/version/audit writes and permission-protected image reads. Catalog rows, grouped variants, details, POS search and cart display photos. The supplied transparent logo appears in the desktop sidebar and mobile drawer. See [product images](product-images.md) for limits and implementation details.
+
+`make check` passed with 11 frontend unit tests; the full PostgreSQL integration suite and all 40 production-bundle Chromium/WebKit cases passed. Image tests cover persistence, stale edits, rollback, removal and cashier permissions. Test fixtures now isolate image logins, and navigation assertions account for browser scroll clamping. Frontend/API/PostgreSQL are healthy at http://localhost:8088; migration, nginx syntax, logo serving and anonymous-image rejection were verified. All five existing-data integrity checks returned zero before and after deployment. Existing business records and database volume were preserved. No financial/inventory rules changed. Wait for the user's next scope.
+
 ## October 30: six-phase UI/UX redesign
 
 All six phases from the user's redesign brief are complete, verified and deployed at http://localhost:8088. See [the release review](ui-redesign/release.md) and [phase evidence](ui-redesign/progress.md). The light-only red/yellow system now has compact shared controls, a PT shell, redesigned operational/financial layouts, account rows, labelled payment balances and accessible real-data charts. No production API contracts, permissions, financial logic, schema or business records changed.

@@ -8,6 +8,10 @@ test('shipment goods, transportation timeline, expenses and restricted staff acc
  const suffix=String(Date.now());const headers={Origin:process.env.E2E_BASE_URL!,'X-Pwint-Thit-Request':'1'}
  const supplier=await page.request.post('/api/v1/suppliers',{headers,data:{code:`SH-${suffix}`,name:`Shipping supplier ${suffix}`,is_active:true}});expect(supplier.status()).toBe(201)
  const product=await page.request.post('/api/v1/products',{headers,data:{sku:`SH-${suffix}`,name:`Shipment tea ${suffix}`,barcode:`B${suffix}`,base_unit_code:'BOTTLE',is_active:true,packaging:[{unit_code:'BOTTLE',units_per_pack:'1',is_default_purchase:true,is_default_sale:true},{unit_code:'CARTON',units_per_pack:'12',barcode:`C${suffix}`,is_default_purchase:false,is_default_sale:false}]}});expect(product.status()).toBe(201)
+ const imageProduct = await product.json()
+ const imageBytes = Buffer.from(await page.evaluate(() => { const c=document.createElement('canvas');c.width=20;c.height=20;const ctx=c.getContext('2d')!;ctx.fillStyle='red';ctx.fillRect(0,0,20,20);return c.toDataURL('image/png').split(',')[1] }), 'base64')
+ const imageInput = { sku:imageProduct.sku,name:imageProduct.name,barcode:imageProduct.barcode,base_unit_code:imageProduct.base_unit_code,is_active:true,version:imageProduct.version,packaging:imageProduct.packaging }
+ expect((await page.request.put(`/api/v1/products/${imageProduct.id}`,{headers,multipart:{product:JSON.stringify(imageInput),image:{name:'tea.png',mimeType:'image/png',buffer:imageBytes}}})).status()).toBe(200)
  const purchase=await page.request.post('/api/v1/purchases',{headers,data:{request_id:crypto.randomUUID(),purchase_number:`SHIP-PO-${suffix}`,supplier_id:(await supplier.json()).id,purchased_at:'2026-01-15T00:00:00Z',currency_code:'MMK',mmk_per_unit:'1',items:[{product_id:(await product.json()).id,unit_code:'BOTTLE',quantity:'100',units_per_pack:'1',unit_price_original:'1000',discount_original:'0',tax_original:'0'}]}});expect(purchase.status()).toBe(201)
  await page.goto('/shipments/new')
  await page.getByLabel('Origin',{exact:true}).fill('India')
@@ -176,6 +180,7 @@ test('shipment goods, transportation timeline, expenses and restricted staff acc
  await page.getByRole('combobox',{name:'POS warehouse',exact:true}).click()
  await page.getByRole('option',{name:`Pwint Thit Warehouse ${suffix}`,exact:true}).click()
  await page.getByLabel('Scan barcode or search products',{exact:true}).fill(`SH-${suffix}`)
+ await expect.poll(() => page.getByRole('img',{name:`Shipment tea ${suffix}`,exact:true}).first().evaluate((img:HTMLImageElement)=>img.naturalWidth)).toBe(20)
  await page.getByRole('button',{name:`Prices SH-${suffix}`,exact:true}).click()
  await page.getByLabel('Retail price per BOTTLE',{exact:true}).fill('4000')
  await page.getByLabel('Wholesale price per BOTTLE',{exact:true}).fill('3500')
@@ -245,6 +250,7 @@ test('shipment goods, transportation timeline, expenses and restricted staff acc
   await cashier.getByLabel('Scan barcode or search products',{exact:true}).fill(`B${suffix}`)
   await cashier.getByLabel('Scan barcode or search products',{exact:true}).press('Enter')
   await expect(cashier.getByTestId('pos-total')).toHaveText('1,000 MMK')
+  await expect.poll(() => cashier.getByRole('img',{name:`Shipment tea ${suffix}`,exact:true}).last().evaluate((img:HTMLImageElement)=>img.naturalWidth)).toBe(20)
   await cashier.getByRole('button',{name:'Review checkout · F8',exact:true}).click()
   await expect(cashier.getByRole('dialog')).toContainText('Below actual cost')
   await expect(cashier.getByRole('dialog')).toContainText('A Super Admin must complete this sale')

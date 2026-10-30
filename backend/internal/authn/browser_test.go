@@ -54,7 +54,7 @@ func runBrowserIntegration(t *testing.T, accountSuite bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = conn.Exec(ctx, `INSERT INTO app.users(username,display_name,password_hash,role_code) VALUES('browser-owner','Test Owner',$1,'SUPER_ADMIN'),('browser-packaging-owner','Packaging Owner',$1,'SUPER_ADMIN'),('browser-workflow-owner','Workflow Owner',$1,'SUPER_ADMIN'),('browser-shipping-owner','Shipping Owner',$1,'SUPER_ADMIN'),('browser-reports-owner','Reports Owner',$1,'SUPER_ADMIN'),('browser-navigation-owner','Navigation Owner',$1,'SUPER_ADMIN'),('browser-journey-owner','Journey Owner',$1,'SUPER_ADMIN'),('browser-staff','Test Staff',$1,'STAFF_ADMIN')`, hash); err != nil {
+	if _, err = conn.Exec(ctx, `INSERT INTO app.users(username,display_name,password_hash,role_code) VALUES('browser-owner','Test Owner',$1,'SUPER_ADMIN'),('browser-images-owner','Images Owner',$1,'SUPER_ADMIN'),('browser-packaging-owner','Packaging Owner',$1,'SUPER_ADMIN'),('browser-workflow-owner','Workflow Owner',$1,'SUPER_ADMIN'),('browser-shipping-owner','Shipping Owner',$1,'SUPER_ADMIN'),('browser-reports-owner','Reports Owner',$1,'SUPER_ADMIN'),('browser-navigation-owner','Navigation Owner',$1,'SUPER_ADMIN'),('browser-journey-owner','Journey Owner',$1,'SUPER_ADMIN'),('browser-staff','Test Staff',$1,'STAFF_ADMIN')`, hash); err != nil {
 		t.Fatal(err)
 	}
 	if !accountSuite {

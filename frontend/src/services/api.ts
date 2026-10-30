@@ -6,7 +6,7 @@ export class ApiError extends Error {
 export async function requestJSON<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers)
   if (!headers.has('Accept')) headers.set('Accept', 'application/json')
-  if (options.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
+  if (options.body && !(options.body instanceof FormData) && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
   if (options.method && !['GET', 'HEAD', 'OPTIONS'].includes(options.method.toUpperCase())) headers.set('X-Pwint-Thit-Request', '1')
   let response: Response
   try {

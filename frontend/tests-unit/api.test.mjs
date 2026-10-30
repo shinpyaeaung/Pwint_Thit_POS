@@ -31,3 +31,15 @@ test('merges Headers objects with required JSON and origin-check headers', async
   })
   assert.equal(await requestJSON('/test', { method: 'POST', body: '{}', headers: new Headers({ 'X-Test': 'preserved' }) }), undefined)
 })
+
+test('multipart uploads let the browser set its boundary and retain mutation protection', async t => {
+  const body = new FormData()
+  body.append('product', '{}')
+  t.mock.method(globalThis, 'fetch', async (_url, options) => {
+    assert.equal(options.body, body)
+    assert.equal(options.headers.has('Content-Type'), false)
+    assert.equal(options.headers.get('X-Pwint-Thit-Request'), '1')
+    return new Response('{}')
+  })
+  await requestJSON('/products', { method: 'POST', body })
+})

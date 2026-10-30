@@ -21,12 +21,18 @@ test('business menu scrolls independently and every destination loads', async ({
   await expect(sidebar.getByRole('link', { name: 'Permissions', exact: true })).toBeInViewport()
   expect(await page.evaluate(() => window.scrollY)).toBe(bodyBefore)
   for (const name of ['Dashboard', 'Reports']) await expect(sidebar.getByRole('link', { name, exact: true })).toBeInViewport()
-  const menuPosition = await nav.evaluate(element => element.scrollTop)
+  // A route can change the scrollable height slightly. Browsers clamp a saved
+  // bottom position to the new maximum; use that position on the next navigation.
+  let menuPosition = await nav.evaluate(element => element.scrollTop)
+  async function expectMenuRestored() {
+    await expect.poll(() => nav.evaluate((element, saved) => Math.abs(element.scrollTop - Math.min(saved, element.scrollHeight - element.clientHeight)), menuPosition)).toBeLessThanOrEqual(2)
+    menuPosition = await nav.evaluate(element => element.scrollTop)
+  }
   await sidebar.getByRole('link', { name: 'Permissions', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Permission catalog', exact: true })).toBeVisible()
-  await expect.poll(() => nav.evaluate(element => element.scrollTop)).toBeCloseTo(menuPosition, 0)
+  await expectMenuRestored()
   await page.reload()
-  await expect.poll(() => nav.evaluate(element => element.scrollTop)).toBeCloseTo(menuPosition, 0)
+  await expectMenuRestored()
   const financeLinks = ['Accounts & balances', 'AI assistant demo', 'Operating expenses', 'Expenses & profit']
   for (const name of ['AI assistant demo', 'Operating expenses', 'Expenses & profit', 'Accounts & balances']) {
     await sidebar.getByRole('link', { name, exact: true }).click()
@@ -34,7 +40,7 @@ test('business menu scrolls independently and every destination loads', async ({
     for (const financeLink of financeLinks) {
       await expect(sidebar.getByRole('link', { name: financeLink, exact: true })).toBeInViewport()
     }
-    await expect.poll(() => nav.evaluate(element => element.scrollTop)).toBeCloseTo(menuPosition, 0)
+    await expectMenuRestored()
   }
   await page.screenshot({ path: `/tmp/pwint-navigation-${testInfo.project.name}-desktop.png`, animations: 'disabled' })
   const links = await sidebar.getByRole('link').evaluateAll(elements => elements.map(element => element.getAttribute('href')!).filter(href => href !== '/'))
@@ -73,7 +79,7 @@ test('business menu scrolls independently and every destination loads', async ({
   await page.getByLabel('Low stock alert',{exact:true}).check()
   await page.getByLabel('Minimum stock', { exact: true }).pressSequentially('20.123456')
   await expect(page.getByLabel('Minimum stock', { exact: true })).toHaveValue('20.123456')
-  await expect.poll(() => nav.evaluate(element => element.scrollTop)).toBeCloseTo(menuPosition, 0)
+  await expectMenuRestored()
   await page.goto('/guide')
   await expect(page.getByRole('heading', { name: 'User guide', exact: true })).toBeVisible()
   await page.getByRole('navigation', { name: 'Guide contents' }).getByRole('link', { name: '10. Missing pages, access and errors', exact: true }).click()

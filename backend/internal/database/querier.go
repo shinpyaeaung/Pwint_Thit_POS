@@ -50,6 +50,7 @@ type Querier interface {
 	CustomerSave(ctx context.Context, arg CustomerSaveParams) (pgtype.UUID, error)
 	CustomersList(ctx context.Context, arg CustomersListParams) ([]byte, error)
 	Dashboard(ctx context.Context, access []byte) ([]byte, error)
+	DeleteProductImage(ctx context.Context, productID pgtype.UUID) error
 	DeleteUnpaidShipmentStage(ctx context.Context, arg DeleteUnpaidShipmentStageParams) (int64, error)
 	DispatchTransfer(ctx context.Context, arg DispatchTransferParams) (pgtype.UUID, error)
 	EffectivePermissions(ctx context.Context, id pgtype.UUID) ([]string, error)
@@ -64,6 +65,7 @@ type Querier interface {
 	GetFinalizedCost(ctx context.Context, shipmentID pgtype.UUID) ([]byte, error)
 	GetManagedWarehouse(ctx context.Context, id pgtype.UUID) ([]byte, error)
 	GetProduct(ctx context.Context, id pgtype.UUID) ([]byte, error)
+	GetProductImage(ctx context.Context, productID pgtype.UUID) (GetProductImageRow, error)
 	GetPurchaseDocument(ctx context.Context, arg GetPurchaseDocumentParams) ([]byte, error)
 	GetPurchaseRate(ctx context.Context, id pgtype.UUID) (GetPurchaseRateRow, error)
 	GetReceiving(ctx context.Context, id pgtype.UUID) ([]byte, error)
@@ -205,6 +207,7 @@ type Querier interface {
 	UpdateShipmentStage(ctx context.Context, arg UpdateShipmentStageParams) (int64, error)
 	UpdateShipmentStatus(ctx context.Context, arg UpdateShipmentStatusParams) error
 	UpdateSupplier(ctx context.Context, arg UpdateSupplierParams) error
+	UpsertProductImage(ctx context.Context, arg UpsertProductImageParams) error
 	UpsertProductUnit(ctx context.Context, arg UpsertProductUnitParams) error
 	VoidShipmentExpense(ctx context.Context, arg VoidShipmentExpenseParams) (int64, error)
 	WarehousePricesSave(ctx context.Context, arg WarehousePricesSaveParams) error

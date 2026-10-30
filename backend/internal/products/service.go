@@ -34,6 +34,7 @@ type Service struct {
 func New(db DB) *Service { return &Service{db: db, q: database.New(db)} }
 func (s *Service) Register(r *gin.Engine, a *authz.Service) {
 	r.GET("/api/v1/products", a.Require(permissions.ProductsView), s.List)
+	r.GET("/api/v1/products/:id/image", a.RequireAny(permissions.ProductsView, permissions.ProductsCreate, permissions.ProductsUpdate, permissions.SalesCreate), s.Image)
 	r.GET("/api/v1/products/:id", a.Require(permissions.ProductsView), s.Get)
 	r.POST("/api/v1/products", a.Require(permissions.ProductsCreate), s.Save)
 	r.PUT("/api/v1/products/:id", a.Require(permissions.ProductsUpdate), s.Save)
@@ -58,6 +59,7 @@ type Pack struct {
 	DefaultSale     bool    `json:"is_default_sale"`
 }
 type Input struct {
+	RemoveImage  bool   `json:"remove_image"`
 	SKU          string `json:"sku"`
 	Name         string `json:"name"`
 	Barcode      string `json:"barcode"`
@@ -277,7 +279,8 @@ func audit(ctx context.Context, q *database.Queries, c *gin.Context, id pgtype.U
 }
 func (s *Service) Save(c *gin.Context) {
 	var in Input
-	if !decode(c, &in) {
+	img, ok := decodeProduct(c, &in)
+	if !ok {
 		return
 	}
 	if message := in.validate(); message != "" {
@@ -395,6 +398,15 @@ func (s *Service) Save(c *gin.Context) {
 			dbError(c, err)
 			return
 		}
+	}
+	if img != nil {
+		err = q.UpsertProductImage(ctx, database.UpsertProductImageParams{ProductID: id, Content: img.content, ContentType: img.contentType, ContentHash: img.hash})
+	} else if in.RemoveImage {
+		err = q.DeleteProductImage(ctx, id)
+	}
+	if err != nil {
+		dbError(c, err)
+		return
 	}
 	after, err := q.GetProduct(ctx, id)
 	if err != nil {

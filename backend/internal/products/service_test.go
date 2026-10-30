@@ -1,6 +1,7 @@
 package products_test
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
@@ -13,8 +14,11 @@ import (
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/migrate"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/products"
 	"github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/testutil"
+	"image"
+	"image/png"
 	"io"
 	"log/slog"
+	"mime/multipart"
 	"net/http/httptest"
 	"os"
 	"strings"
@@ -91,6 +95,83 @@ func TestProductIntegration(t *testing.T) {
 	call("GET", "/products", nil, "", 401)
 	call("GET", "/products", nil, staff, 403)
 	call("POST", "/products", input("DENIED", "DENIED"), staff, 403)
+
+	t.Run("image upload transaction", func(t *testing.T) {
+		var picture bytes.Buffer
+		if err := png.Encode(&picture, image.NewNRGBA(image.Rect(0, 0, 3, 3))); err != nil {
+			t.Fatal(err)
+		}
+		upload := func(method, path string, body map[string]any, data []byte, token string, want int) map[string]any {
+			t.Helper()
+			var b bytes.Buffer
+			writer := multipart.NewWriter(&b)
+			product, _ := writer.CreateFormField("product")
+			encoded, _ := json.Marshal(body)
+			product.Write(encoded)
+			file, _ := writer.CreateFormFile("image", "photo.png")
+			file.Write(data)
+			writer.Close()
+			req := httptest.NewRequest(method, "/api/v1"+path, &b)
+			req.Header.Set("Content-Type", writer.FormDataContentType())
+			req.Header.Set("Origin", "http://app.test")
+			req.Header.Set("X-Pwint-Thit-Request", "1")
+			req.Header.Set("Authorization", "Bearer "+token)
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, req)
+			if w.Code != want {
+				t.Fatalf("upload got %d want %d: %s", w.Code, want, w.Body.String())
+			}
+			var result map[string]any
+			json.Unmarshal(w.Body.Bytes(), &result)
+			return result
+		}
+		body := input("IMAGE-TEST", "IMAGE-TEST")
+		upload("POST", "/products", body, picture.Bytes(), staff, 403)
+		upload("POST", "/products", body, []byte("fake PNG"), owner, 400)
+		p := upload("POST", "/products", body, picture.Bytes(), owner, 201)
+		id := p["id"].(string)
+		path := "/products/" + id
+		if p["image_version"] == nil {
+			t.Fatal("missing image metadata")
+		}
+		if raw("GET", path+"/image", nil, " ").Code != 401 {
+			t.Fatal("anonymous image access")
+		}
+		if raw("GET", path+"/image", nil, staff).Code != 403 {
+			t.Fatal("unpermitted image access")
+		}
+		w := raw("GET", path+"/image", nil, owner)
+		if w.Code != 200 || !bytes.Equal(w.Body.Bytes(), picture.Bytes()) {
+			t.Fatal("image bytes not persisted")
+		}
+		body["version"] = p["version"]
+		updated := call("PUT", path, body, owner, 200)
+		if updated["image_version"] != p["image_version"] {
+			t.Fatal("ordinary edit removed image")
+		}
+		body["remove_image"] = true
+		call("PUT", path, body, owner, 409)
+		body["version"] = updated["version"]
+		// A failing audit must roll back both image and product edits.
+		_, err := conn.Exec(ctx, `CREATE FUNCTION app.reject_image_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.entity_id='`+id+`'::uuid THEN RAISE EXCEPTION 'test audit failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_image_audit BEFORE INSERT ON app.audit_logs FOR EACH ROW EXECUTE FUNCTION app.reject_image_audit()`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		call("PUT", path, body, owner, 503)
+		if raw("GET", path+"/image", nil, owner).Code != 200 {
+			t.Fatal("image removal escaped rollback")
+		}
+		if _, err = conn.Exec(ctx, `DROP TRIGGER reject_image_audit ON app.audit_logs; DROP FUNCTION app.reject_image_audit()`); err != nil {
+			t.Fatal(err)
+		}
+		removed := call("PUT", path, body, owner, 200)
+		if removed["image_version"] != nil || raw("GET", path+"/image", nil, owner).Code != 404 {
+			t.Fatal("image removal failed")
+		}
+		body["remove_image"] = false
+		body["version"] = removed["version"]
+		upload("PUT", path, body, picture.Bytes(), owner, 200)
+	})
 	category := call("POST", "/catalog/categories", map[string]any{"name": "Drinks"}, owner, 201)
 	call("POST", "/catalog/categories", map[string]any{"name": "drinks"}, owner, 409)
 	brand := call("POST", "/catalog/brands", map[string]any{"name": "Tea Brand"}, owner, 201)

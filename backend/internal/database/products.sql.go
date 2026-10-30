@@ -31,6 +31,15 @@ func (q *Queries) CatalogMetadata(ctx context.Context) ([]byte, error) {
 	return column_1, err
 }
 
+const deleteProductImage = `-- name: DeleteProductImage :exec
+DELETE FROM app.product_images WHERE product_id=$1
+`
+
+func (q *Queries) DeleteProductImage(ctx context.Context, productID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteProductImage, productID)
+	return err
+}
+
 const getProduct = `-- name: GetProduct :one
 SELECT app.product_document(p)::jsonb FROM app.products p WHERE p.id=$1
 `
@@ -40,6 +49,22 @@ func (q *Queries) GetProduct(ctx context.Context, id pgtype.UUID) ([]byte, error
 	var column_1 []byte
 	err := row.Scan(&column_1)
 	return column_1, err
+}
+
+const getProductImage = `-- name: GetProductImage :one
+SELECT content, content_type FROM app.product_images WHERE product_id=$1
+`
+
+type GetProductImageRow struct {
+	Content     []byte
+	ContentType string
+}
+
+func (q *Queries) GetProductImage(ctx context.Context, productID pgtype.UUID) (GetProductImageRow, error) {
+	row := q.db.QueryRow(ctx, getProductImage, productID)
+	var i GetProductImageRow
+	err := row.Scan(&i.Content, &i.ContentType)
+	return i, err
 }
 
 const insertProduct = `-- name: InsertProduct :one
@@ -260,6 +285,28 @@ type UpdateProductParams struct {
 
 func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) error {
 	_, err := q.db.Exec(ctx, updateProduct, arg.ID, arg.Data)
+	return err
+}
+
+const upsertProductImage = `-- name: UpsertProductImage :exec
+INSERT INTO app.product_images(product_id,content,content_type,content_hash) VALUES($1,$2,$3,$4)
+ON CONFLICT(product_id) DO UPDATE SET content=excluded.content,content_type=excluded.content_type,content_hash=excluded.content_hash
+`
+
+type UpsertProductImageParams struct {
+	ProductID   pgtype.UUID
+	Content     []byte
+	ContentType string
+	ContentHash string
+}
+
+func (q *Queries) UpsertProductImage(ctx context.Context, arg UpsertProductImageParams) error {
+	_, err := q.db.Exec(ctx, upsertProductImage,
+		arg.ProductID,
+		arg.Content,
+		arg.ContentType,
+		arg.ContentHash,
+	)
 	return err
 }
 

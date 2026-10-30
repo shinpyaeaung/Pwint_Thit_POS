@@ -1,3 +1,4 @@
+import { ProductImage } from '@/components/shared/product-image'
 import { AccountSelect } from '@/pages/finance/AccountSelect'
 import { FulfillmentFields, type Fulfillment } from '@/components/shared/fulfillment'
 import { useEffect,useRef,useState,useCallback } from 'react'
@@ -91,7 +92,7 @@ export default function POS({current}:{current:CurrentUser}){
             {products.data?.map(p => (
               <div key={p.id} className="group flex items-center justify-between gap-3 py-3.5 transition-colors hover:bg-background/70">
                 <button className="min-w-0 flex-1 text-left" onClick={() => add(p)}>
-                  <span className="block text-sm font-semibold text-foreground group-hover:text-primary transition-colors">{p.name}</span>
+                  <span className="flex items-center gap-3"><ProductImage product={p}/><span className="block text-sm font-semibold text-foreground group-hover:text-primary transition-colors">{p.name}</span></span>
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                     <span className="font-mono text-xs">{p.sku}</span>
                     <span>·</span>
@@ -124,7 +125,7 @@ export default function POS({current}:{current:CurrentUser}){
           {effectiveLines.map((l, i) => (
             <div key={l.id} className="rounded-lg border border-border/90 bg-muted p-3.5 transition-colors hover:bg-background/80">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-semibold text-foreground">{l.product.name}</p>
+                <div className="flex items-center gap-2"><ProductImage product={l.product} className="size-9"/><p className="text-sm font-semibold text-foreground">{l.product.name}</p></div>
                 <button className="text-xs font-semibold text-destructive hover:underline" aria-label={`Remove ${l.product.sku}`} onClick={() => cart.remove(l.id)}>Remove</button>
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-4 sm:items-center">

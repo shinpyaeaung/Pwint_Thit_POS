@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 export type Pack={special_price_mmk?:string;unit_code:string;units_per_pack:string;barcode:string|null;retail_price_mmk:string|null;wholesale_price_mmk:string|null;is_default_sale:boolean}
-export type Product={id:string;name:string;sku:string;barcode:string|null;base_unit_code:string;version:string;available_quantity:string;packaging:Pack[]}
+export type Product={image_version?:string|null;id:string;name:string;sku:string;barcode:string|null;base_unit_code:string;version:string;available_quantity:string;packaging:Pack[]}
 export type CartLine={id:string;product:Product;unit:string;quantity:string;discount:string}
 export type Mode='RETAIL'|'WHOLESALE'
 export const price=(p:Pack,mode:Mode)=>p.special_price_mmk??(mode==='RETAIL'?p.retail_price_mmk:p.wholesale_price_mmk)

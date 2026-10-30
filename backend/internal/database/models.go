@@ -558,6 +558,13 @@ type AppProduct struct {
 	Version      int64
 }
 
+type AppProductImage struct {
+	ProductID   pgtype.UUID
+	Content     []byte
+	ContentType string
+	ContentHash string
+}
+
 type AppProductSupplier struct {
 	ProductID   pgtype.UUID
 	SupplierID  pgtype.UUID

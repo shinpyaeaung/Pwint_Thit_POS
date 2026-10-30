@@ -51,3 +51,11 @@ WITH filtered AS (
  FROM app.products p JOIN filtered f ON f.id=p.id LEFT JOIN app.brands b ON b.id=p.brand_id GROUP BY coalesce(p.brand_id,p.id),coalesce(b.name,p.name)
 ), page AS (SELECT * FROM grouped ORDER BY name,id LIMIT sqlc.arg(page_size)::int OFFSET sqlc.arg(page_offset)::int)
 SELECT jsonb_build_object('total',(SELECT count(*) FROM grouped),'groups',coalesce((SELECT jsonb_agg(to_jsonb(page) ORDER BY name,id) FROM page),'[]'::jsonb))::jsonb;
+
+-- name: GetProductImage :one
+SELECT content, content_type FROM app.product_images WHERE product_id=$1;
+-- name: UpsertProductImage :exec
+INSERT INTO app.product_images(product_id,content,content_type,content_hash) VALUES($1,$2,$3,$4)
+ON CONFLICT(product_id) DO UPDATE SET content=excluded.content,content_type=excluded.content_type,content_hash=excluded.content_hash;
+-- name: DeleteProductImage :exec
+DELETE FROM app.product_images WHERE product_id=$1;
