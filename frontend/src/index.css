@@ -76,6 +76,8 @@
   }
 
   .skeleton { background: var(--muted); border-radius: var(--radius-sm); }
+  p[role="alert"] { @apply border-l-2 border-destructive bg-red-50 px-3 py-2 text-sm text-red-900; }
+  .panel > h2:first-child { @apply border-b pb-3 text-sm font-semibold; }
   .section-title { @apply border-b pb-3 text-sm font-semibold text-foreground; }
   .filter-toolbar { @apply mb-4 flex flex-wrap items-center gap-3 border-y bg-surface px-3 py-3; }
   .tab-strip { @apply mb-4 flex flex-wrap gap-1 border-b; }

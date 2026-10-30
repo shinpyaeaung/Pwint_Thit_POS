@@ -56,7 +56,7 @@ export default function Dashboard({ current }: { current: CurrentUser }) {
   return <>
     <PageHeader eyebrow="Overview / Live business" title="Distribution dashboard" description={d ? `${d.business_date} · Myanmar business day · MMK` : 'Your daily sales, costs and stock in one place.'} actions={<div className="flex items-center gap-2.5"><Button variant="outline" disabled={query.isFetching} onClick={() => void query.refetch()}><RefreshCw className="size-3.5" />Refresh</Button>{can(current, permissions.salesCreate) && <Button asChild><a href="/pos">Open POS <ArrowUpRight className="size-4" /></a></Button>}</div>} />
     {query.isPending && <LoadingState label="Loading business snapshot…" />}
-    {query.error && <p role="alert" className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900">{d ? 'The snapshot below may be out of date. ' : ''}{query.error.message}</p>}
+    {query.error && <p role="alert" className="mb-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900">{d ? 'The snapshot below may be out of date. ' : ''}{query.error.message}</p>}
     {d && <div className="space-y-5">
       {/* Top Metrics Cards */}
       <div className="grid border-y bg-surface md:grid-cols-3">

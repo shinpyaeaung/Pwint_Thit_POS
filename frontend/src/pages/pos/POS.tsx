@@ -58,7 +58,7 @@ export default function POS({current}:{current:CurrentUser}){
       </FormField>
     </div>
     
-    {warehouses.error && <p role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{warehouses.error.message}</p>}
+    {warehouses.error && <p role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{warehouses.error.message}</p>}
     {warehouses.isSuccess && !warehouses.data.length && (
       <div role="status" className="mb-6 rounded-lg border border-amber-200 bg-amber-50/80 p-5 text-sm text-amber-950">
         <h2 className="font-semibold">Set up a warehouse before selling</h2>
@@ -122,7 +122,7 @@ export default function POS({current}:{current:CurrentUser}){
         {/* Cart Item Cards */}
         <div className="space-y-3 max-h-[22rem] overflow-y-auto pr-1">
           {effectiveLines.map((l, i) => (
-            <div key={l.id} className="rounded-xl border border-border/90 bg-muted p-3.5 transition-colors hover:bg-background/80">
+            <div key={l.id} className="rounded-lg border border-border/90 bg-muted p-3.5 transition-colors hover:bg-background/80">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-semibold text-foreground">{l.product.name}</p>
                 <button className="text-xs font-semibold text-destructive hover:underline" aria-label={`Remove ${l.product.sku}`} onClick={() => cart.remove(l.id)}>Remove</button>
@@ -143,7 +143,7 @@ export default function POS({current}:{current:CurrentUser}){
         </div>
 
         {/* Prominent Total Bar */}
-        <div className="my-5 flex items-baseline justify-between rounded-xl bg-muted/70 p-4 border border-border">
+        <div className="my-5 flex items-baseline justify-between rounded-lg bg-muted/70 p-4 border border-border">
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Total Due</span>
           <span className="text-2xl font-semibold tabular-nums tracking-tight text-primary sm:text-3xl" data-testid="pos-total">{amount(total)} MMK</span>
         </div>
@@ -172,7 +172,7 @@ export default function POS({current}:{current:CurrentUser}){
           {customerPrices.error && <p role="alert" className="text-xs text-destructive">{customerPrices.error.message}</p>}
           {customers.error && <p role="alert" className="text-xs text-destructive">{customers.error.message}</p>}
 
-          <div className="rounded-xl border border-border bg-background/50 p-3.5">
+          <div className="rounded-lg border border-border bg-background/50 p-3.5">
             <label className="flex items-center gap-2.5 text-sm font-semibold text-foreground cursor-pointer">
               <input type="checkbox" className="size-4 rounded accent-primary" checked={sellOnCredit} onChange={e => { setSellOnCredit(e.target.checked); setDue(''); quote.reset() }} />
               Sell on Credit
@@ -195,7 +195,7 @@ export default function POS({current}:{current:CurrentUser}){
           <FulfillmentFields value={fulfillment} onChange={setFulfillment} />
           <Field label="Discount / approval reason" value={reason} onChange={setReason} maxLength={2000} />
 
-          {quote.error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-destructive">{quote.error.message}</p>}
+          {quote.error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-destructive">{quote.error.message}</p>}
 
           <Button className="h-11 w-full text-sm font-semibold " disabled={!valid || quote.isPending || !can(current, permissions.paymentsManage)} onClick={() => quote.mutate()}>
             {quote.isPending ? 'Checking stock and totals…' : 'Review checkout · F8'}

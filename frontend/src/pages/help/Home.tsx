@@ -12,7 +12,7 @@ export default function Home({ current }: { current: CurrentUser }) {
       {links.map(item => (
         <a key={item.href} href={item.href} className="border-b group flex items-center justify-between py-4 text-sm font-semibold text-foreground transition-colors duration-150 hover:border-border  ">
           <div className="flex items-center gap-3.5 min-w-0">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary">
               <item.icon className="size-5" />
             </span>
             <span className="truncate">{item.label}</span>
@@ -30,7 +30,7 @@ export default function Home({ current }: { current: CurrentUser }) {
 
     <div className="mt-8 rounded-lg border border-amber-200/80 bg-amber-50 p-6 ">
       <div className="flex items-start gap-4">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-800">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-800">
           <HelpCircle className="size-5" />
         </span>
         <div>

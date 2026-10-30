@@ -90,7 +90,7 @@ test('product packaging, independent prices and partial supplier payments',async
  await page.getByLabel('Payment amount',{exact:true}).fill('20000')
  await page.getByRole('button',{name:'Confirm payment',exact:true}).click()
  await expect(page.getByRole('dialog')).toHaveCount(0)
- await expect(page.getByRole('table',{name:'Transportation balances'})).toContainText('50,000 / 20,000 / 30,000 MMK')
+ for(const value of ['Total50,000 MMK','Paid20,000 MMK','Remaining30,000 MMK']) await expect(page.getByRole('table',{name:'Transportation balances'})).toContainText(value)
  await expect(page.getByRole('table',{name:'Transportation payment history'})).toContainText('20,000 MMK')
  const supplierAfter=await(await page.request.get(`/api/v1/purchases/${purchase.id}`)).json()
  expect(supplierAfter.outstanding_original).toBe('0.0000')
