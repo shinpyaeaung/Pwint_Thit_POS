@@ -1,5 +1,11 @@
 # Pwint Thit POS 1.2 handoff
 
+## October 31: automatic photo compression and compact logo
+
+Fixed the user's large-photo upload rejection by processing JPEG/PNG files in the product form before uploading. Source files up to 50 MiB are resized proportionally to a maximum 2048-pixel side and compressed toward 1 MiB, retaining PNG transparency and browser-decoded orientation. Additional resizing handles noisy images that remain too large. Save is disabled during processing; processing failures retain the previous selection, and temporary URLs are released. Reload product is now offered only for conflict responses. Existing API/storage validation and business data remain unchanged.
+
+Reduced the sidebar logo from 192 to 128 pixels maximum width, with a 64-pixel frame instead of 96 pixels. `make check` passed (Go race/vet, lint, 11 frontend unit tests, TypeScript and production build), and all 40 real-stack Chromium/WebKit browser cases passed. Regressions upload a 5000×3000 image with a file size above 2 MiB and a noisy PNG above 2 MiB, checking saved dimensions/size and replacement. The smaller logo was visually inspected. Only the frontend was rebuilt/deployed at http://localhost:8088; nginx syntax, served bundle and API/database health were verified. No migration or business-record changes.
+
 ## October 30: direct product images and official logo
 
 Implemented and deployed the user's direct-file upload correction: no Supabase and no image URL entry. Product forms support JPEG/PNG selection, preview, replacement and removal. Migration 000045 stores validated image bytes in PostgreSQL, with atomic product/version/audit writes and permission-protected image reads. Catalog rows, grouped variants, details, POS search and cart display photos. The supplied transparent logo appears in the desktop sidebar and mobile drawer. See [product images](product-images.md) for limits and implementation details.
