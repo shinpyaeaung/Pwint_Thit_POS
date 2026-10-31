@@ -1,5 +1,13 @@
 # Pwint Thit POS 1.2 handoff
 
+## October 31: transferred manual-stock correction and damaged-sale payments
+
+Fixed correction eligibility for manually entered stock after one or more warehouse transfers. Migration 000047 follows immutable source-batch ancestry; inventory shows Correct landed cost for eligible transfer descendants while retaining Super Admin enforcement and purchase-origin restrictions. Enter the complete corrected landed cost including cargo. Original batches, completed sales, transfer snapshots and other warehouse stock remain unchanged.
+
+Reduced-price damaged sales now offer Cash or Bank transfer, a matching receiving account and an optional bank reference. The form explains that a paid sale needs an account to record the received money; Record issue requires no payment account. Existing below-cost approval and atomic stock/payment controls remain intact.
+
+`make check` passed (13 frontend unit tests), full PostgreSQL integration passed, and all 40 production-bundle Chromium/WebKit cases passed. Regressions cover two transfer legs with cargo, correction without changing historical invoice profit, future FIFO costs, and bank damaged-sale ledger entries. Migrations/API/frontend deployed at http://localhost:8088 with healthy services and valid nginx configuration. All five existing-data integrity checks returned zero before and after deployment. Read-only verification confirms Malkist Large BAT-2026-0001 / TRF-2026-0002 at Mandalay Warehouser is eligible, with 1199 pieces and no reservations. No real stock costs or payments were changed. Wait for the user's next scope.
+
 ## October 31: correct landed cost for manual stock
 
 Super Admin can use **Inventory → Correct landed cost** on batches created by Add existing stock, including expanded grouped inventory. Enter corrected cost per base unit and a reason. Migration 000046 creates a new finalized manual batch for the remaining sellable/damaged quantities, moves stock through paired dated adjustments and records immutable correction/audit history. Original batches, sales/profit, refunds and movements remain unchanged. Receiving date, expiry, carton size and warehouse selling prices are preserved. Reserved stock must be released; fully depleted and non-manual batches cannot be corrected through this action. See [manual stock cost corrections](manual-stock-cost-corrections.md).

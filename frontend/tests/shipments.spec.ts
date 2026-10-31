@@ -362,6 +362,15 @@ test('shipment goods, transportation timeline, expenses and restricted staff acc
  await page.getByRole('button',{name:'Reduced-price sale',exact:true}).click()
  await page.getByLabel('Reduced unit price (MMK)',{exact:true}).fill('500')
  await page.getByLabel('Damaged sale reason',{exact:true}).fill(`Usable packaging clearance ${suffix}`)
+ await expect(page.getByRole('dialog')).toContainText("account receiving the customer's payment")
+ if(test.info().project.name==='webkit'){
+  await page.getByRole('combobox',{name:'Damaged sale payment method',exact:true}).click()
+  await page.getByRole('option',{name:'Bank transfer',exact:true}).click()
+  await page.getByRole('combobox',{name:'Bank / cash account',exact:true}).click()
+  await page.getByRole('option',{name:'Fixture bank · Test bank',exact:true}).click()
+  await page.getByLabel('Damaged sale payment reference',{exact:true}).fill(`DAMAGE-${suffix}`)
+ }
+
  await page.getByRole('button',{name:'Review damaged sale',exact:true}).click()
  await expect(page.getByRole('dialog')).toContainText('below actual batch cost')
  await expect(page.getByRole('button',{name:'Complete damaged sale',exact:true})).toBeDisabled()
@@ -369,6 +378,12 @@ test('shipment goods, transportation timeline, expenses and restricted staff acc
  await page.getByRole('button',{name:'Complete damaged sale',exact:true}).click()
  await expect(page).toHaveURL(/\/sales\/[a-f0-9-]{36}$/)
  const replacementInvoice=await(await page.request.get(`/api/v1/sales/${page.url().split('/').pop()}`)).json()
+ expect(replacementInvoice.payment_method).toBe(test.info().project.name==='webkit'?'BANK_TRANSFER':'CASH')
+ if(test.info().project.name==='webkit'){
+  const history=await(await page.request.get('/api/v1/accounts/history?account_id=00000000-0000-0000-0000-000000000998&page_size=100')).json()
+  expect(history.entries.find((e:{reference:string})=>e.reference===`DAMAGE-${suffix}`).amount_mmk).toBe('500.0000')
+ }
+
  await expect(page.getByRole('article')).toContainText('500 MMK')
  await page.goto('/returns')
  await page.getByRole('button',{name:'Sales return / exchange',exact:true}).click()

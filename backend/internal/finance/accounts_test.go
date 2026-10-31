@@ -688,6 +688,41 @@ func TestManualStockAccountsIntegration(t *testing.T) {
 		if codes[201] != 1 || codes[409] != 1 {
 			t.Fatalf("concurrent corrections: %v", codes)
 		}
+		// A manually entered batch remains eligible across multiple warehouse legs.
+		destination := next()
+		if _, e := conn.Exec(ctx, `INSERT INTO app.warehouses(id,code,name) VALUES($1::uuid,($1::uuid)::text,'Transferred correction destination')`, destination); e != nil {
+			t.Fatal(e)
+		}
+		live := scalar("SELECT batch_id::text FROM app.inventory i JOIN app.batches b ON b.id=i.batch_id WHERE b.product_id=$1 AND i.warehouse_id=$2 AND available_quantity>0", product, warehouse)
+		move := func(from, to, batch, qty string) string {
+			v := scalar("SELECT version::text FROM app.inventory WHERE batch_id=$1 AND warehouse_id=$2", batch, from)
+			transfer := call("POST", "/transfers", map[string]any{"request_id": next(), "from_warehouse_id": from, "to_warehouse_id": to, "items": []map[string]any{{"batch_id": batch, "version": v, "quantity": qty}}}, owner, 201)
+			id := transfer["id"].(string)
+			data := call("GET", "/transfers/"+id, nil, owner, 200)
+			item := data["items"].([]any)[0].(map[string]any)
+			call("POST", "/transfers/"+id+"/receive", map[string]any{"version": scalar("SELECT version::text FROM app.shipments WHERE id=$1", id), "items": []map[string]any{{"id": item["id"], "received_quantity": qty, "damaged_quantity": "0", "notes": ""}}}, owner, 200)
+			return scalar("SELECT id::text FROM app.batches WHERE transfer_item_id=$1", item["id"])
+		}
+		firstLeg := move(warehouse, destination, live, "3")
+		secondLeg := move(destination, warehouse, firstLeg, "1")
+		if scalar("SELECT app.is_manual_stock_lineage($1)::text", secondLeg) != "true" {
+			t.Fatal("manual ancestry lost")
+		}
+		oldCost := scalar("SELECT actual_unit_cost_mmk::text FROM app.batches WHERE id=$1", secondLeg)
+		fixedBatch := call("POST", path, map[string]any{"request_id": next(), "warehouse_id": warehouse, "batch_id": secondLeg, "version": version(secondLeg), "unit_cost_mmk": "250", "reason": "Correct transferred opening cost including cargo"}, owner, 201)["batch_id"].(string)
+		if scalar("SELECT actual_unit_cost_mmk::text FROM app.batches WHERE id=$1", secondLeg) != oldCost || scalar("SELECT actual_unit_cost_mmk::text FROM app.batches WHERE id=$1", fixedBatch) != "250.00000000" {
+			t.Fatal("transferred cost history changed")
+		}
+		if scalar("SELECT available_quantity::text FROM app.inventory WHERE batch_id=$1", fixedBatch) != "1.000000" {
+			t.Fatal("corrected transfer quantity changed")
+		}
+		if scalar("SELECT available_quantity::text FROM app.inventory WHERE batch_id=$1", firstLeg) != "2.000000" {
+			t.Fatal("other warehouse stock changed")
+		}
+		if scalar("SELECT count(*)::text FROM app.batches WHERE receiving_item_id IS NOT NULL AND app.is_manual_stock_lineage(id)") != "0" {
+			t.Fatal("purchase stock incorrectly eligible")
+		}
+
 	})
 
 }

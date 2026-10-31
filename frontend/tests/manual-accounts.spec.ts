@@ -79,17 +79,34 @@ test('manual stock and accounts: stock, sale, refund, bank balance and personal 
  await page.goto('/returns');await expect(page.getByRole('table')).toContainText(`Opening ${suffix} · 1 PIECE`)
  // Correct remaining opening stock without rewriting the already-posted sale/refund.
  const historicInvoice=await get(`/sales/${sale.id}`)
- const oldStock=(await get(`/inventory?warehouse_id=${warehouse.id}`)).stock.find((r:{product_id:string})=>r.product_id===product.id)
+ let oldStock=(await get(`/inventory?warehouse_id=${warehouse.id}`)).stock.find((r:{product_id:string})=>r.product_id===product.id)
+ const transferWarehouse=await post('/warehouses',{name:`Correction transit ${suffix}`,code:`CT-${suffix}`})
+ const transferStock=async(from:string,to:string,source:typeof oldStock,cargo:boolean)=>{
+  const transfer=await post('/transfers',{request_id:crypto.randomUUID(),from_warehouse_id:from,to_warehouse_id:to,items:[{batch_id:source.batch_id,version:source.version,quantity:'23'}]})
+  if(cargo){
+   const shipment=await get(`/shipments/${transfer.id}`)
+   const fee=await page.request.post(`/api/v1/shipments/${transfer.id}/stages`,{headers,data:{version:shipment.version,request_id:crypto.randomUUID(),start_location:'Source',destination:'Destination',provider_name:'Correction fixture cargo',fee_basis:'PER_PACKAGE',package_type:'CARTON',package_quantity:'1',fee_per_package_mmk:'23',transportation_fee_mmk:'0',loading_fee_mmk:'0',unloading_fee_mmk:'0',other_fee_mmk:'0'}})
+   expect(fee.status(),await fee.text()).toBe(204)
+  }
+  const data=await get(`/transfers/${transfer.id}`),shipment=await get(`/shipments/${transfer.id}`)
+  await post(`/transfers/${transfer.id}/receive`,{version:shipment.version,items:[{id:data.items[0].id,received_quantity:'23',damaged_quantity:'0',notes:''}]},200)
+  return (await get(`/inventory?warehouse_id=${to}`)).stock.find((r:{product_id:string;available_quantity:string})=>r.product_id===product.id&&r.available_quantity==='23.000000')
+ }
+ oldStock=await transferStock(warehouse.id,transferWarehouse.id,oldStock,true)
+ oldStock=await transferStock(transferWarehouse.id,warehouse.id,oldStock,false)
+ expect(oldStock.is_manual).toBe(false)
+ expect(oldStock.can_correct_cost).toBe(true)
+ expect(oldStock.unit_cost_mmk).toBe('101.00000000')
  await page.goto('/inventory')
  await page.getByRole('searchbox',{name:'Search inventory',exact:true}).fill(suffix)
- await page.getByRole('button',{name:'Correct landed cost',exact:true}).click()
+ await page.getByRole('row').filter({hasText:oldStock.batch_number}).getByRole('button',{name:'Correct landed cost',exact:true}).click()
  await expect(page.getByRole('dialog')).toContainText('Completed sales, past profit and original stock records keep their recorded costs')
  await page.getByLabel('Correct landed cost per PIECE (MMK)',{exact:true}).fill('120')
  await page.getByLabel('Cost correction reason',{exact:true}).fill(`Wrong opening landed cost ${suffix}`)
  await page.getByRole('button',{name:'Confirm cost correction',exact:true}).click()
  await expect(page.getByRole('dialog')).toHaveCount(0)
  const correctedStock=(await get(`/inventory?warehouse_id=${warehouse.id}`)).stock
- const replacement=correctedStock.find((r:{batch_id:string;product_id:string})=>r.product_id===product.id&&r.batch_id!==oldStock.batch_id)
+ const replacement=correctedStock.find((r:{unit_cost_mmk:string;product_id:string})=>r.product_id===product.id&&r.unit_cost_mmk==='120.00000000')
  expect(replacement.available_quantity).toBe('23.000000')
  expect(replacement.unit_cost_mmk).toBe('120.00000000')
  expect(replacement.carton_size).toBe(oldStock.carton_size)
