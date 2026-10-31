@@ -1,5 +1,11 @@
 # Pwint Thit POS 1.2 handoff
 
+## October 31: carton/piece warehouse dispatch
+
+Goods to dispatch now offers Carton or the product's individual stock unit, with loose-unit entry alongside cartons. Available quantities and the dispatch preview show cartons plus loose units and the base-unit total. Switching modes preserves the exact quantity. Conversion uses each source batch's recorded carton size; batches without one explain the base-unit-only choice. Exact fixed-point validation rejects invalid precision, overflow and over-dispatch. Existing transactional API movements, version checks, retry handling and receiving/costing remain unchanged; no schema changes. See [warehouse transfer packaging](warehouse-transfer-packaging.md).
+
+`make check` passed with 13 frontend unit tests, and all 40 production-bundle Chrome/Safari cases passed. The expanded transfer workflow checks mode switching, cartons plus loose units, stock limits, mobile layout, source deductions and destination landed costs. A scoped fieldset width fix resolves mobile overflow. Only the frontend was deployed at http://localhost:8088; nginx syntax, served bundle and API/database health were verified. Existing business data was not modified. Wait for the user's next scope.
+
 ## October 31: automatic photo compression and compact logo
 
 Fixed the user's large-photo upload rejection by processing JPEG/PNG files in the product form before uploading. Source files up to 50 MiB are resized proportionally to a maximum 2048-pixel side and compressed toward 1 MiB, retaining PNG transparency and browser-decoded orientation. Additional resizing handles noisy images that remain too large. Save is disabled during processing; processing failures retain the previous selection, and temporary URLs are released. Reload product is now offered only for conflict responses. Existing API/storage validation and business data remain unchanged.
