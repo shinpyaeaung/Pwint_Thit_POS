@@ -23,6 +23,7 @@ type Querier interface {
 	CheckDatabase(ctx context.Context) (int32, error)
 	ClearUserPermissions(ctx context.Context, userID pgtype.UUID) error
 	ConsumeLoginAttempt(ctx context.Context, keyHash []byte) (int32, error)
+	CorrectManualStockCost(ctx context.Context, arg CorrectManualStockCostParams) (pgtype.UUID, error)
 	CorrectPurchase(ctx context.Context, arg CorrectPurchaseParams) (pgtype.UUID, error)
 	CostJourneys(ctx context.Context, arg CostJourneysParams) ([]byte, error)
 	CreateBrand(ctx context.Context, name string) (CreateBrandRow, error)
@@ -112,6 +113,7 @@ type Querier interface {
 	LockShipmentPurchaseItem(ctx context.Context, id pgtype.UUID) (LockShipmentPurchaseItemRow, error)
 	LockShipmentWarehouse(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error)
 	LockSupplier(ctx context.Context, id pgtype.UUID) (LockSupplierRow, error)
+	ManualStockCostHistory(ctx context.Context, arg ManualStockCostHistoryParams) ([]byte, error)
 	ManualStockPost(ctx context.Context, arg ManualStockPostParams) (pgtype.UUID, error)
 	ManualStockProducts(ctx context.Context, search string) ([]byte, error)
 	MarkLogin(ctx context.Context, id pgtype.UUID) error

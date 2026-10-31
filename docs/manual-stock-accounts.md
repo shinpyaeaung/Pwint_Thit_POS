@@ -6,7 +6,7 @@ Super Admin opens Inventory → Add existing stock. Select or create a warehouse
 
 Posting creates an immutable manual-stock source, finalized batch, posted adjustment, stock movement and audit together. It updates warehouse prices for every configured package using exact decimal conversion. Zero cost must be explicitly entered; unknown cost is not assumed. Batch total cost is rounded to four MMK decimal places, with its unit cost derived from that stored total. No purchase or supplier debt is fabricated. FIFO sales, returns, expiry, stock reports, warehouse transfers and later warehouse pricing use this batch normally. Existing batch costs and invoice prices remain unchanged.
 
-The backend and SQL enforce Super Admin for manual entries. Staff cannot bypass this by adding positive sellable/damaged quantities through stock adjustments, even if granted every configurable permission. Staff with the relevant permissions can still record valid receipts, returns and reservations. Later quantity corrections use controlled adjustments; posted manual entries cannot be overwritten.
+The backend and SQL enforce Super Admin for manual entries. Staff cannot bypass this by adding positive sellable/damaged quantities through stock adjustments, even if granted every configurable permission. Staff with the relevant permissions can still record valid receipts, returns and reservations. Later quantity corrections use controlled adjustments; posted manual entries cannot be overwritten. Super Admin can use **Inventory → Correct landed cost** to correct remaining manual stock through an audited replacement batch, preserving completed sales and original costs. See [manual-stock cost corrections](manual-stock-cost-corrections.md).
 
 ## Returns
 

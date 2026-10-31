@@ -409,6 +409,22 @@ type AppLoginThrottle struct {
 	UpdatedAt       pgtype.Timestamptz
 }
 
+type AppManualStockCostCorrection struct {
+	ID               pgtype.UUID
+	RequestID        pgtype.UUID
+	WarehouseID      pgtype.UUID
+	OldBatchID       pgtype.UUID
+	NewBatchID       pgtype.UUID
+	SellableQuantity pgtype.Numeric
+	DamagedQuantity  pgtype.Numeric
+	OldUnitCostMmk   pgtype.Numeric
+	NewUnitCostMmk   pgtype.Numeric
+	Payload          []byte
+	Reason           string
+	RecordedBy       pgtype.UUID
+	CorrectedAt      pgtype.Timestamptz
+}
+
 type AppManualStockEntry struct {
 	ID          pgtype.UUID
 	RequestID   pgtype.UUID

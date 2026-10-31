@@ -1,5 +1,13 @@
 # Pwint Thit POS 1.2 handoff
 
+## October 31: correct landed cost for manual stock
+
+Super Admin can use **Inventory → Correct landed cost** on batches created by Add existing stock, including expanded grouped inventory. Enter corrected cost per base unit and a reason. Migration 000046 creates a new finalized manual batch for the remaining sellable/damaged quantities, moves stock through paired dated adjustments and records immutable correction/audit history. Original batches, sales/profit, refunds and movements remain unchanged. Receiving date, expiry, carton size and warehouse selling prices are preserved. Reserved stock must be released; fully depleted and non-manual batches cannot be corrected through this action. See [manual stock cost corrections](manual-stock-cost-corrections.md).
+
+Backend/API and SQL enforce active Super Admin. Product/stock locks, stock versions and immutable request identities protect against concurrent changes, stale edits and duplicates. The full PostgreSQL integration suite passed with rollback/concurrency/permissions regressions. `make check` passed (13 frontend unit tests), and all 40 real-stack production-bundle Chromium/WebKit cases passed, including correcting stock after a sale/refund while retaining historical profit and using corrected cost in future FIFO quotes.
+
+Migration 000046 and the updated API/frontend are deployed at http://localhost:8088; all services healthy. Nginx syntax, anonymous correction API rejection and database connectivity verified. All five existing-data integrity checks returned zero before and after deployment. No real stock costs were changed during verification. Wait for the user's next scope.
+
 ## October 31: carton/piece warehouse dispatch
 
 Goods to dispatch now offers Carton or the product's individual stock unit, with loose-unit entry alongside cartons. Available quantities and the dispatch preview show cartons plus loose units and the base-unit total. Switching modes preserves the exact quantity. Conversion uses each source batch's recorded carton size; batches without one explain the base-unit-only choice. Exact fixed-point validation rejects invalid precision, overflow and over-dispatch. Existing transactional API movements, version checks, retry handling and receiving/costing remain unchanged; no schema changes. See [warehouse transfer packaging](warehouse-transfer-packaging.md).

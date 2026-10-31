@@ -27,6 +27,22 @@ func (q *Queries) AdjustInventory(ctx context.Context, arg AdjustInventoryParams
 	return column_1, err
 }
 
+const correctManualStockCost = `-- name: CorrectManualStockCost :one
+SELECT app.correct_manual_stock_cost($1::jsonb,$2::uuid)::uuid
+`
+
+type CorrectManualStockCostParams struct {
+	Data  []byte
+	Actor pgtype.UUID
+}
+
+func (q *Queries) CorrectManualStockCost(ctx context.Context, arg CorrectManualStockCostParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, correctManualStockCost, arg.Data, arg.Actor)
+	var column_1 pgtype.UUID
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const getReceiving = `-- name: GetReceiving :one
 SELECT jsonb_build_object('id',r.id,'receipt_number',r.receipt_number,'shipment_id',s.id,'shipment_number',s.shipment_number,'warehouse_name',w.name,'received_at',r.received_at,'received_by',u.display_name,'status',r.status,'notes',r.notes,
  'items',coalesce((SELECT jsonb_agg(jsonb_build_object('id',i.id,'product_name',p.name,'base_unit',p.base_unit_code,'expected_quantity',i.expected_quantity::text,'received_quantity',i.received_quantity::text,'damaged_quantity',i.damaged_quantity::text,'missing_quantity',i.missing_quantity::text,'sellable_quantity',(i.received_quantity-i.damaged_quantity)::text,'batch_number',i.batch_number,'batch_id',b.id,'manufactured_on',i.manufactured_on,'expires_on',i.expires_on,'notes',i.notes,'carton_size',i.carton_size::text) ORDER BY i.id) FROM app.goods_receiving_items i JOIN app.products p ON p.id=i.product_id LEFT JOIN app.batches b ON b.receiving_item_id=i.id WHERE i.goods_receiving_id=r.id),'[]'::jsonb))::jsonb FROM app.goods_receiving r JOIN app.shipments s ON s.id=r.shipment_id JOIN app.warehouses w ON w.id=r.warehouse_id JOIN app.users u ON u.id=r.received_by WHERE r.id=$1
@@ -41,12 +57,12 @@ func (q *Queries) GetReceiving(ctx context.Context, id pgtype.UUID) ([]byte, err
 
 const inventoryGroups = `-- name: InventoryGroups :one
 WITH filtered AS (
- SELECT i.warehouse_id, i.batch_id, i.sellable_quantity, i.reserved_quantity, i.damaged_quantity, i.available_quantity, i.created_at, i.updated_at, i.version,b.batch_number,b.expires_on,b.actual_unit_cost_mmk,p.brand_id,br.name AS brand_name,p.id AS product_id,p.name AS product_name,p.sku,p.base_unit_code,w.name AS warehouse_name,coalesce(b.carton_size,r.carton_size) AS carton_size
+ SELECT i.warehouse_id, i.batch_id, i.sellable_quantity, i.reserved_quantity, i.damaged_quantity, i.available_quantity, i.created_at, i.updated_at, i.version,b.manual_stock_entry_id IS NOT NULL AS is_manual,b.batch_number,b.expires_on,b.actual_unit_cost_mmk,p.brand_id,br.name AS brand_name,p.id AS product_id,p.name AS product_name,p.sku,p.base_unit_code,w.name AS warehouse_name,coalesce(b.carton_size,r.carton_size) AS carton_size
  FROM app.inventory i JOIN app.batches b ON b.id=i.batch_id JOIN app.products p ON p.id=b.product_id LEFT JOIN app.brands br ON br.id=p.brand_id JOIN app.warehouses w ON w.id=i.warehouse_id LEFT JOIN app.goods_receiving_items r ON r.id=b.receiving_item_id
  WHERE ($1::uuid IS NULL OR i.warehouse_id=$1) AND ($2::text='' OR strpos(lower(p.name||' '||p.sku||' '||b.batch_number),lower($2))>0)
-), documented AS (SELECT warehouse_id, batch_id, sellable_quantity, reserved_quantity, damaged_quantity, available_quantity, created_at, updated_at, version, batch_number, expires_on, actual_unit_cost_mmk, brand_id, brand_name, product_id, product_name, sku, base_unit_code, warehouse_name, carton_size, CASE WHEN $3::text='brand' THEN coalesce(brand_id,product_id) ELSE product_id END AS group_id,
+), documented AS (SELECT warehouse_id, batch_id, sellable_quantity, reserved_quantity, damaged_quantity, available_quantity, created_at, updated_at, version, is_manual, batch_number, expires_on, actual_unit_cost_mmk, brand_id, brand_name, product_id, product_name, sku, base_unit_code, warehouse_name, carton_size, CASE WHEN $3::text='brand' THEN coalesce(brand_id,product_id) ELSE product_id END AS group_id,
  CASE WHEN $3::text='brand' THEN coalesce(brand_name,product_name) ELSE product_name END AS group_name,
-jsonb_build_object('batch_id',batch_id,'warehouse_id',warehouse_id,'warehouse_name',warehouse_name,'brand_name',brand_name,'product_id',product_id,'product_name',product_name,'sku',sku,'base_unit',base_unit_code,'batch_number',batch_number,'expires_on',expires_on,'version',version::text,'sellable_quantity',sellable_quantity::text,'available_quantity',available_quantity::text,'damaged_quantity',damaged_quantity::text,'reserved_quantity',reserved_quantity::text,'carton_size',carton_size::text,'available_cartons',floor(available_quantity/carton_size)::text,'available_units',(CASE WHEN carton_size IS NULL THEN available_quantity ELSE mod(available_quantity,carton_size) END)::text)||CASE WHEN $4::boolean THEN jsonb_build_object('unit_cost_mmk',actual_unit_cost_mmk::text) ELSE '{}'::jsonb END AS stock FROM filtered), grouped AS (
+jsonb_build_object('is_manual',is_manual,'batch_id',batch_id,'warehouse_id',warehouse_id,'warehouse_name',warehouse_name,'brand_name',brand_name,'product_id',product_id,'product_name',product_name,'sku',sku,'base_unit',base_unit_code,'batch_number',batch_number,'expires_on',expires_on,'version',version::text,'sellable_quantity',sellable_quantity::text,'available_quantity',available_quantity::text,'damaged_quantity',damaged_quantity::text,'reserved_quantity',reserved_quantity::text,'carton_size',carton_size::text,'available_cartons',floor(available_quantity/carton_size)::text,'available_units',(CASE WHEN carton_size IS NULL THEN available_quantity ELSE mod(available_quantity,carton_size) END)::text)||CASE WHEN $4::boolean THEN jsonb_build_object('unit_cost_mmk',actual_unit_cost_mmk::text) ELSE '{}'::jsonb END AS stock FROM filtered), grouped AS (
  SELECT group_id,group_name,warehouse_id,warehouse_name,jsonb_agg(stock ORDER BY product_name,batch_number,batch_id) AS stock
  FROM documented GROUP BY group_id,group_name,warehouse_id,warehouse_name
 ), page AS (SELECT group_id, group_name, warehouse_id, warehouse_name, stock FROM grouped ORDER BY group_name,group_id,warehouse_id LIMIT $6::int OFFSET $5::int)
@@ -119,11 +135,11 @@ func (q *Queries) InventoryWarehouses(ctx context.Context) ([]byte, error) {
 
 const listInventory = `-- name: ListInventory :one
 WITH filtered AS (
- SELECT i.warehouse_id, i.batch_id, i.sellable_quantity, i.reserved_quantity, i.damaged_quantity, i.available_quantity, i.created_at, i.updated_at, i.version,b.batch_number,b.expires_on,b.actual_unit_cost_mmk,p.id AS product_id,p.name AS product_name,p.sku,p.base_unit_code,w.name AS warehouse_name,coalesce(b.carton_size,r.carton_size) AS carton_size
+ SELECT i.warehouse_id, i.batch_id, i.sellable_quantity, i.reserved_quantity, i.damaged_quantity, i.available_quantity, i.created_at, i.updated_at, i.version,b.manual_stock_entry_id IS NOT NULL AS is_manual,b.batch_number,b.expires_on,b.actual_unit_cost_mmk,p.id AS product_id,p.name AS product_name,p.sku,p.base_unit_code,w.name AS warehouse_name,coalesce(b.carton_size,r.carton_size) AS carton_size
  FROM app.inventory i JOIN app.batches b ON b.id=i.batch_id JOIN app.products p ON p.id=b.product_id JOIN app.warehouses w ON w.id=i.warehouse_id LEFT JOIN app.goods_receiving_items r ON r.id=b.receiving_item_id
  WHERE ($2::uuid IS NULL OR i.warehouse_id=$2) AND ($3::text='' OR strpos(lower(p.name||' '||p.sku||' '||b.batch_number),lower($3))>0)
-), page AS (SELECT warehouse_id, batch_id, sellable_quantity, reserved_quantity, damaged_quantity, available_quantity, created_at, updated_at, version, batch_number, expires_on, actual_unit_cost_mmk, product_id, product_name, sku, base_unit_code, warehouse_name, carton_size FROM filtered ORDER BY product_name,batch_number,batch_id,warehouse_id LIMIT $5::int OFFSET $4::int)
-SELECT jsonb_build_object('total',(SELECT count(*) FROM filtered),'stock',coalesce((SELECT jsonb_agg(jsonb_build_object('batch_id',batch_id,'warehouse_id',warehouse_id,'warehouse_name',warehouse_name,'product_id',product_id,'product_name',product_name,'sku',sku,'base_unit',base_unit_code,'batch_number',batch_number,'expires_on',expires_on,'version',version::text,'sellable_quantity',sellable_quantity::text,'available_quantity',available_quantity::text,'damaged_quantity',damaged_quantity::text,'reserved_quantity',reserved_quantity::text,'carton_size',carton_size::text,'available_cartons',floor(available_quantity/carton_size)::text,'available_units',(CASE WHEN carton_size IS NULL THEN available_quantity ELSE mod(available_quantity,carton_size) END)::text)||CASE WHEN $1::boolean THEN jsonb_build_object('unit_cost_mmk',actual_unit_cost_mmk::text) ELSE '{}'::jsonb END ORDER BY product_name,batch_number,batch_id,warehouse_id) FROM page),'[]'::jsonb))::jsonb
+), page AS (SELECT warehouse_id, batch_id, sellable_quantity, reserved_quantity, damaged_quantity, available_quantity, created_at, updated_at, version, is_manual, batch_number, expires_on, actual_unit_cost_mmk, product_id, product_name, sku, base_unit_code, warehouse_name, carton_size FROM filtered ORDER BY product_name,batch_number,batch_id,warehouse_id LIMIT $5::int OFFSET $4::int)
+SELECT jsonb_build_object('total',(SELECT count(*) FROM filtered),'stock',coalesce((SELECT jsonb_agg(jsonb_build_object('is_manual',is_manual,'batch_id',batch_id,'warehouse_id',warehouse_id,'warehouse_name',warehouse_name,'product_id',product_id,'product_name',product_name,'sku',sku,'base_unit',base_unit_code,'batch_number',batch_number,'expires_on',expires_on,'version',version::text,'sellable_quantity',sellable_quantity::text,'available_quantity',available_quantity::text,'damaged_quantity',damaged_quantity::text,'reserved_quantity',reserved_quantity::text,'carton_size',carton_size::text,'available_cartons',floor(available_quantity/carton_size)::text,'available_units',(CASE WHEN carton_size IS NULL THEN available_quantity ELSE mod(available_quantity,carton_size) END)::text)||CASE WHEN $1::boolean THEN jsonb_build_object('unit_cost_mmk',actual_unit_cost_mmk::text) ELSE '{}'::jsonb END ORDER BY product_name,batch_number,batch_id,warehouse_id) FROM page),'[]'::jsonb))::jsonb
 `
 
 type ListInventoryParams struct {
@@ -160,6 +176,24 @@ type ListReceivingParams struct {
 
 func (q *Queries) ListReceiving(ctx context.Context, arg ListReceivingParams) ([]byte, error) {
 	row := q.db.QueryRow(ctx, listReceiving, arg.Search, arg.PageOffset, arg.PageSize)
+	var column_1 []byte
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const manualStockCostHistory = `-- name: ManualStockCostHistory :one
+SELECT coalesce(jsonb_agg(jsonb_build_object('id',c.id,'old_batch',old.batch_number,'new_batch',new.batch_number,'old_unit_cost_mmk',c.old_unit_cost_mmk::text,'new_unit_cost_mmk',c.new_unit_cost_mmk::text,'sellable_quantity',c.sellable_quantity::text,'damaged_quantity',c.damaged_quantity::text,'reason',c.reason,'corrected_at',c.corrected_at,'recorded_by',u.display_name) ORDER BY c.corrected_at DESC,c.id),'[]'::jsonb)::jsonb
+FROM app.manual_stock_cost_corrections c JOIN app.batches old ON old.id=c.old_batch_id JOIN app.batches new ON new.id=c.new_batch_id JOIN app.users u ON u.id=c.recorded_by
+WHERE c.warehouse_id=$1::uuid AND (c.old_batch_id=$2::uuid OR c.new_batch_id=$2::uuid)
+`
+
+type ManualStockCostHistoryParams struct {
+	WarehouseID pgtype.UUID
+	BatchID     pgtype.UUID
+}
+
+func (q *Queries) ManualStockCostHistory(ctx context.Context, arg ManualStockCostHistoryParams) ([]byte, error) {
+	row := q.db.QueryRow(ctx, manualStockCostHistory, arg.WarehouseID, arg.BatchID)
 	var column_1 []byte
 	err := row.Scan(&column_1)
 	return column_1, err

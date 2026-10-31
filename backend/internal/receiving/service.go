@@ -28,6 +28,8 @@ func (s *Service) Register(r *gin.Engine, a *authz.Service) {
 	s.a = a
 	r.GET("/api/v1/inventory/manual-products", a.SuperAdminOnly(), s.ManualProducts)
 	r.POST("/api/v1/inventory/manual-stock", a.SuperAdminOnly(), s.ManualStock)
+	r.POST("/api/v1/inventory/manual-stock/cost-corrections", a.SuperAdminOnly(), s.CorrectManualCost)
+	r.GET("/api/v1/inventory/manual-stock/cost-corrections", a.SuperAdminOnly(), s.ManualCostHistory)
 	s.registerTransfers(r, a)
 	r.GET("/api/v1/batches", a.Require(permissions.InventoryView), s.Batches)
 	r.GET("/api/v1/receiving", a.Require(permissions.ReceivingManage), s.List)

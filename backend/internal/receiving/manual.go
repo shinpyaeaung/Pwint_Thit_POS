@@ -75,3 +75,47 @@ func (s *Service) ManualStock(c *gin.Context) {
 	}
 	c.JSON(201, gin.H{"id": result})
 }
+
+func (s *Service) CorrectManualCost(c *gin.Context) {
+	var in struct {
+		Request   string `json:"request_id"`
+		Batch     string `json:"batch_id"`
+		Warehouse string `json:"warehouse_id"`
+		Version   string `json:"version"`
+		Cost      string `json:"unit_cost_mmk"`
+		Reason    string `json:"reason"`
+	}
+	if !decode(c, &in) {
+		return
+	}
+	for _, v := range []string{in.Request, in.Batch, in.Warehouse} {
+		id, e := uuid(v)
+		if e != nil || !id.Valid {
+			fail(c, 400, "Choose a valid manual stock batch.")
+			return
+		}
+	}
+	if !regexp.MustCompile(`^[0-9]{1,14}(\.[0-9]{1,4})?$`).MatchString(in.Cost) || len(in.Reason) > 2000 || len(in.Version) > 30 {
+		fail(c, 400, "Enter a valid landed cost and correction reason.")
+		return
+	}
+	actor, _ := authz.Principal(c)
+	data, _ := json.Marshal(in)
+	// The SQL function executes all batch, movement, correction and audit writes atomically.
+	id, e := s.q.CorrectManualStockCost(c.Request.Context(), database.CorrectManualStockCostParams{Data: data, Actor: actor.ID})
+	if e != nil {
+		dbError(c, e)
+		return
+	}
+	c.JSON(201, gin.H{"batch_id": id})
+}
+func (s *Service) ManualCostHistory(c *gin.Context) {
+	batch, e := uuid(c.Query("batch_id"))
+	warehouse, e2 := uuid(c.Query("warehouse_id"))
+	if e != nil || e2 != nil || !batch.Valid || !warehouse.Valid {
+		fail(c, 400, "Choose a valid warehouse and batch.")
+		return
+	}
+	b, e := s.q.ManualStockCostHistory(c.Request.Context(), database.ManualStockCostHistoryParams{BatchID: batch, WarehouseID: warehouse})
+	response(c, b, e)
+}

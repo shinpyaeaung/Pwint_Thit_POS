@@ -596,4 +596,98 @@ func TestManualStockAccountsIntegration(t *testing.T) {
 
 	})
 
+	t.Run("manual stock landed cost correction", func(t *testing.T) {
+		product, warehouse := next(), next()
+		if _, e := conn.Exec(ctx, `INSERT INTO app.products(id,sku,name,base_unit_code) VALUES($1::uuid,($1::uuid)::text,'Cost correction','PIECE');`, product); e != nil {
+			t.Fatal(e)
+		}
+		if _, e := conn.Exec(ctx, `INSERT INTO app.product_units(product_id,unit_code,units_per_pack,is_default_purchase,is_default_sale) VALUES($1,'PIECE',1,true,true),($1,'CARTON',12,false,false)`, product); e != nil {
+			t.Fatal(e)
+		}
+		if _, e := conn.Exec(ctx, `INSERT INTO app.warehouses(id,code,name) VALUES($1::uuid,($1::uuid)::text,'Correction warehouse')`, warehouse); e != nil {
+			t.Fatal(e)
+		}
+		original := call("POST", "/inventory/manual-stock", map[string]any{"request_id": next(), "product_id": product, "warehouse_id": warehouse, "version": scalar("SELECT version::text FROM app.products WHERE id=$1", product), "unit_code": "CARTON", "quantity": "2", "unit_cost_mmk": "100", "retail_price_mmk": "150", "wholesale_price_mmk": "140", "received_at": dbNow(), "reason": "Opening cost entered incorrectly"}, owner, 201)
+		batch := scalar("SELECT id::text FROM app.batches WHERE manual_stock_entry_id=$1", original["id"])
+		version := func(id string) string {
+			return scalar("SELECT version::text FROM app.inventory WHERE warehouse_id=$1 AND batch_id=$2", warehouse, id)
+		}
+		adjust := func(bucket, delta string) {
+			call("POST", "/inventory/adjustments", map[string]any{"request_id": next(), "warehouse_id": warehouse, "batch_id": batch, "version": version(batch), "bucket": bucket, "quantity_delta": delta, "reason": "Correction fixture"}, owner, 201)
+		}
+		adjust("RESERVED", "1")
+		input := map[string]any{"request_id": next(), "warehouse_id": warehouse, "batch_id": batch, "version": version(batch), "unit_cost_mmk": "200", "reason": "Supplier cost was entered incorrectly"}
+		path := "/inventory/manual-stock/cost-corrections"
+		call("POST", path, input, staff, 403)
+		call("POST", path, input, owner, 409)
+		adjust("RESERVED", "-1")
+		call("POST", path, input, owner, 409) // stale version
+		adjust("SELLABLE", "-2")
+		adjust("DAMAGED", "2")
+		input["version"] = version(batch)
+		count := scalar("SELECT count(*)::text FROM app.batches")
+		if _, e := conn.Exec(ctx, `CREATE FUNCTION app.reject_cost_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action='inventory.correct_manual_cost' THEN RAISE EXCEPTION 'test rollback'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_cost_audit BEFORE INSERT ON app.audit_logs FOR EACH ROW EXECUTE FUNCTION app.reject_cost_audit()`); e != nil {
+			t.Fatal(e)
+		}
+		call("POST", path, input, owner, 503)
+		if scalar("SELECT count(*)::text FROM app.batches") != count || scalar("SELECT sellable_quantity::text FROM app.inventory WHERE batch_id=$1", batch) != "22.000000" {
+			t.Fatal("partial cost correction after audit failure")
+		}
+		if _, e := conn.Exec(ctx, `DROP TRIGGER reject_cost_audit ON app.audit_logs; DROP FUNCTION app.reject_cost_audit()`); e != nil {
+			t.Fatal(e)
+		}
+		corrected := call("POST", path, input, owner, 201)["batch_id"].(string)
+		if call("POST", path, input, owner, 201)["batch_id"] != corrected {
+			t.Fatal("retry duplicated replacement")
+		}
+		input["unit_cost_mmk"] = "201"
+		call("POST", path, input, owner, 409)
+		if scalar("SELECT (sellable_quantity+damaged_quantity)::text FROM app.inventory WHERE batch_id=$1", batch) != "0.000000" {
+			t.Fatal("old stock not moved")
+		}
+		if scalar("SELECT sellable_quantity::text||'/'||damaged_quantity::text FROM app.inventory WHERE batch_id=$1", corrected) != "22.000000/2.000000" {
+			t.Fatal("stock buckets changed")
+		}
+		if scalar("SELECT actual_unit_cost_mmk::text FROM app.batches WHERE id=$1", batch) != "100.00000000" || scalar("SELECT actual_unit_cost_mmk::text FROM app.batches WHERE id=$1", corrected) != "200.00000000" {
+			t.Fatal("cost history incorrect")
+		}
+		if scalar("SELECT (a.received_at=b.received_at AND a.carton_size=b.carton_size)::text FROM app.batches a,app.batches b WHERE a.id=$1 AND b.id=$2", batch, corrected) != "true" {
+			t.Fatal("batch aging or packaging changed")
+		}
+		if scalar("SELECT retail_price_mmk::text FROM app.warehouse_prices WHERE product_id=$1 AND warehouse_id=$2 AND unit_code='PIECE'", product, warehouse) != "150.0000" {
+			t.Fatal("selling price changed")
+		}
+		if scalar("SELECT count(*)::text FROM app.manual_stock_cost_corrections WHERE old_batch_id=$1", batch) != "1" {
+			t.Fatal("duplicate correction")
+		}
+		history := path + "?batch_id=" + corrected + "&warehouse_id=" + warehouse
+		if raw("GET", history, nil, staff).Code != 403 || raw("GET", history, nil, owner).Code != 200 {
+			t.Fatal("history permission failure")
+		}
+		if _, e := conn.Exec(ctx, `UPDATE app.manual_stock_cost_corrections SET reason='rewrite' WHERE old_batch_id=$1`, batch); e == nil {
+			t.Fatal("correction history mutable")
+		}
+		// Two edits of the same stock version cannot both replace it.
+		var wg sync.WaitGroup
+		results := make(chan int, 2)
+		v := version(corrected)
+		for _, cost := range []string{"210", "220"} {
+			request := next()
+			wg.Add(1)
+			go func(cost, request string) {
+				defer wg.Done()
+				results <- raw("POST", path, map[string]any{"request_id": request, "warehouse_id": warehouse, "batch_id": corrected, "version": v, "unit_cost_mmk": cost, "reason": "Concurrent cost correction"}, owner).Code
+			}(cost, request)
+		}
+		wg.Wait()
+		close(results)
+		codes := map[int]int{}
+		for code := range results {
+			codes[code]++
+		}
+		if codes[201] != 1 || codes[409] != 1 {
+			t.Fatalf("concurrent corrections: %v", codes)
+		}
+	})
+
 }
