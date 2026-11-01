@@ -1,5 +1,11 @@
 # Pwint Thit POS 1.2 handoff
 
+## November 1: clean numeric field display
+
+Prices, amounts and quantities now hide insignificant trailing decimal zeros in resting fields, including loaded purchases, shipping/receiving, stock and payment forms. Meaningful fractions and exact submitted strings are retained; exchange-rate inputs explicitly preserve decimal precision. Typed decimal text remains stable until blur and focus does not rewrite the field. See [number display](number-display.md).
+
+`make check` passed (13 frontend unit tests), followed by all 40 real-stack production-bundle Chromium/WebKit cases. Browser assertions cover unpadded loaded values, fractional quantities, large exact numbers, and unchanged saved financial/stock results. No schema or business data changes. Only the frontend is deployed at localhost:8088. Wait for the user’s next scope.
+
 ## October 31: transferred manual-stock correction and damaged-sale payments
 
 Fixed correction eligibility for manually entered stock after one or more warehouse transfers. Migration 000047 follows immutable source-batch ancestry; inventory shows Correct landed cost for eligible transfer descendants while retaining Super Admin enforcement and purchase-origin restrictions. Enter the complete corrected landed cost including cargo. Original batches, completed sales, transfer snapshots and other warehouse stock remain unchanged.
