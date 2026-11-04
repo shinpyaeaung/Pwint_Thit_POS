@@ -38,6 +38,7 @@ func (s *Service) Register(r *gin.Engine, a *authz.Service) {
 	r.GET("/api/v1/receiving/:id", a.Require(permissions.ReceivingManage), s.Get)
 	r.POST("/api/v1/receiving/preview", a.Require(permissions.ReceivingManage), s.Post)
 	r.POST("/api/v1/receiving", a.Require(permissions.ReceivingManage), s.Post)
+	r.GET("/api/v1/inventory/alerts", a.Require(permissions.InventoryView), s.InventoryAlerts)
 	r.GET("/api/v1/inventory/groups", a.Require(permissions.InventoryView), s.Inventory)
 	r.GET("/api/v1/inventory", a.Require(permissions.InventoryView), s.Inventory)
 	r.GET("/api/v1/inventory/warehouses", a.Require(permissions.InventoryView), s.Warehouses)
@@ -253,4 +254,23 @@ func (s *Service) Adjust(c *gin.Context) {
 		return
 	}
 	c.JSON(201, gin.H{"id": id})
+}
+
+func (s *Service) InventoryAlerts(c *gin.Context) {
+	size, offset, ok := pagination(c)
+	if !ok {
+		return
+	}
+	warehouse, ok := optionalID(c, "warehouse_id")
+	if !ok {
+		return
+	}
+	status := c.Query("stock_status")
+	search := c.Query("q")
+	if (status != "low" && status != "out") || len(search) > 200 {
+		fail(c, 400, "Choose Low Stock or Out of Stock and a search up to 200 characters.")
+		return
+	}
+	b, e := s.q.InventoryAlerts(c.Request.Context(), database.InventoryAlertsParams{WarehouseID: warehouse, StockStatus: status, Search: search, PageSize: size, PageOffset: offset})
+	response(c, b, e)
 }

@@ -13,7 +13,7 @@ import type { ReportDefinition, ReportFilter, ReportResponse } from './types'
 export default function Reports({ current,overview=false }: { current: CurrentUser;overview?:boolean }) {
   const scope = [current.id, [...current.permissions].sort()]
   const catalog = useQuery({ queryKey: ['report-catalog', ...scope], queryFn: ({ signal }) => requestJSON<{ reports: ReportDefinition[] }>('/reports', { signal }), retry: false })
-  const available=catalog.data?.reports.filter(r=>!overview||['sales','inventory','stock-movements','payments','customer-debt','supplier-payables'].includes(r.id))
+  const available=catalog.data?.reports.filter(r=>!overview||['sales','sales-analytics','inventory','stock-movements','payments','customer-debt','supplier-payables'].includes(r.id))
   const [selected, setSelected] = useState('')
   const [filter, setFilter] = useState<ReportFilter>({ period: 'month', page: 1, page_size: 25 })
   const definition = available?.find(report => report.id === selected) || available?.find(r=>r.id==='sales') || available?.[0]

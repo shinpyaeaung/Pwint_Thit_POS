@@ -3,6 +3,7 @@ export type ReportDefinition = { id: string; title: string; description: string;
 export type ReportFilter = { period: string; from?: string; to?: string; page: number; page_size: number }
 export type ReportRow = Record<string, string | null>
 export type ReportResponse = {
+  analytics?: {top_products: ReportRow[];daily:ReportRow[];hourly:ReportRow[]}
   definition: ReportDefinition
   filter: Required<ReportFilter>
   total: number

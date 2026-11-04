@@ -7,7 +7,7 @@ export default function MoneyPlot({ data }: { data: ChartDatum[] }) {
     <ResponsiveContainer width="100%" height="100%" minWidth={0}>
       <BarChart data={data} layout="vertical" margin={{ top: 4, right: 16, bottom: 4, left: 0 }} accessibilityLayer>
         <CartesianGrid horizontal={false} stroke="var(--border)" strokeDasharray="3 3"/>
-        <XAxis minTickGap={24} type="number" tickFormatter={value=>compact.format(value)} tick={{fontSize:12,fill:'var(--muted-foreground)'}} axisLine={false} tickLine={false} domain={data.every(row=>row.geometry===0)?[-1,1]:['auto','auto']}/>
+        <XAxis minTickGap={24} type="number" tickFormatter={value=>compact.format(value)} tick={{fontSize:12,fill:'var(--muted-foreground)'}} axisLine={false} tickLine={false} domain={data.every(row=>row.geometry===0)?[-1,1]:[Math.min(0,...data.map(row=>row.geometry)),Math.max(0,...data.map(row=>row.geometry))]}/>
         <YAxis type="category" dataKey="label" width={128} tick={({x,y,payload})=><text x={Number(x)-8} y={y} textAnchor="end" dominantBaseline="middle" fontSize={12} fill="var(--foreground)">{String(payload.value).length>14?`${String(payload.value).slice(0,13)}…`:String(payload.value)}</text>} axisLine={false} tickLine={false}/>
         <ReferenceLine x={0} stroke="var(--muted-foreground)"/>
         <Tooltip cursor={{fill:'var(--muted)'}} content={({active,payload})=>{

@@ -3,6 +3,7 @@ package reports
 import "github.com/shinpyaeaung/Pwint_Thit_POS/backend/internal/permissions"
 
 var policies = map[string][]permissions.Code{
+	"sales-analytics":       {permissions.SalesView},
 	"payments":              {permissions.PaymentsManage, permissions.PurchasesViewCost, permissions.ShipmentsViewCost, permissions.CustomersManage, permissions.ExpensesManage},
 	"sales":                 {permissions.SalesView},
 	"purchases":             {permissions.PurchasesView, permissions.PurchasesViewCost},

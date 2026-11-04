@@ -11,6 +11,8 @@ type SQLRepository struct{ queries *database.Queries }
 func NewRepository(db database.DBTX) *SQLRepository { return &SQLRepository{queries: database.New(db)} }
 func (r *SQLRepository) Read(ctx context.Context, id string, f Filter) ([]byte, error) {
 	switch id {
+	case "sales-analytics":
+		return r.queries.ReportSalesAnalytics(ctx, database.ReportSalesAnalyticsParams{StartOn: f.From, EndOn: f.To, PageSize: f.PageSize, PageOffset: (f.Page - 1) * f.PageSize})
 	case "payments":
 		return r.queries.ReportPayments(ctx, database.ReportPaymentsParams{StartOn: f.From, EndOn: f.To, PageSize: f.PageSize, PageOffset: (f.Page - 1) * f.PageSize})
 	case "sales":

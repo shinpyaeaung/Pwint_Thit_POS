@@ -1,3 +1,4 @@
+import { SalesAnalytics } from './SalesAnalytics'
 import { MoneyChart } from '@/components/charts/money-chart'
 import { reportSeries } from '@/components/charts/chart-data'
 import { DataTable, EmptyState } from '@/components/shared'
@@ -21,7 +22,8 @@ export function ReportResults({ report, onPageChange }: { report: ReportResponse
     {incomplete && <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Some sales have incomplete landed costs. Affected profit amounts are unavailable.</p>}
     <dl className={`grid border-y bg-surface ${definition.metrics.length === 1 ? 'max-w-sm grid-cols-1' : 'sm:grid-cols-2 xl:grid-cols-4'}`} aria-label="Report totals">{definition.metrics.map(metric => <div key={metric.key} className="min-w-0 border-l px-4 py-3"><dt className="text-xs font-medium text-muted-foreground">{metric.label}</dt><dd data-testid={`report-total-${metric.key}`} className={`mt-2 break-words text-xl font-semibold tabular-nums ${String(report.summary[metric.key]).startsWith('-') ? 'text-primary' : ''}`}>{reportValue(report.summary[metric.key], metric.kind)}</dd></div>)}</dl>
     <p className="text-xs text-muted-foreground">Totals cover all {report.total} matching records. Tables show one page at a time.</p>
-    <MoneyChart title="Report amount comparison" scope={chart.scope} series={chart.series}/>
+    {report.analytics&&<SalesAnalytics report={report}/>}
+    {!report.analytics&&<MoneyChart title="Report amount comparison" scope={chart.scope} series={chart.series}/>}
     <DataTable<ReportRow> caption={definition.title} rows={report.rows} rowKey={row => `${row.id}:${row.event_type||''}`} columns={definition.columns.map(column => ({ id: column.key, header: column.label, align: column.kind === 'money' || column.kind === 'decimal' ? 'right' : 'left', cell: row => <span className={column.kind === 'money' || column.kind === 'decimal' ? 'whitespace-nowrap' : 'block min-w-24 max-w-64 break-words'}>{reportValue(row[column.key], column.kind)}</span> }))} pagination={{ page: filter.page, pageSize: filter.page_size, total: report.total, onPageChange }} empty={<EmptyState title="No records in this period" description="Choose a different date range to review business activity." />} />
   </div>
 }

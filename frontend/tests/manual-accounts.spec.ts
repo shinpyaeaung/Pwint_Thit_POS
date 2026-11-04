@@ -94,11 +94,12 @@ test('manual stock and accounts: stock, sale, refund, bank balance and personal 
  }
  oldStock=await transferStock(warehouse.id,transferWarehouse.id,oldStock,true)
  oldStock=await transferStock(transferWarehouse.id,warehouse.id,oldStock,false)
- expect(oldStock.is_manual).toBe(false)
+ expect(oldStock.is_manual).toBe(true)
  expect(oldStock.can_correct_cost).toBe(true)
  expect(oldStock.unit_cost_mmk).toBe('101.00000000')
  await page.goto('/inventory')
  await page.getByRole('searchbox',{name:'Search inventory',exact:true}).fill(suffix)
+ await choose('Inventory warehouse',`Opening ${suffix}`)
  await page.getByRole('row').filter({hasText:oldStock.batch_number}).getByRole('button',{name:'Correct landed cost',exact:true}).click()
  await expect(page.getByRole('dialog')).toContainText('Completed sales, past profit and original stock records keep their recorded costs')
  await page.getByLabel('Correct landed cost per PIECE (MMK)',{exact:true}).fill('120')

@@ -9,7 +9,7 @@ test('warehouse filters and optional stock/brand groups preserve variant quantit
  const get=async(path:string)=>{const r=await page.request.get(`/api/v1${path}`);expect(r.status()).toBe(200);return r.json()}
  const brand=await post('/catalog/brands',{name:`Variants ${suffix}`,is_active:true})
  const variants=[]
- for(const [flavor,price] of [['Chocolate','150'],['Milk','180']])variants.push(await post('/products',{name:`${flavor} ${suffix}`,brand_id:brand.id,base_unit_code:'PIECE',is_active:true,packaging:[{unit_code:'PIECE',units_per_pack:'1',is_default_purchase:true,is_default_sale:true,retail_price_mmk:price,wholesale_price_mmk:price},{unit_code:'CARTON',units_per_pack:'12'}]}))
+ for(const [flavor,price] of [['Chocolate','150'],['Milk','180']])variants.push(await post('/products',{name:`${flavor} ${suffix}`,brand_id:brand.id,base_unit_code:'PIECE',minimum_stock:'30',is_active:true,packaging:[{unit_code:'PIECE',units_per_pack:'1',is_default_purchase:true,is_default_sale:true,retail_price_mmk:price,wholesale_price_mmk:price},{unit_code:'CARTON',units_per_pack:'12'}]}))
  const supplier=await post('/suppliers',{name:`Group supplier ${suffix}`,is_active:true})
  const warehouse=await post('/warehouses',{name:`Stocked ${suffix}`,code:`ST-${suffix}`}),empty=await post('/warehouses',{name:`Empty ${suffix}`,code:`EM-${suffix}`})
  const purchase=await post('/purchases',{request_id:crypto.randomUUID(),supplier_id:supplier.id,purchased_at:'2026-01-15T00:00:00Z',currency_code:'MMK',mmk_per_unit:'1',items:variants.map((p,i)=>({product_id:p.id,unit_code:'PIECE',units_per_pack:'1',quantity:i?'24':'48',unit_price_original:'100'}))})
@@ -36,6 +36,13 @@ test('warehouse filters and optional stock/brand groups preserve variant quantit
  await choose('Inventory warehouse',`Empty ${suffix}`)
  await expect(page.getByRole('heading',{name:'No records yet',exact:true})).toBeVisible()
  await expect(page.getByText(`Chocolate ${suffix}`,{exact:true})).toHaveCount(0)
+ await choose('Stock status','Out of Stock')
+ await expect(page.getByRole('table',{name:'Out of stock products'})).toContainText(`Chocolate ${suffix}`)
+ await expect(page.getByRole('table')).toContainText(`Milk ${suffix}`)
+ await choose('Inventory warehouse',`Stocked ${suffix}`)
+ await choose('Stock status','Low Stock')
+ await expect(page.getByRole('table',{name:'Low stock products'})).toContainText(`Milk ${suffix}`)
+ await expect(page.getByRole('table')).not.toContainText(`Chocolate ${suffix}`)
  await page.goto(`/warehouse-prices?warehouse_id=${warehouse.id}&q=${suffix}`)
  await expect(page.getByRole('table')).toContainText('PIECE: 150 / 150')
  await expect(page.getByRole('table')).toContainText('PIECE: 180 / 180')

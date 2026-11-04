@@ -17,12 +17,13 @@ test('reports expose all views, server date presets, exact purchases and restric
   await page.goto('/reports')
   await expect(page.getByRole('heading', { name: 'Business reports', exact: true })).toBeVisible()
   const catalog = await (await page.request.get('/api/v1/reports')).json()
-  expect(catalog.reports).toHaveLength(15)
+  expect(catalog.reports).toHaveLength(16)
   for (const definition of catalog.reports) {
     await page.getByRole('combobox', { name: 'Report', exact: true }).click()
     await page.getByRole('option', { name: definition.title, exact: true }).click()
     await expect(page.getByRole('heading', { name: definition.title, exact: true })).toBeVisible()
     await expect(page.getByRole('alert')).toHaveCount(0)
+    if(definition.id==='sales-analytics'){await expect(page.getByRole('region',{name:'Sales analytics'})).toBeVisible();await expect(page.getByRole('figure',{name:'Sales by hour',exact:true})).toBeVisible();const analytics=await(await page.request.get('/api/v1/reports/sales-analytics?period=month')).json();expect(analytics.analytics.hourly).toHaveLength(24);await page.setViewportSize({width:375,height:812});await expect(page.getByRole('figure',{name:'Sales by hour',exact:true}).locator('svg.recharts-surface')).toBeVisible();await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:`/tmp/pwint-sales-analytics-${testInfo.project.name}.png`,fullPage:true});await page.setViewportSize({width:1280,height:900})}
   }
   await page.getByRole('combobox', { name: 'Report', exact: true }).click()
   await page.getByRole('option', { name: 'Purchase Report', exact: true }).click()
@@ -85,7 +86,7 @@ test('reports expose all views, server date presets, exact purchases and restric
     await reader.reload()
     await expect(reader.getByRole('combobox', { name: 'Report', exact: true })).toHaveText('Sales Report')
     await reader.getByRole('combobox', { name: 'Report', exact: true }).click()
-    await expect(reader.getByRole('option')).toHaveCount(1)
+    await expect(reader.getByRole('option')).toHaveCount(2)
     await reader.keyboard.press('Escape')
     expect((await reader.request.get('/api/v1/reports/purchases')).status()).toBe(403)
   } finally { await context.close() }

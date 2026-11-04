@@ -242,6 +242,23 @@ func TestReceivingIntegration(t *testing.T) {
 		t.Fatal("expiry boundaries", statuses, err)
 	}
 
+	t.Run("inventory stock status filters", func(t *testing.T) {
+		call("GET", "/inventory/alerts?stock_status=invalid", nil, owner, 400)
+		call("GET", "/inventory/alerts?stock_status=out", nil, "", 401)
+		call("GET", "/inventory/alerts?stock_status=out", nil, staff, 200)
+		if _, e := conn.Exec(ctx, `UPDATE app.products SET minimum_stock=100 WHERE id='00000000-0000-0000-0000-000000000002';INSERT INTO app.products(sku,name,base_unit_code) VALUES('NEVER-STOCK','Never stocked filter','PIECE')`); e != nil {
+			t.Fatal(e)
+		}
+		if call("GET", "/inventory/alerts?stock_status=out&q=Never", nil, owner, 200)["total"] != float64(1) {
+			t.Fatal("never stocked product missing")
+		}
+		if call("GET", "/inventory/alerts?stock_status=low&q=Tea", nil, owner, 200)["total"] != float64(1) {
+			t.Fatal("low stock missing")
+		}
+		if call("GET", "/inventory/alerts?stock_status=out&q=Tea", nil, owner, 200)["total"] != float64(0) {
+			t.Fatal("stocked product classified out")
+		}
+	})
 	t.Run("warehouse transfer", func(t *testing.T) {
 		dest := call("POST", "/warehouses", map[string]any{"code": "DEST", "name": "Destination"}, owner, 201)
 		stock := call("GET", "/inventory?warehouse_id="+warehouse["id"].(string), nil, owner, 200)["stock"].([]any)[0].(map[string]any)
@@ -276,7 +293,7 @@ func TestReceivingIntegration(t *testing.T) {
 		call("POST", "/transfers/"+transferID+"/receive", receipt, owner, 200)
 		call("POST", "/transfers/"+transferID+"/receive", receipt, owner, 200)
 		arrived := call("GET", "/inventory?warehouse_id="+dest["id"].(string), nil, owner, 200)["stock"].([]any)[0].(map[string]any)
-		if arrived["unit_cost_mmk"] != "200.00000000" || arrived["available_quantity"] != "2.000000" {
+		if arrived["batch_id"] != stock["batch_id"] || arrived["batch_number"] != stock["batch_number"] || arrived["unit_cost_mmk"] != "200.00000000" || arrived["available_quantity"] != "2.000000" {
 			t.Fatal("destination landed cost", arrived)
 		}
 		var original string

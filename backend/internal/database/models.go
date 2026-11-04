@@ -375,6 +375,27 @@ type AppInventory struct {
 	Version           int64
 }
 
+type AppInventoryCostLayer struct {
+	ID               pgtype.UUID
+	WarehouseID      pgtype.UUID
+	BatchID          pgtype.UUID
+	Sequence         pgtype.Int8
+	UnitCostMmk      pgtype.Numeric
+	SellableQuantity pgtype.Numeric
+	DamagedQuantity  pgtype.Numeric
+	OriginMovementID pgtype.UUID
+	CreatedAt        pgtype.Timestamptz
+	FifoReceivedAt   pgtype.Timestamptz
+}
+
+type AppInventoryCostMovement struct {
+	ID            int64
+	MovementID    pgtype.UUID
+	LayerID       pgtype.UUID
+	SellableDelta pgtype.Numeric
+	DamagedDelta  pgtype.Numeric
+}
+
 type AppInventoryMovement struct {
 	ID                    pgtype.UUID
 	WarehouseID           pgtype.UUID
@@ -537,6 +558,8 @@ type AppPosDamagedStock struct {
 	ProductID         pgtype.UUID
 	ReceivedAt        pgtype.Timestamptz
 	ActualUnitCostMmk pgtype.Numeric
+	CostLayerID       pgtype.UUID
+	CostSequence      int64
 }
 
 type AppPosEligibleStock struct {
@@ -553,6 +576,8 @@ type AppPosEligibleStock struct {
 	ReceivedAt        pgtype.Timestamptz
 	ExpiresOn         pgtype.Date
 	ActualUnitCostMmk pgtype.Numeric
+	CostLayerID       pgtype.UUID
+	CostSequence      int64
 }
 
 type AppProduct struct {
@@ -797,6 +822,7 @@ type AppSaleItemBatch struct {
 	UnitCostMmk  pgtype.Numeric
 	TotalCostMmk pgtype.Numeric
 	CreatedAt    pgtype.Timestamptz
+	CostLayerID  pgtype.UUID
 }
 
 type AppSaleTotal struct {
@@ -980,16 +1006,19 @@ type AppStockTransfer struct {
 }
 
 type AppStockTransferItem struct {
-	ID                pgtype.UUID
-	TransferID        pgtype.UUID
-	BatchID           pgtype.UUID
-	Quantity          pgtype.Numeric
-	ReceivedQuantity  pgtype.Numeric
-	CreatedAt         pgtype.Timestamptz
-	UpdatedAt         pgtype.Timestamptz
-	SourceUnitCostMmk pgtype.Numeric
-	DamagedQuantity   pgtype.Numeric
-	Notes             pgtype.Text
+	ID                     pgtype.UUID
+	TransferID             pgtype.UUID
+	BatchID                pgtype.UUID
+	Quantity               pgtype.Numeric
+	ReceivedQuantity       pgtype.Numeric
+	CreatedAt              pgtype.Timestamptz
+	UpdatedAt              pgtype.Timestamptz
+	SourceUnitCostMmk      pgtype.Numeric
+	DamagedQuantity        pgtype.Numeric
+	Notes                  pgtype.Text
+	CarriedCostMmk         pgtype.Numeric
+	DestinationUnitCostMmk pgtype.Numeric
+	DestinationCostLayers  []byte
 }
 
 type AppSupplier struct {

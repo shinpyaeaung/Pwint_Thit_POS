@@ -23,9 +23,10 @@ type Filter struct {
 	PageSize int32  `json:"page_size"`
 }
 type Result struct {
-	Total   int64                        `json:"total"`
-	Summary map[string]json.RawMessage   `json:"summary"`
-	Rows    []map[string]json.RawMessage `json:"rows"`
+	Analytics json.RawMessage              `json:"analytics,omitempty"`
+	Total     int64                        `json:"total"`
+	Summary   map[string]json.RawMessage   `json:"summary"`
+	Rows      []map[string]json.RawMessage `json:"rows"`
 }
 type Response struct {
 	Definition Definition `json:"definition"`

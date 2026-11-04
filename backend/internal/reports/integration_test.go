@@ -107,6 +107,18 @@ func TestReportsIntegration(t *testing.T) {
 			t.Errorf("nonempty historical report %s", d.ID)
 		}
 	}
+	metric(read("sales-analytics", feb), "revenue_mmk", "80000.0000")
+	analytics := read("sales-analytics", feb)
+	var series struct {
+		Daily  []map[string]string `json:"daily"`
+		Hourly []map[string]string `json:"hourly"`
+	}
+	if err := json.Unmarshal(analytics.Analytics, &series); err != nil {
+		t.Fatal(err)
+	}
+	if len(series.Daily) != 1 || series.Daily[0]["day"] != "2020-02-29" || len(series.Hourly) != 24 || series.Hourly[23]["revenue_mmk"] != "80000.0000" {
+		t.Fatal("Myanmar time analytics", series)
+	}
 	metric(read("sales", feb), "revenue_mmk", "80000.0000")
 	metric(read("purchases", feb), "amount_mmk", "250000.0000")
 	metric(read("currency-purchases", feb), "amount_mmk", "250000.0000")
@@ -139,6 +151,10 @@ func TestReportsIntegration(t *testing.T) {
  INSERT INTO app.inventory_movements(warehouse_id,batch_id,movement_type,sellable_delta,unit_cost_mmk,sales_return_item_id,idempotency_key,occurred_at,recorded_by) VALUES('00000000-0000-0000-0000-000000000012','00000000-0000-0000-0000-000000000070','SALE_RETURN',1,30000,'10000000-0000-0000-0000-000000000006','report-return','2020-03-01 00:00:00+00','00000000-0000-0000-0000-000000000001');`)
 	metric(read("sales", feb), "revenue_mmk", "80000.0000")
 	metric(read("sales", march), "revenue_mmk", "-40000.0000")
+	metric(read("sales-analytics", march), "revenue_mmk", "-40000.0000")
+	if string(read("sales-analytics", march).Rows[0]["returned_quantity"]) != `"1.000000"` {
+		t.Fatal("Analytics lost returned quantity")
+	}
 	metric(read("product-profitability", march), "gross_profit_mmk", "-10000.0000")
 	metric(read("profit-loss", march), "net_profit_mmk", "-4999.9999")
 	metric(read("customer-debt", march), "outstanding_mmk", "30000.0000")

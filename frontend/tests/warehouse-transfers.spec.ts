@@ -61,7 +61,7 @@ test('warehouse shipment preserves source cost, adds cargo on receipt and expose
  await page.reload()
  expect((await get(`/inventory?warehouse_id=${source.id}`)).stock[0].unit_cost_mmk).toBe('100.00000000')
  const destStock=(await get(`/inventory?warehouse_id=${destination.id}`)).stock[0]
- expect(destStock.available_quantity).toBe('6.000000');expect(destStock.unit_cost_mmk).toBe('110.00000000')
+ expect(destStock.batch_id).toBe((await get(`/inventory?warehouse_id=${source.id}`)).stock[0].batch_id);expect(destStock.batch_number).toBe((await get(`/inventory?warehouse_id=${source.id}`)).stock[0].batch_number);expect(destStock.available_quantity).toBe('6.000000');expect(destStock.unit_cost_mmk).toBe('110.00000000')
  const quote=await post('/pos/quote',{request_id:crypto.randomUUID(),warehouse_id:destination.id,pricing_mode:'RETAIL',payment_method:'CASH',tender_mmk:'150',sell_on_credit:false,items:[{product_id:product.id,unit_code:'BOTTLE',units_per_pack:'1',quantity:'1',unit_price_mmk:'150',discount_mmk:'0'}]},200)
  expect(quote.lines[0].cost_mmk).toBe('110.0000')
  expect((await get(`/transfers/${id}`)).status).toBe('RECEIVED')
